@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-ise-s8-project-2025",
+    "name": "Major Project & Capstone (2025)",
+    "semester": 8,
+    "modules": [
+      {
+        "id": "vtu-ise-s8-project-2025-m1",
+        "name": "Module 1: Capstone Execution",
+        "topics": [
+          {
+            "id": "vtu-ise-s8-project-2025-m1-t1",
+            "name": "Project Formulation and Requirements",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-ise-s8-project-2025-m1-t2",
+            "name": "Final System Integration and Testing",
+            "difficulty": "Hard",
+            "estimatedTime": 50
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,33 @@
+[
+  {
+    "id": "vtu-ise-s3-dms",
+    "name": "Database Management Systems",
+    "semester": 3,
+    "modules": [
+      {
+        "id": "vtu-ise-s3-dms-m1",
+        "name": "Module 1: Relational Model & ER diagrams",
+        "topics": [
+          {
+            "id": "vtu-ise-s3-dms-m1-t1",
+            "name": "ER Model Entities & Attributes",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-ise-s3-dms-m1-t2",
+            "name": "Keys: Super, Candidate, Primary, Foreign",
+            "difficulty": "Easy",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-ise-s3-dms-m1-t3",
+            "name": "SQL Schemas & Integrity Constraints",
+            "difficulty": "Hard",
+            "estimatedTime": 45
+          }
+        ]
+      }
+    ]
+  }
+]

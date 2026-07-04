@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Premium Redesigned Colors matching Material 3 + Android Reference */
+  --color-bg-base: #0B0D14;
+  --color-surface-base: #121420;
+  --color-elevated-base: #1A1D2E;
+  --color-primary-premium: #7C5CFF;
+  --color-primary-glow: #A78BFA;
+  --color-accent-premium: #A78BFA;
+  --color-success-premium: #2BD97F;
+  --color-warning-premium: #FFB547;
+  --color-error-premium: #FF5D73;
+
+  /* Redefined colors to override default Tailwind colors across the app */
+  --color-blue-400: #A78BFA;
+  --color-blue-500: #7C5CFF;
+  --color-blue-600: #6D28D9;
+  --color-blue-900: #1A1D2E;
+  --color-blue-950: #121420;
+
+  --color-amber-400: #FFB547;
+  --color-amber-500: #FFB547;
+  
+  --color-emerald-400: #2BD97F;
+  --color-emerald-500: #2BD97F;
+
+  --color-sky-400: #00D4FF;
+  --color-sky-500: #00D4FF;
+
+  --color-orange-500: #FFB547;
+  --color-red-500: #FF5D73;
+}
+
+/* Global resets and body overrides */
+body {
+  font-family: var(--font-sans);
+  background-color: #0B0D14 !important;
+  color: #F4F4F5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.min-h-screen, 
+div[class*="bg-[#0C0F12]"],
+.bg-\[\#0C0F12\],
+div[class*="bg-[#0A0D10]"],
+.bg-\[\#0A0D10\],
+.bg-black {
+  background-color: #0B0D14 !important;
+  background-image: radial-gradient(rgba(124, 92, 255, 0.035) 1px, transparent 1px) !important;
+  background-size: 24px 24px !important;
+}
+
+/* Surface containers mapping */
+div[class*="bg-[#141A1F]"],
+.bg-\[\#141A1F\],
+div[class*="bg-[#111422]"],
+.bg-\[\#111422\],
+div[class*="bg-[#111114]"],
+.bg-\[\#111114\],
+main div[class*="bg-[#141A1F]"],
+header div[class*="bg-[#141A1F]"] {
+  background-color: #121420 !important;
+  border-color: rgba(124, 92, 255, 0.08) !important;
+}
+
+/* Elevated containers mapping */
+div[class*="bg-gray-950"],
+.bg-gray-950,
+div[class*="bg-[#080B0E]"],
+div[class*="bg-gray-900"],
+.bg-gray-900,
+.bg-gray-950\/60 {
+  background-color: #1A1D2E !important;
+  border-color: rgba(124, 92, 255, 0.08) !important;
+}
+
+/* Fine-tune borders & dividers to be ultra-clean (Nothing OS detail) */
+hr,
+.border-gray-800,
+.border-gray-850,
+.border-gray-900,
+div[class*="border-gray-800"] {
+  border-color: rgba(124, 92, 255, 0.08) !important;
+}
+
+/* Active primary gradient */
+.bg-primary-gradient {
+  background: linear-gradient(135deg, #7C5CFF 0%, #A78BFA 100%);
+}
+
+.bg-accent-gradient {
+  background: linear-gradient(135deg, #7C5CFF 0%, #00D4FF 100%);
+}
+
+/* Android style press ripple indicator */
+.press-scale {
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.press-scale:active {
+  transform: scale(0.96);
+}
+
+/* Premium micro-interactions and animations */
+.shadow-premium {
+  box-shadow: 0 10px 30px -10px rgba(124, 92, 255, 0.15) !important;
+}
+
+/* Smooth custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0B0D14;
+}
+::-webkit-scrollbar-thumb {
+  background: #1A1D2E;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #7C5CFF;
+}
+
+

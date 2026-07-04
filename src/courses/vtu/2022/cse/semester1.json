@@ -1,0 +1,196 @@
+[
+  {
+    "id": "vtu-cse-s1-math",
+    "name": "Mathematics-1 for CSE",
+    "semester": 1,
+    "modules": [
+      {
+        "id": "vtu-cse-s1-math-m1",
+        "name": "Module 1: Calculus & Mean Value",
+        "topics": [
+          {
+            "id": "vtu-cse-s1-math-m1-t1",
+            "name": "Polar Curves & Angle of Intersection",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s1-math-m1-t2",
+            "name": "Pedal Equations of Polar Curves",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s1-math-m1-t3",
+            "name": "Taylor's and Maclaurin's Series",
+            "difficulty": "Medium",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s1-math-m1-t4",
+            "name": "Rolle's Theorem & Lagrange Mean Value",
+            "difficulty": "Easy",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s1-math-m2",
+        "name": "Module 2: Multivariable Calculus",
+        "topics": [
+          {
+            "id": "vtu-cse-s1-math-m2-t1",
+            "name": "Partial Derivatives & Total Derivative",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s1-math-m2-t2",
+            "name": "Jacobians & Applications",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s1-math-m2-t3",
+            "name": "Taylor's Expansion for Two Variables",
+            "difficulty": "Easy",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s1-math-m2-t4",
+            "name": "Maxima and Minima of Two Variables",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s1-math-m3",
+        "name": "Module 3: Ordinary Differential Equations",
+        "topics": [
+          {
+            "id": "vtu-cse-s1-math-m3-t1",
+            "name": "First Order ODEs Exact Equations",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s1-math-m3-t2",
+            "name": "Linear Differential Equations",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s1-math-m3-t3",
+            "name": "Orthogonal Trajectories",
+            "difficulty": "Easy",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s1-math-m3-t4",
+            "name": "Newton's Law of Cooling Problems",
+            "difficulty": "Medium",
+            "estimatedTime": 55
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "vtu-cse-s1-phys",
+    "name": "Engineering Physics",
+    "semester": 1,
+    "modules": [
+      {
+        "id": "vtu-cse-s1-phys-m1",
+        "name": "Module 1: Quantum Mechanics",
+        "topics": [
+          {
+            "id": "vtu-cse-s1-phys-m1-t1",
+            "name": "Wave-Particle Duality & de Broglie Waves",
+            "difficulty": "Hard",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s1-phys-m1-t2",
+            "name": "Heisenberg Uncertainty Principle",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s1-phys-m1-t3",
+            "name": "Schrodinger's Time-Independent Equation",
+            "difficulty": "Hard",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s1-phys-m1-t4",
+            "name": "Particle in a 1D Infinite Potential Well",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s1-phys-m2",
+        "name": "Module 2: Lasers & Optical Fibers",
+        "topics": [
+          {
+            "id": "vtu-cse-s1-phys-m2-t1",
+            "name": "Einstein's Coefficients & Laser Action",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s1-phys-m2-t2",
+            "name": "Helium-Neon & Semiconductor Lasers",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s1-phys-m2-t3",
+            "name": "Propagation & Numerical Aperture",
+            "difficulty": "Medium",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s1-phys-m2-t4",
+            "name": "Attenuation & Fiber Optic Sensors",
+            "difficulty": "Easy",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s1-phys-m3",
+        "name": "Module 3: Semiconductor Physics",
+        "topics": [
+          {
+            "id": "vtu-cse-s1-phys-m3-t1",
+            "name": "Fermi-Dirac Distribution & Fermi Level",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s1-phys-m3-t2",
+            "name": "Carrier Concentration in Semiconductors",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s1-phys-m3-t3",
+            "name": "Hall Effect & Conductivity",
+            "difficulty": "Hard",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s1-phys-m3-t4",
+            "name": "Photodiodes & Solar Cell Operations",
+            "difficulty": "Easy",
+            "estimatedTime": 55
+          }
+        ]
+      }
+    ]
+  }
+]

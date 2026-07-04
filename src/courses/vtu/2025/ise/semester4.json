@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-ise-s4-os-2025",
+    "name": "Operating Systems (2025)",
+    "semester": 4,
+    "modules": [
+      {
+        "id": "vtu-ise-s4-os-2025-m1",
+        "name": "Module 1: Process Scheduling",
+        "topics": [
+          {
+            "id": "vtu-ise-s4-os-2025-m1-t1",
+            "name": "SJF, Round-Robin and Priority Scheduling",
+            "difficulty": "Medium",
+            "estimatedTime": 30
+          },
+          {
+            "id": "vtu-ise-s4-os-2025-m1-t2",
+            "name": "Deadlocks Handling and Recovery",
+            "difficulty": "Hard",
+            "estimatedTime": 45
+          }
+        ]
+      }
+    ]
+  }
+]

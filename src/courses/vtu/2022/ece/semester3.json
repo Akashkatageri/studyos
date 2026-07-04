@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-ece-s3-aec",
+    "name": "Analog Electronic Circuits",
+    "semester": 3,
+    "modules": [
+      {
+        "id": "vtu-ece-s3-aec-m1",
+        "name": "Module 1: Diode Circuits",
+        "topics": [
+          {
+            "id": "vtu-ece-s3-aec-m1-t1",
+            "name": "Diode Clippers and Clampers",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-ece-s3-aec-m1-t2",
+            "name": "Full-Wave Bridge Rectifier Analysis",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          }
+        ]
+      }
+    ]
+  }
+]

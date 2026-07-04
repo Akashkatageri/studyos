@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-ise-s5-cn-2025",
+    "name": "Computer Networks (2025)",
+    "semester": 5,
+    "modules": [
+      {
+        "id": "vtu-ise-s5-cn-2025-m1",
+        "name": "Module 1: Routing Algorithms",
+        "topics": [
+          {
+            "id": "vtu-ise-s5-cn-2025-m1-t1",
+            "name": "Dijkstra and Distance Vector Routing",
+            "difficulty": "Hard",
+            "estimatedTime": 40
+          },
+          {
+            "id": "vtu-ise-s5-cn-2025-m1-t2",
+            "name": "TCP Congestion Control Mechanisms",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          }
+        ]
+      }
+    ]
+  }
+]

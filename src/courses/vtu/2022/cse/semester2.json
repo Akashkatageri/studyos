@@ -1,0 +1,196 @@
+[
+  {
+    "id": "vtu-cse-s2-math",
+    "name": "Mathematics-2 for CSE",
+    "semester": 2,
+    "modules": [
+      {
+        "id": "vtu-cse-s2-math-m1",
+        "name": "Module 1: Vector Calculus",
+        "topics": [
+          {
+            "id": "vtu-cse-s2-math-m1-t1",
+            "name": "Gradient, Divergence and Curl Operations",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s2-math-m1-t2",
+            "name": "Solenoidal and Irrotational Vectors",
+            "difficulty": "Easy",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s2-math-m1-t3",
+            "name": "Line and Surface Integrals",
+            "difficulty": "Hard",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s2-math-m1-t4",
+            "name": "Green's, Gauss, and Stokes' Theorems",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s2-math-m2",
+        "name": "Module 2: Infinite Series",
+        "topics": [
+          {
+            "id": "vtu-cse-s2-math-m2-t1",
+            "name": "Convergence and Divergence Concepts",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s2-math-m2-t2",
+            "name": "D'Alembert Ratio Test",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s2-math-m2-t3",
+            "name": "Cauchy Root Test & Integral Test",
+            "difficulty": "Medium",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s2-math-m2-t4",
+            "name": "Power Series & Radius of Convergence",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s2-math-m3",
+        "name": "Module 3: Numerical Methods",
+        "topics": [
+          {
+            "id": "vtu-cse-s2-math-m3-t1",
+            "name": "Newton-Raphson & Regula-Falsi Methods",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s2-math-m3-t2",
+            "name": "Lagrange's Interpolation Formula",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s2-math-m3-t3",
+            "name": "Simpson's 1/3rd and 3/8th Integration",
+            "difficulty": "Medium",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s2-math-m3-t4",
+            "name": "Euler's and Runge-Kutta 4th Order ODE",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "vtu-cse-s2-py",
+    "name": "Python Programming",
+    "semester": 2,
+    "modules": [
+      {
+        "id": "vtu-cse-s2-py-m1",
+        "name": "Module 1: Python Basics & Variables",
+        "topics": [
+          {
+            "id": "vtu-cse-s2-py-m1-t1",
+            "name": "Variables, Data Types, and Type Casting",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s2-py-m1-t2",
+            "name": "Arithmetic, Comparison & Logical Operators",
+            "difficulty": "Easy",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s2-py-m1-t3",
+            "name": "Standard Input & Output Functions",
+            "difficulty": "Easy",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s2-py-m1-t4",
+            "name": "String Manipulations & Formats",
+            "difficulty": "Medium",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s2-py-m2",
+        "name": "Module 2: Control Flow & Loops",
+        "topics": [
+          {
+            "id": "vtu-cse-s2-py-m2-t1",
+            "name": "If-Else and Elif Conditional States",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s2-py-m2-t2",
+            "name": "For and While Loop Implementation",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s2-py-m2-t3",
+            "name": "Nested Loop Structure & Break Statements",
+            "difficulty": "Medium",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s2-py-m2-t4",
+            "name": "Iterators & List Comprehension",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s2-py-m3",
+        "name": "Module 3: Functions & Modules",
+        "topics": [
+          {
+            "id": "vtu-cse-s2-py-m3-t1",
+            "name": "Defining Functions & Local/Global Scope",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s2-py-m3-t2",
+            "name": "Passing Default and Keyword Arguments",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s2-py-m3-t3",
+            "name": "Module Imports & Package Structures",
+            "difficulty": "Easy",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s2-py-m3-t4",
+            "name": "File Reading and Writing Basics",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      }
+    ]
+  }
+]

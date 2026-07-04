@@ -1,0 +1,33 @@
+[
+  {
+    "id": "vtu-ise-s2-java",
+    "name": "Object Oriented Programming with Java",
+    "semester": 2,
+    "modules": [
+      {
+        "id": "vtu-ise-s2-java-m1",
+        "name": "Module 1: Java Basics & Classes",
+        "topics": [
+          {
+            "id": "vtu-ise-s2-java-m1-t1",
+            "name": "JVM, JRE and JDK Configurations",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-ise-s2-java-m1-t2",
+            "name": "Creating Classes and Object Instances",
+            "difficulty": "Easy",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-ise-s2-java-m1-t3",
+            "name": "Constructors and Method Overloading",
+            "difficulty": "Medium",
+            "estimatedTime": 45
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,196 @@
+[
+  {
+    "id": "vtu-cse-s3-dsa",
+    "name": "Data Structures & Applications",
+    "semester": 3,
+    "modules": [
+      {
+        "id": "vtu-cse-s3-dsa-m1",
+        "name": "Module 1: Linear Arrays & Pointers",
+        "topics": [
+          {
+            "id": "vtu-cse-s3-dsa-m1-t1",
+            "name": "Memory Allocation & Pointer Arithmetic",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s3-dsa-m1-t2",
+            "name": "Array Insertions, Deletions & Merging",
+            "difficulty": "Easy",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s3-dsa-m1-t3",
+            "name": "Recursion Theory & Fibonacci, Hanoi Tasks",
+            "difficulty": "Hard",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s3-dsa-m1-t4",
+            "name": "String Pattern Matching Algorithms",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s3-dsa-m2",
+        "name": "Module 2: Stacks and Queues",
+        "topics": [
+          {
+            "id": "vtu-cse-s3-dsa-m2-t1",
+            "name": "Stack Array Implementation (Push & Pop)",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s3-dsa-m2-t2",
+            "name": "Infix to Postfix Mathematical Conversion",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s3-dsa-m2-t3",
+            "name": "Queue Implementation & Circular Queues",
+            "difficulty": "Medium",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s3-dsa-m2-t4",
+            "name": "Double Ended Queues & Priority Queues",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s3-dsa-m3",
+        "name": "Module 3: Linked Lists",
+        "topics": [
+          {
+            "id": "vtu-cse-s3-dsa-m3-t1",
+            "name": "Singly Linked List Node Allocations",
+            "difficulty": "Hard",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s3-dsa-m3-t2",
+            "name": "Insertions and Deletions on Lists",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s3-dsa-m3-t3",
+            "name": "Doubly & Circular Linked List Basics",
+            "difficulty": "Medium",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s3-dsa-m3-t4",
+            "name": "List Reversal & Polynomial Additions",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "vtu-cse-s3-co",
+    "name": "Computer Organization",
+    "semester": 3,
+    "modules": [
+      {
+        "id": "vtu-cse-s3-co-m1",
+        "name": "Module 1: Machine Instructions & Addressing",
+        "topics": [
+          {
+            "id": "vtu-cse-s3-co-m1-t1",
+            "name": "Basic Operational Concepts & Bus Structure",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s3-co-m1-t2",
+            "name": "Machine Instruction Formats & Sequences",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s3-co-m1-t3",
+            "name": "Addressing Modes & Register Transfers",
+            "difficulty": "Hard",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s3-co-m1-t4",
+            "name": "Assembly Language Coding Concepts",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s3-co-m2",
+        "name": "Module 2: Computer Arithmetic",
+        "topics": [
+          {
+            "id": "vtu-cse-s3-co-m2-t1",
+            "name": "Fast Addition & Carry Look-Ahead Adders",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s3-co-m2-t2",
+            "name": "Signed Multiplication & Booth's Algorithm",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s3-co-m2-t3",
+            "name": "Fast Division Restoration Techniques",
+            "difficulty": "Hard",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s3-co-m2-t4",
+            "name": "Floating Point Arithmetic Representation",
+            "difficulty": "Hard",
+            "estimatedTime": 55
+          }
+        ]
+      },
+      {
+        "id": "vtu-cse-s3-co-m3",
+        "name": "Module 3: Memory Organization",
+        "topics": [
+          {
+            "id": "vtu-cse-s3-co-m3-t1",
+            "name": "SRAM and DRAM Internal Structure",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-cse-s3-co-m3-t2",
+            "name": "Cache Memory Associative Mapping",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          },
+          {
+            "id": "vtu-cse-s3-co-m3-t3",
+            "name": "Virtual Memory Concepts & Pages",
+            "difficulty": "Medium",
+            "estimatedTime": 45
+          },
+          {
+            "id": "vtu-cse-s3-co-m3-t4",
+            "name": "RAID Storage and Disk Systems",
+            "difficulty": "Easy",
+            "estimatedTime": 55
+          }
+        ]
+      }
+    ]
+  }
+]

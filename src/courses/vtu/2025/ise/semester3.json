@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-ise-s3-dms-2025",
+    "name": "Database Management (2025)",
+    "semester": 3,
+    "modules": [
+      {
+        "id": "vtu-ise-s3-dms-2025-m1",
+        "name": "Module 1: Normalization & SQL",
+        "topics": [
+          {
+            "id": "vtu-ise-s3-dms-2025-m1-t1",
+            "name": "1NF, 2NF, 3NF and BCNF Rules",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-ise-s3-dms-2025-m1-t2",
+            "name": "Complex SQL Join Queries",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          }
+        ]
+      }
+    ]
+  }
+]

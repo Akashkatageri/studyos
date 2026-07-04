@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-ece-s2-network",
+    "name": "Network Analysis",
+    "semester": 2,
+    "modules": [
+      {
+        "id": "vtu-ece-s2-network-m1",
+        "name": "Module 1: Mesh and Node Analysis",
+        "topics": [
+          {
+            "id": "vtu-ece-s2-network-m1-t1",
+            "name": "Kirchhoff's Laws in Frequency Domain",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-ece-s2-network-m1-t2",
+            "name": "Source Transformations & Simplifications",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,21 @@
+[
+  {
+    "id": "vtu-aiml-s1-math",
+    "name": "Mathematics-1 for AIML",
+    "semester": 1,
+    "modules": [
+      {
+        "id": "vtu-aiml-s1-math-m1",
+        "name": "Module 1: Calculus",
+        "topics": [
+          {
+            "id": "vtu-aiml-s1-math-m1-t1",
+            "name": "Calculus Limits & Series Solutions",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          }
+        ]
+      }
+    ]
+  }
+]

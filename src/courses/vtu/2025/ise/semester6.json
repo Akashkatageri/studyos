@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-ise-s6-se-2025",
+    "name": "Software Engineering (2025)",
+    "semester": 6,
+    "modules": [
+      {
+        "id": "vtu-ise-s6-se-2025-m1",
+        "name": "Module 1: Agile Methodologies",
+        "topics": [
+          {
+            "id": "vtu-ise-s6-se-2025-m1-t1",
+            "name": "Scrum Framework and Sprint Planning",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-ise-s6-se-2025-m1-t2",
+            "name": "CI/CD Pipeline Setup",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          }
+        ]
+      }
+    ]
+  }
+]

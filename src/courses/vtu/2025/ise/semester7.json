@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-ise-s7-cc-2025",
+    "name": "Cloud Computing (2025)",
+    "semester": 7,
+    "modules": [
+      {
+        "id": "vtu-ise-s7-cc-2025-m1",
+        "name": "Module 1: Virtualization",
+        "topics": [
+          {
+            "id": "vtu-ise-s7-cc-2025-m1-t1",
+            "name": "Hypervisors and Containerization",
+            "difficulty": "Medium",
+            "estimatedTime": 30
+          },
+          {
+            "id": "vtu-ise-s7-cc-2025-m1-t2",
+            "name": "Serverless Architecture (FaaS)",
+            "difficulty": "Hard",
+            "estimatedTime": 45
+          }
+        ]
+      }
+    ]
+  }
+]

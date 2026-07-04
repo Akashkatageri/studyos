@@ -1,0 +1,6 @@
+{
+  "name": "StudyOS",
+  "description": "A gamified semester progression Learning OS inspired by Duolingo, Spotify, and GitHub.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

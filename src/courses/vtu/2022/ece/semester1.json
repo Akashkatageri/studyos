@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-ece-s1-math",
+    "name": "Mathematics-1 for ECE",
+    "semester": 1,
+    "modules": [
+      {
+        "id": "vtu-ece-s1-math-m1",
+        "name": "Module 1: Matrices",
+        "topics": [
+          {
+            "id": "vtu-ece-s1-math-m1-t1",
+            "name": "System of Linear Equations",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-ece-s1-math-m1-t2",
+            "name": "Rank of Matrix & Gauss Elimination",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          }
+        ]
+      }
+    ]
+  }
+]

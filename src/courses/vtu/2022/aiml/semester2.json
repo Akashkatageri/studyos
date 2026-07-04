@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-aiml-s2-ai",
+    "name": "Introduction to AI & ML Basics",
+    "semester": 2,
+    "modules": [
+      {
+        "id": "vtu-aiml-s2-ai-m1",
+        "name": "Module 1: Foundations of AI",
+        "topics": [
+          {
+            "id": "vtu-aiml-s2-ai-m1-t1",
+            "name": "Definition, History & Types of AI Agents",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-aiml-s2-ai-m1-t2",
+            "name": "Supervised vs Unsupervised ML Concepts",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          }
+        ]
+      }
+    ]
+  }
+]

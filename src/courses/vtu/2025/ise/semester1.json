@@ -1,0 +1,210 @@
+[
+  {
+    "id": "vtu-ise-s1-math-2025",
+    "name": "Mathematics-1 (2025 Scheme)",
+    "semester": 1,
+    "modules": [
+      {
+        "id": "vtu-ise-s1-math-2025-m1",
+        "name": "Module 1: Advanced Calculus",
+        "topics": [
+          {
+            "id": "vtu-ise-s1-math-2025-m1-t1",
+            "name": "Multiple Integrals and Applications",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-ise-s1-math-2025-m1-t2",
+            "name": "Vector Differentiation & Integration",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1CHES102",
+    "name": "Chemistry (1CHES102)",
+    "semester": 1,
+    "modules": [
+      {
+        "id": "1CHES102_M1",
+        "name": "Module 1: Electrochemistry and Energy Storage Systems",
+        "topics": [
+          {
+            "id": "1CHES102_M1_T1",
+            "name": "Introduction to Electrochemistry",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "1CHES102_M1_T2",
+            "name": "Battery Technologies (Lithium-ion, Lead-acid)",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          }
+        ]
+      },
+      {
+        "id": "1CHES102_M2",
+        "name": "Module 2: Corrosion and Metal Finishing",
+        "topics": [
+          {
+            "id": "1CHES102_M2_T1",
+            "name": "Electrochemical Theory of Corrosion",
+            "difficulty": "Medium",
+            "estimatedTime": 30
+          },
+          {
+            "id": "1CHES102_M2_T2",
+            "name": "Metal Finishing and Electroplating",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          }
+        ]
+      },
+      {
+        "id": "1CHES102_M3",
+        "name": "Module 3: Engineering Materials & Polymers",
+        "topics": [
+          {
+            "id": "1CHES102_M3_T1",
+            "name": "Polymerization Techniques",
+            "difficulty": "Medium",
+            "estimatedTime": 30
+          },
+          {
+            "id": "1CHES102_M3_T2",
+            "name": "Nanomaterials Synthesis",
+            "difficulty": "Hard",
+            "estimatedTime": 40
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1BAIA103",
+    "name": "Intro to Artificial Intelligence (1BAIA103)",
+    "semester": 1,
+    "modules": [
+      {
+        "id": "1BAIA103_M1",
+        "name": "Module 1: Introduction to AI & Problem Solving",
+        "topics": [
+          {
+            "id": "1BAIA103_M1_T1",
+            "name": "History and Foundations of AI",
+            "difficulty": "Easy",
+            "estimatedTime": 20
+          },
+          {
+            "id": "1BAIA103_M1_T2",
+            "name": "State Space Search & Heuristics",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          }
+        ]
+      },
+      {
+        "id": "1BAIA103_M2",
+        "name": "Module 2: Knowledge Representation and Logic",
+        "topics": [
+          {
+            "id": "1BAIA103_M2_T1",
+            "name": "Propositional & First-Order Logic",
+            "difficulty": "Medium",
+            "estimatedTime": 30
+          },
+          {
+            "id": "1BAIA103_M2_T2",
+            "name": "Semantic Nets and Frames",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          }
+        ]
+      },
+      {
+        "id": "1BAIA103_M3",
+        "name": "Module 3: Machine Learning Fundamentals",
+        "topics": [
+          {
+            "id": "1BAIA103_M3_T1",
+            "name": "Supervised vs Unsupervised Learning",
+            "difficulty": "Medium",
+            "estimatedTime": 30
+          },
+          {
+            "id": "1BAIA103_M3_T2",
+            "name": "Introduction to Neural Networks",
+            "difficulty": "Hard",
+            "estimatedTime": 45
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "1BESC104C",
+    "name": "Intro Electronics & Communication (1BESC104C)",
+    "semester": 1,
+    "modules": [
+      {
+        "id": "1BESC104C_M1",
+        "name": "Module 1: Semiconductor Devices",
+        "topics": [
+          {
+            "id": "1BESC104C_M1_T1",
+            "name": "PN Junction Diode & Rectifiers",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          },
+          {
+            "id": "1BESC104C_M1_T2",
+            "name": "Bipolar Junction Transistors (BJT)",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          }
+        ]
+      },
+      {
+        "id": "1BESC104C_M2",
+        "name": "Module 2: Digital Electronics",
+        "topics": [
+          {
+            "id": "1BESC104C_M2_T1",
+            "name": "Logic Gates & Boolean Algebra",
+            "difficulty": "Easy",
+            "estimatedTime": 20
+          },
+          {
+            "id": "1BESC104C_M2_T2",
+            "name": "Combinational Logic (MUX, Half-Adder)",
+            "difficulty": "Medium",
+            "estimatedTime": 35
+          }
+        ]
+      },
+      {
+        "id": "1BESC104C_M3",
+        "name": "Module 3: Communication Systems",
+        "topics": [
+          {
+            "id": "1BESC104C_M3_T1",
+            "name": "Fundamentals of Modulation (AM, FM)",
+            "difficulty": "Medium",
+            "estimatedTime": 30
+          },
+          {
+            "id": "1BESC104C_M3_T2",
+            "name": "Wireless & Mobile Communication",
+            "difficulty": "Easy",
+            "estimatedTime": 25
+          }
+        ]
+      }
+    ]
+  }
+]

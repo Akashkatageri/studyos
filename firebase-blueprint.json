@@ -1,0 +1,201 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Public academic profile of a student.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "avatar": { "type": "string" },
+        "university": { "type": "string" },
+        "branch": { "type": "string" },
+        "semester": { "type": "integer" },
+        "scheme": { "type": "string" },
+        "firstYearCycle": { "type": "string" },
+        "level": { "type": "integer" },
+        "xp": { "type": "integer" },
+        "streak": { "type": "integer" },
+        "longestStreak": { "type": "integer" },
+        "modulesCompleted": { "type": "integer" },
+        "semesterProgress": { "type": "integer" },
+        "joinedDate": { "type": "string" },
+        "status": { "type": "string" },
+        "lastActive": { "type": "string" },
+        "badges": { "type": "array" }
+      },
+      "required": ["uid", "username", "university", "branch", "semester", "scheme"]
+    },
+    "Settings": {
+      "title": "User Settings",
+      "description": "Private profile visibility and preference configurations.",
+      "type": "object",
+      "properties": {
+        "isPublic": { "type": "boolean" },
+        "allowFriendRequests": { "type": "boolean" },
+        "hideXP": { "type": "boolean" },
+        "hideStreak": { "type": "boolean" },
+        "hideAchievements": { "type": "boolean" },
+        "bio": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["isPublic", "allowFriendRequests"]
+    },
+    "StudyStats": {
+      "title": "Study Stats",
+      "description": "Complete breakdown of student study progress, topics, and metrics.",
+      "type": "object",
+      "properties": {
+        "completedTopics": { "type": "array" },
+        "completedModules": { "type": "array" },
+        "completedSubjects": { "type": "array" },
+        "completedSemesters": { "type": "array" },
+        "backlogSubjects": { "type": "array" },
+        "revisions": { "type": "array" },
+        "inProgressTopics": { "type": "array" },
+        "studyActivity": { "type": "object" },
+        "unlockedAchievements": { "type": "array" },
+        "dailyFocusGoal": { "type": "integer" },
+        "academicStudyStreak": { "type": "integer" },
+        "longestStudyStreak": { "type": "integer" },
+        "totalFocusMinutes": { "type": "integer" },
+        "weeklyFocusMinutes": { "type": "integer" },
+        "monthlyFocusMinutes": { "type": "integer" },
+        "totalFocusSessions": { "type": "integer" },
+        "longestFocusSessionMinutes": { "type": "integer" },
+        "todayFocusMinutes": { "type": "integer" },
+        "todayFocusXPRewarded": { "type": "integer" },
+        "studyShields": { "type": "integer" },
+        "weeklyStudySchedule": { "type": "array" },
+        "semesterStartDate": { "type": "string" },
+        "semesterEndDate": { "type": "string" },
+        "semesterBreaks": { "type": "array" },
+        "vacationMode": { "type": "object" },
+        "lastFocusDate": { "type": "string" },
+        "focusHistory": { "type": "object" }
+      },
+      "required": ["completedTopics", "completedModules"]
+    },
+    "Username": {
+      "title": "Username Handle",
+      "description": "Ensures global uniqueness for student usernames.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" }
+      },
+      "required": ["uid", "username"]
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "Established friendship link between two users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "uids": { "type": "array" },
+        "usernames": { "type": "object" },
+        "avatars": { "type": "object" },
+        "establishedAt": { "type": "string" }
+      },
+      "required": ["id", "uids"]
+    },
+    "FriendRequest": {
+      "title": "Friend Request",
+      "description": "Outgoing or incoming friend requests between students.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderUsername": { "type": "string" },
+        "senderAvatar": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "receiverUsername": { "type": "string" },
+        "receiverAvatar": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "senderId", "receiverId", "status"]
+    },
+    "Notification": {
+      "title": "Social Notification",
+      "description": "Real-time updates, friend alerts, and milestone congratulations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderUsername": { "type": "string" },
+        "senderAvatar": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "read", "createdAt"]
+    },
+    "Activity": {
+      "title": "Social Activity Card",
+      "description": "Public social feed entry highlighting milestones and focus completions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "avatar": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "text", "createdAt"]
+    },
+    "Leaderboard": {
+      "title": "Leaderboard Cache",
+      "description": "Aggregated stats for global leaderboards.",
+      "type": "object",
+      "properties": {
+        "lastUpdated": { "type": "string" },
+        "rankings": { "type": "array" }
+      },
+      "required": ["lastUpdated", "rankings"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Student profile info."
+    },
+    "/settings/{userId}": {
+      "schema": "Settings",
+      "description": "Student visibility settings."
+    },
+    "/studyStats/{userId}": {
+      "schema": "StudyStats",
+      "description": "Academic progress tracking."
+    },
+    "/usernames/{username}": {
+      "schema": "Username",
+      "description": "Unique username references."
+    },
+    "/friendships/{friendshipId}": {
+      "schema": "Friendship",
+      "description": "Mutual friendships."
+    },
+    "/friendRequests/{requestId}": {
+      "schema": "FriendRequest",
+      "description": "Friend requests."
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "In-app notifications."
+    },
+    "/activities/{activityId}": {
+      "schema": "Activity",
+      "description": "Social feed activities."
+    },
+    "/leaderboards/{docId}": {
+      "schema": "Leaderboard",
+      "description": "Global leaderboard rankings."
+    }
+  }
+}

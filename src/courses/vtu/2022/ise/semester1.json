@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-ise-s1-math",
+    "name": "Mathematics-1 for ISE",
+    "semester": 1,
+    "modules": [
+      {
+        "id": "vtu-ise-s1-math-m1",
+        "name": "Module 1: Integral Calculus",
+        "topics": [
+          {
+            "id": "vtu-ise-s1-math-m1-t1",
+            "name": "Reduction Formulas & Multi-Integrals",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-ise-s1-math-m1-t2",
+            "name": "Beta and Gamma Function Operations",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          }
+        ]
+      }
+    ]
+  }
+]

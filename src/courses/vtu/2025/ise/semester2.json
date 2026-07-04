@@ -1,0 +1,376 @@
+{
+  "university": "VTU",
+  "scheme": "2025",
+  "branch": "ISE",
+  "semester": 2,
+  "subjects": [
+    {
+      "id": "1BMATS201",
+      "name": "Applied Mathematics-II(Numerical Methods: CS Stream)",
+      "code": "1BMATS201",
+      "type": "Theory",
+      "credits": 4,
+      "color": "#9B59B6",
+      "icon": "calculate",
+      "modules": [
+        {
+          "id": "1BMATS201_M1",
+          "name": "Errors and Roots of Equations",
+          "estimatedMinutes": 155,
+          "topics": [
+            { "id": "1BMATS201_M1_T1", "order": 1, "title": "Errors (Round off, Truncation, Absolute, Relative)", "estimatedMinutes": 25, "difficulty": "Easy" },
+            { "id": "1BMATS201_M1_T2", "order": 2, "title": "Taylor Series Expansion", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BMATS201_M1_T3", "order": 3, "title": "Bisection Method", "estimatedMinutes": 30, "difficulty": "Easy" },
+            { "id": "1BMATS201_M1_T4", "order": 4, "title": "Regula-Falsi Method", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BMATS201_M1_T5", "order": 5, "title": "Newton-Raphson Method", "estimatedMinutes": 35, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BMATS201_M2",
+          "name": "Linear Systems and Eigenvalues",
+          "estimatedMinutes": 165,
+          "topics": [
+            { "id": "1BMATS201_M2_T1", "order": 1, "title": "Vector and Matrix Norms", "estimatedMinutes": 25, "difficulty": "Easy" },
+            { "id": "1BMATS201_M2_T2", "order": 2, "title": "Gauss Seidel Method", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BMATS201_M2_T3", "order": 3, "title": "LU-Decomposition Method", "estimatedMinutes": 40, "difficulty": "Hard" },
+            { "id": "1BMATS201_M2_T4", "order": 4, "title": "Rayleigh Power Method", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BMATS201_M2_T5", "order": 5, "title": "Jacobi's Method", "estimatedMinutes": 35, "difficulty": "Hard" }
+          ]
+        },
+        {
+          "id": "1BMATS201_M3",
+          "name": "Interpolation",
+          "estimatedMinutes": 150,
+          "topics": [
+            { "id": "1BMATS201_M3_T1", "order": 1, "title": "Finite Differences", "estimatedMinutes": 20, "difficulty": "Easy" },
+            { "id": "1BMATS201_M3_T2", "order": 2, "title": "Newton's Forward Interpolation", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BMATS201_M3_T3", "order": 3, "title": "Newton's Backward Interpolation", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BMATS201_M3_T4", "order": 4, "title": "Newton's Divided Difference", "estimatedMinutes": 35, "difficulty": "Hard" },
+            { "id": "1BMATS201_M3_T5", "order": 5, "title": "Lagrange Interpolation Formulae", "estimatedMinutes": 35, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BMATS201_M4",
+          "name": "Differential Equations",
+          "estimatedMinutes": 140,
+          "topics": [
+            { "id": "1BMATS201_M4_T1", "order": 1, "title": "Linear and Bernoulli's Differential Equations", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BMATS201_M4_T2", "order": 2, "title": "Exact Differential Equations", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BMATS201_M4_T3", "order": 3, "title": "Higher Order ODEs with Constant Coefficients", "estimatedMinutes": 40, "difficulty": "Hard" },
+            { "id": "1BMATS201_M4_T4", "order": 4, "title": "Inverse Differential Operators", "estimatedMinutes": 35, "difficulty": "Hard" }
+          ]
+        },
+        {
+          "id": "1BMATS201_M5",
+          "name": "Numerical Integration and ODE Solutions",
+          "estimatedMinutes": 175,
+          "topics": [
+            { "id": "1BMATS201_M5_T1", "order": 1, "title": "Trapezoidal and Simpson's Rules", "estimatedMinutes": 30, "difficulty": "Easy" },
+            { "id": "1BMATS201_M5_T2", "order": 2, "title": "Taylor's Series Method", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BMATS201_M5_T3", "order": 3, "title": "Modified Euler's Method", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BMATS201_M5_T4", "order": 4, "title": "Runge-Kutta Method of 4th Order", "estimatedMinutes": 40, "difficulty": "Hard" },
+            { "id": "1BMATS201_M5_T5", "order": 5, "title": "Milne's Predictor-Corrector Method", "estimatedMinutes": 40, "difficulty": "Hard" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1BPHYS202",
+      "name": "Applied Physics (Quantum Physics & Applications - CS Stream)",
+      "code": "1BPHYS202",
+      "type": "Theory",
+      "credits": 4,
+      "color": "#00BCD4",
+      "icon": "science",
+      "modules": [
+        {
+          "id": "1BPHYS202_M1",
+          "name": "Quantum Mechanics Basics",
+          "estimatedMinutes": 150,
+          "topics": [
+            { "id": "1BPHYS202_M1_T1", "order": 1, "title": "De Broglie Hypothesis", "estimatedMinutes": 25, "difficulty": "Easy" },
+            { "id": "1BPHYS202_M1_T2", "order": 2, "title": "Heisenberg's Uncertainty Principle", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BPHYS202_M1_T3", "order": 3, "title": "Schrödinger's Time Independent Wave Equation", "estimatedMinutes": 40, "difficulty": "Hard" },
+            { "id": "1BPHYS202_M1_T4", "order": 4, "title": "Physical Significance of Wave Function", "estimatedMinutes": 20, "difficulty": "Easy" },
+            { "id": "1BPHYS202_M1_T5", "order": 5, "title": "Particle in a One-Dimensional Box", "estimatedMinutes": 35, "difficulty": "Hard" }
+          ]
+        },
+        {
+          "id": "1BPHYS202_M2",
+          "name": "Lasers and Optical Fibers",
+          "estimatedMinutes": 135,
+          "topics": [
+            { "id": "1BPHYS202_M2_T1", "order": 1, "title": "Einstein's Coefficients", "estimatedMinutes": 35, "difficulty": "Hard" },
+            { "id": "1BPHYS202_M2_T2", "order": 2, "title": "Semiconductor Laser working and Energy Band", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BPHYS202_M2_T3", "order": 3, "title": "Requisites and Conditions for Laser System", "estimatedMinutes": 20, "difficulty": "Easy" },
+            { "id": "1BPHYS202_M2_T4", "order": 4, "title": "Acceptance Angle and Numerical Aperture", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BPHYS202_M2_T5", "order": 5, "title": "Types of Optical Fibers", "estimatedMinutes": 20, "difficulty": "Easy" }
+          ]
+        },
+        {
+          "id": "1BPHYS202_M3",
+          "name": "Quantum Computing Fundamentals",
+          "estimatedMinutes": 150,
+          "topics": [
+            { "id": "1BPHYS202_M3_T1", "order": 1, "title": "Classical vs Quantum Computing", "estimatedMinutes": 20, "difficulty": "Easy" },
+            { "id": "1BPHYS202_M3_T2", "order": 2, "title": "Qubits and Bloch Sphere Representation", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BPHYS202_M3_T3", "order": 3, "title": "Pauli Matrices and States", "estimatedMinutes": 35, "difficulty": "Hard" },
+            { "id": "1BPHYS202_M3_T4", "order": 4, "title": "Quantum Gates (X, Y, Z, CNOT, Hadamard)", "estimatedMinutes": 40, "difficulty": "Hard" },
+            { "id": "1BPHYS202_M3_T5", "order": 5, "title": "Quantum Entanglement", "estimatedMinutes": 25, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BPHYS202_M4",
+          "name": "Electrical Properties of Materials",
+          "estimatedMinutes": 90,
+          "topics": [
+            { "id": "1BPHYS202_M4_T1", "order": 1, "title": "Free Electron Theory", "estimatedMinutes": 25, "difficulty": "Easy" },
+            { "id": "1BPHYS202_M4_T2", "order": 2, "title": "Fermi-Dirac Distribution", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BPHYS202_M4_T3", "order": 3, "title": "Band Theory of Solids", "estimatedMinutes": 30, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BPHYS202_M5",
+          "name": "Semiconductor Physics",
+          "estimatedMinutes": 60,
+          "topics": [
+            { "id": "1BPHYS202_M5_T1", "order": 1, "title": "Intrinsic and Extrinsic Semiconductors", "estimatedMinutes": 25, "difficulty": "Easy" },
+            { "id": "1BPHYS202_M5_T2", "order": 2, "title": "Hall Effect in Semiconductors", "estimatedMinutes": 35, "difficulty": "Hard" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1BCEDS203",
+      "name": "Computer-Aided Engineering Drawing for CS Stream",
+      "code": "1BCEDS203",
+      "type": "Theory",
+      "credits": 3,
+      "color": "#009688",
+      "icon": "architecture",
+      "modules": [
+        {
+          "id": "1BCEDS203_M1",
+          "name": "Introduction to Computer Aided Sketching",
+          "estimatedMinutes": 60,
+          "topics": [
+            { "id": "1BCEDS203_M1_T1", "order": 1, "title": "Drafting Software Basics", "estimatedMinutes": 25, "difficulty": "Easy" },
+            { "id": "1BCEDS203_M1_T2", "order": 2, "title": "Orthographic Projections Principles", "estimatedMinutes": 35, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BCEDS203_M2",
+          "name": "Projections of Points and Lines",
+          "estimatedMinutes": 70,
+          "topics": [
+            { "id": "1BCEDS203_M2_T1", "order": 1, "title": "Projections of Points in Four Quadrants", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BCEDS203_M2_T2", "order": 2, "title": "Projections of Lines", "estimatedMinutes": 40, "difficulty": "Hard" }
+          ]
+        },
+        {
+          "id": "1BCEDS203_M3",
+          "name": "Projections of Plane Surfaces",
+          "estimatedMinutes": 75,
+          "topics": [
+            { "id": "1BCEDS203_M3_T1", "order": 1, "title": "Projections of Triangular and Square Planes", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BCEDS203_M3_T2", "order": 2, "title": "Projections of Pentagonal and Hexagonal Planes", "estimatedMinutes": 40, "difficulty": "Hard" }
+          ]
+        },
+        {
+          "id": "1BCEDS203_M4",
+          "name": "Projections of Solids",
+          "estimatedMinutes": 80,
+          "topics": [
+            { "id": "1BCEDS203_M4_T1", "order": 1, "title": "Projections of Prisms and Pyramids", "estimatedMinutes": 40, "difficulty": "Hard" },
+            { "id": "1BCEDS203_M4_T2", "order": 2, "title": "Projections of Cylinders and Cones", "estimatedMinutes": 40, "difficulty": "Hard" }
+          ]
+        },
+        {
+          "id": "1BCEDS203_M5",
+          "name": "Isometric Projections",
+          "estimatedMinutes": 60,
+          "topics": [
+            { "id": "1BCEDS203_M5_T1", "order": 1, "title": "Isometric Scale", "estimatedMinutes": 20, "difficulty": "Easy" },
+            { "id": "1BCEDS203_M5_T2", "order": 2, "title": "Isometric Projections of Simple Solids", "estimatedMinutes": 40, "difficulty": "Medium" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1BESC204D",
+      "name": "Intro to Mechanical Engineering",
+      "code": "1BESC204D",
+      "type": "Theory",
+      "credits": 3,
+      "color": "#FF9800",
+      "icon": "settings",
+      "modules": [
+        {
+          "id": "1BESC204D_M1",
+          "name": "Machine Tools and Metal Cutting",
+          "estimatedMinutes": 80,
+          "topics": [
+            { "id": "1BESC204D_M1_T1", "order": 1, "title": "Basic Machine Tools Classification", "estimatedMinutes": 20, "difficulty": "Easy" },
+            { "id": "1BESC204D_M1_T2", "order": 2, "title": "Primary and Secondary Motions", "estimatedMinutes": 25, "difficulty": "Easy" },
+            { "id": "1BESC204D_M1_T3", "order": 3, "title": "Single Point Cutting Tool Geometry", "estimatedMinutes": 35, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BESC204D_M2",
+          "name": "Machining Operations",
+          "estimatedMinutes": 95,
+          "topics": [
+            { "id": "1BESC204D_M2_T1", "order": 1, "title": "Lathe Machine and Operations", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BESC204D_M2_T2", "order": 2, "title": "Drilling Machine and Operations", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BESC204D_M2_T3", "order": 3, "title": "Milling Machine Operations", "estimatedMinutes": 30, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BESC204D_M3",
+          "name": "Advanced Machining and Broaching",
+          "estimatedMinutes": 55,
+          "topics": [
+            { "id": "1BESC204D_M3_T1", "order": 1, "title": "Shaping and Planning Machines", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BESC204D_M3_T2", "order": 2, "title": "Broaching Machine Principles", "estimatedMinutes": 25, "difficulty": "Easy" }
+          ]
+        },
+        {
+          "id": "1BESC204D_M4",
+          "name": "Thermodynamics and IC Engines",
+          "estimatedMinutes": 75,
+          "topics": [
+            { "id": "1BESC204D_M4_T1", "order": 1, "title": "Fundamentals of Thermodynamics", "estimatedMinutes": 35, "difficulty": "Hard" },
+            { "id": "1BESC204D_M4_T2", "order": 2, "title": "Working Principles of IC Engines", "estimatedMinutes": 40, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BESC204D_M5",
+          "name": "Emerging Technologies in Manufacturing",
+          "estimatedMinutes": 55,
+          "topics": [
+            { "id": "1BESC204D_M5_T1", "order": 1, "title": "Introduction to CNC Machines", "estimatedMinutes": 25, "difficulty": "Easy" },
+            { "id": "1BESC204D_M5_T2", "order": 2, "title": "Basics of Robotics in Manufacturing", "estimatedMinutes": 30, "difficulty": "Easy" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1BEIT205",
+      "name": "Programming in C",
+      "code": "1BEIT205",
+      "type": "Theory",
+      "credits": 3,
+      "color": "#2196F3",
+      "icon": "code",
+      "modules": [
+        {
+          "id": "1BEIT205_M1",
+          "name": "Introduction to Computing and C Basics",
+          "estimatedMinutes": 115,
+          "topics": [
+            { "id": "1BEIT205_M1_T1", "order": 1, "title": "Computer Languages and Compilers", "estimatedMinutes": 20, "difficulty": "Easy" },
+            { "id": "1BEIT205_M1_T2", "order": 2, "title": "Form of a C Program", "estimatedMinutes": 20, "difficulty": "Easy" },
+            { "id": "1BEIT205_M1_T3", "order": 3, "title": "Identifiers, Variables, and Constants", "estimatedMinutes": 25, "difficulty": "Easy" },
+            { "id": "1BEIT205_M1_T4", "order": 4, "title": "Basic Data Types", "estimatedMinutes": 20, "difficulty": "Easy" },
+            { "id": "1BEIT205_M1_T5", "order": 5, "title": "Operators and Expressions", "estimatedMinutes": 30, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BEIT205_M2",
+          "name": "Managing Input/Output and Flow Control",
+          "estimatedMinutes": 95,
+          "topics": [
+            { "id": "1BEIT205_M2_T1", "order": 1, "title": "Formatted Input and Output", "estimatedMinutes": 25, "difficulty": "Easy" },
+            { "id": "1BEIT205_M2_T2", "order": 2, "title": "Decision Making with if and switch", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BEIT205_M2_T3", "order": 3, "title": "Looping Constructs (while, for, do-while)", "estimatedMinutes": 40, "difficulty": "Hard" }
+          ]
+        },
+        {
+          "id": "1BEIT205_M3",
+          "name": "Arrays and Strings",
+          "estimatedMinutes": 70,
+          "topics": [
+            { "id": "1BEIT205_M3_T1", "order": 1, "title": "Single and Multidimensional Arrays", "estimatedMinutes": 40, "difficulty": "Hard" },
+            { "id": "1BEIT205_M3_T2", "order": 2, "title": "String Manipulation Functions", "estimatedMinutes": 30, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BEIT205_M4",
+          "name": "Functions",
+          "estimatedMinutes": 105,
+          "topics": [
+            { "id": "1BEIT205_M4_T1", "order": 1, "title": "Defining and Calling Functions", "estimatedMinutes": 30, "difficulty": "Medium" },
+            { "id": "1BEIT205_M4_T2", "order": 2, "title": "Parameter Passing Techniques", "estimatedMinutes": 35, "difficulty": "Hard" },
+            { "id": "1BEIT205_M4_T3", "order": 3, "title": "Recursion", "estimatedMinutes": 40, "difficulty": "Hard" }
+          ]
+        },
+        {
+          "id": "1BEIT205_M5",
+          "name": "Pointers and Structures",
+          "estimatedMinutes": 105,
+          "topics": [
+            { "id": "1BEIT205_M5_T1", "order": 1, "title": "Introduction to Pointers", "estimatedMinutes": 40, "difficulty": "Hard" },
+            { "id": "1BEIT205_M5_T2", "order": 2, "title": "Defining and Accessing Structures", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BEIT205_M5_T3", "order": 3, "title": "Dynamic Memory Allocation", "estimatedMinutes": 30, "difficulty": "Hard" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1BPOPL207",
+      "name": "C programming Lab",
+      "code": "1BPOPL207",
+      "type": "Lab",
+      "credits": 1,
+      "color": "#03A9F4",
+      "icon": "terminal",
+      "modules": [
+        {
+          "id": "1BPOPL207_M1",
+          "name": "Basic C Programs",
+          "estimatedMinutes": 60,
+          "topics": [
+            { "id": "1BPOPL207_M1_T1", "order": 1, "title": "Implementation of Operators", "estimatedMinutes": 30, "difficulty": "Easy" },
+            { "id": "1BPOPL207_M1_T2", "order": 2, "title": "Formatted I/O Exercises", "estimatedMinutes": 30, "difficulty": "Easy" }
+          ]
+        },
+        {
+          "id": "1BPOPL207_M2",
+          "name": "Control Structures Lab",
+          "estimatedMinutes": 75,
+          "topics": [
+            { "id": "1BPOPL207_M2_T1", "order": 1, "title": "Programs using If-Else and Switch", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BPOPL207_M2_T2", "order": 2, "title": "Programs using Loops", "estimatedMinutes": 40, "difficulty": "Medium" }
+          ]
+        },
+        {
+          "id": "1BPOPL207_M3",
+          "name": "Arrays Lab",
+          "estimatedMinutes": 75,
+          "topics": [
+            { "id": "1BPOPL207_M3_T1", "order": 1, "title": "1D Array Operations", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BPOPL207_M3_T2", "order": 2, "title": "Matrix Operations using 2D Arrays", "estimatedMinutes": 40, "difficulty": "Hard" }
+          ]
+        },
+        {
+          "id": "1BPOPL207_M4",
+          "name": "Functions and Recursion Lab",
+          "estimatedMinutes": 75,
+          "topics": [
+            { "id": "1BPOPL207_M4_T1", "order": 1, "title": "Modular Programming Exercises", "estimatedMinutes": 35, "difficulty": "Medium" },
+            { "id": "1BPOPL207_M4_T2", "order": 2, "title": "Recursive Function Implementations", "estimatedMinutes": 40, "difficulty": "Hard" }
+          ]
+        },
+        {
+          "id": "1BPOPL207_M5",
+          "name": "Pointers and Structures Lab",
+          "estimatedMinutes": 75,
+          "topics": [
+            { "id": "1BPOPL207_M5_T1", "order": 1, "title": "Pointer Manipulation Exercises", "estimatedMinutes": 40, "difficulty": "Hard" },
+            { "id": "1BPOPL207_M5_T2", "order": 2, "title": "Structure Array Programs", "estimatedMinutes": 35, "difficulty": "Medium" }
+          ]
+        }
+      ]
+    }
+  ]
+}

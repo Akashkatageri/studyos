@@ -1,0 +1,27 @@
+[
+  {
+    "id": "vtu-aiml-s3-prob",
+    "name": "Probability & Random Variables",
+    "semester": 3,
+    "modules": [
+      {
+        "id": "vtu-aiml-s3-prob-m1",
+        "name": "Module 1: Basic Probability",
+        "topics": [
+          {
+            "id": "vtu-aiml-s3-prob-m1-t1",
+            "name": "Sample Spaces, Events, & Axioms",
+            "difficulty": "Medium",
+            "estimatedTime": 25
+          },
+          {
+            "id": "vtu-aiml-s3-prob-m1-t2",
+            "name": "Conditional Probability & Bayes Theorem",
+            "difficulty": "Hard",
+            "estimatedTime": 35
+          }
+        ]
+      }
+    ]
+  }
+]
