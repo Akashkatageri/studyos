@@ -1,0 +1,9 @@
+# Force Git to treat .jar files as binary to avoid line-ending corruptions (CRLF/LF conversion)
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.apk binary
