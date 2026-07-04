@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserState, Subject, Topic, Revision } from './types';
 import { getTemplateSubjects, COURSE_TEMPLATES, findTopicById } from './data';
-import { Home, ListCollapse, BarChart3, Users, User, Settings, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus } from 'lucide-react';
+import { Home, ListCollapse, BarChart3, Users, User, Settings, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus, Smartphone, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Components
@@ -19,7 +19,7 @@ import TopicViewModal from './components/TopicViewModal';
 import CompletionAnimations from './components/CompletionAnimations';
 import BadgeUnlockModal from './components/BadgeUnlockModal';
 import { getUnlockedAchievementIds, ACHIEVEMENT_DEFS } from './utils/achievements';
-import { auth, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications } from './lib/firebase';
+import { auth, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getSubjectsForCycle } from './utils/cycleSubjects';
 import { SoundManager } from './utils/soundManager';
@@ -119,10 +119,60 @@ export default function App() {
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
   const [hasUnreadNotifs, setHasUnreadNotifs] = useState(false);
 
+  // Device Pairing State (Option A)
+  const [pendingPairCode, setPendingPairCode] = useState<string | null>(null);
+  const [isPairingModalOpen, setIsPairingModalOpen] = useState(false);
+  const [isPairingLoading, setIsPairingLoading] = useState(false);
+  const [pairingSuccess, setPairingSuccess] = useState(false);
+
+  // Read pair_code from URL parameters on initialization
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('pair_code');
+    if (code) {
+      setPendingPairCode(code);
+      setIsPairingModalOpen(true);
+      
+      // Clean up the URL parameter to maintain a clean address bar
+      const newUrl = window.location.pathname + window.location.search.replace(/[?&]pair_code=[^&]+/, '');
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
+
   // Semester manual transition states
   const [isSemTransitionOpen, setIsSemTransitionOpen] = useState(false);
   const [semTransitionStep, setSemTransitionStep] = useState<1 | 2 | 3>(1);
   const [selectedTransitionBacklogs, setSelectedTransitionBacklogs] = useState<string[]>([]);
+
+  // Confirm and link pairing request (Option A)
+  const handleConfirmPairing = async () => {
+    if (!pendingPairCode || !userState) return;
+    setIsPairingLoading(true);
+    try {
+      await linkDeviceWithAccount(pendingPairCode, userState.uid, userState);
+      setPairingSuccess(true);
+      setToast({
+        title: "📱 Pairing Successful!",
+        message: "Your mobile device has been linked successfully. It will automatically log in shortly.",
+        type: "success"
+      });
+      setTimeout(() => {
+        setIsPairingModalOpen(false);
+        setPendingPairCode(null);
+        setPairingSuccess(false);
+      }, 3000);
+    } catch (err: any) {
+      console.error("Pairing confirmation failed:", err);
+      setToast({
+        title: "Pairing Failed",
+        message: err.message || "Failed to sync account link. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setIsPairingLoading(false);
+    }
+  };
 
   const handleTriggerSemesterTransition = () => {
     if (!userState) return;
@@ -1170,6 +1220,111 @@ export default function App() {
           setUnlockedBadge(null);
         }}
       />
+
+      {/* 📱 Device Pairing Request Modal (Option A) */}
+      <AnimatePresence>
+        {isPairingModalOpen && pendingPairCode && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                if (!isPairingLoading && !pairingSuccess) {
+                  setIsPairingModalOpen(false);
+                  setPendingPairCode(null);
+                }
+              }}
+              className="absolute inset-0 bg-[#060809]/80 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-md bg-[#0D1115] border border-gray-800 rounded-2xl p-6 shadow-2xl space-y-5 overflow-hidden text-center z-10"
+            >
+              {/* Soft decorative glow */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Smartphone className="w-6 h-6 animate-pulse" />
+              </div>
+
+              <div className="space-y-1.5 relative">
+                <h3 className="text-lg font-bold text-white font-display">Pair Mobile Device (Option A)</h3>
+                <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto">
+                  An Android device is requesting to link with your authenticated StudyOS account.
+                </p>
+              </div>
+
+              {/* Code visual block */}
+              <div className="bg-gray-950/80 border border-gray-850/80 py-4 px-6 rounded-xl font-mono font-bold text-2xl tracking-widest text-emerald-400 flex items-center justify-center gap-1 select-all cursor-pointer" title="Pairing Code">
+                <span>{pendingPairCode.slice(0, 3)}</span>
+                <span className="text-gray-700 font-sans tracking-normal">-</span>
+                <span>{pendingPairCode.slice(3, 6)}</span>
+              </div>
+
+              {/* Status or user info */}
+              <div className="bg-gray-900/40 border border-gray-850 p-3 rounded-xl flex items-center gap-3 text-left">
+                {userState?.avatar ? (
+                  <div className="text-2xl">{userState.avatar}</div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 text-sm font-bold">
+                    {userState?.username?.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div className="text-xs space-y-0.5">
+                  <p className="font-semibold text-white">Connecting Account:</p>
+                  <p className="text-gray-400 font-mono">@{userState?.username} ({userState?.email})</p>
+                </div>
+              </div>
+
+              {pairingSuccess ? (
+                <div className="p-3 bg-emerald-950/20 border border-emerald-900/50 rounded-xl text-xs text-emerald-400 font-medium flex items-center justify-center gap-2">
+                  <Check className="w-4 h-4 animate-bounce" />
+                  <span>Devices successfully paired! Syncing now...</span>
+                </div>
+              ) : (
+                <div className="flex gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    disabled={isPairingLoading}
+                    onClick={() => {
+                      setIsPairingModalOpen(false);
+                      setPendingPairCode(null);
+                    }}
+                    className="flex-1 py-2.5 bg-gray-900 border border-gray-800 hover:bg-gray-850 hover:border-gray-700 disabled:opacity-50 text-gray-400 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPairingLoading}
+                    onClick={handleConfirmPairing}
+                    className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.2)] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    {isPairingLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Pairing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Confirm Pair</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ⚠️ Streak Protection Danger Pop-up Modal */}
       <AnimatePresence>

@@ -18,12 +18,14 @@ import {
   RefreshCw,
   Calendar,
   Volume2,
-  VolumeX
+  VolumeX,
+  Smartphone,
+  Loader2
 } from 'lucide-react';
 import { COURSE_TEMPLATES } from '../data';
 import { getSubjectsForCycle } from '../utils/cycleSubjects';
 import { SoundManager } from '../utils/soundManager';
-import { auth, googleProvider, db, syncUserToFirestore, loadUserFromFirestore, mergeLocalAndCloudStates, registerUserProfileTransaction } from '../lib/firebase';
+import { auth, googleProvider, db, syncUserToFirestore, loadUserFromFirestore, mergeLocalAndCloudStates, registerUserProfileTransaction, linkDeviceWithAccount } from '../lib/firebase';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
@@ -43,6 +45,29 @@ export default function SettingsTab({ userState, onImportState, onUpdateState, o
   const [notifStreak, setNotifStreak] = useState(true);
   const [googleSync, setGoogleSync] = useState(false);
   const [showImportSuccess, setShowImportSuccess] = useState(false);
+
+  // Manual device pairing state (Option A)
+  const [pairingInputCode, setPairingInputCode] = useState('');
+  const [pairingError, setPairingError] = useState<string | null>(null);
+  const [pairingSuccess, setPairingSuccess] = useState(false);
+  const [isPairingLoading, setIsPairingLoading] = useState(false);
+
+  const handleManualPairingSubmit = async () => {
+    if (pairingInputCode.length !== 6) return;
+    setIsPairingLoading(true);
+    setPairingError(null);
+    setPairingSuccess(false);
+    try {
+      await linkDeviceWithAccount(pairingInputCode, userState.uid!, userState);
+      setPairingSuccess(true);
+      setPairingInputCode('');
+    } catch (err: any) {
+      console.error("Manual pairing failed:", err);
+      setPairingError(err.message || "Invalid pairing code or connection failure. Please verify the code and try again.");
+    } finally {
+      setIsPairingLoading(false);
+    }
+  };
 
   // 1. Export Progress JSON file download
   const handleExportData = () => {
@@ -489,6 +514,72 @@ export default function SettingsTab({ userState, onImportState, onUpdateState, o
           </div>
         </div>
       </div>
+
+      {/* 📱 Mobile Device Pairing Card (Option A) */}
+      {userState.uid && !userState.isOffline && (
+        <div className="bg-[#141A1F] border border-gray-800 rounded-xl p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold font-display text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-emerald-500" />
+              Pair Mobile/Android App (Option A)
+            </h4>
+            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono">
+              Option A Active
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              If you have the StudyOS Android application or widget on your phone, you can link it to your profile here. Enter the 6-digit code shown on your mobile device to complete pairing immediately.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <input
+                type="text"
+                maxLength={6}
+                value={pairingInputCode}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                  setPairingInputCode(cleaned);
+                  setPairingError(null);
+                  setPairingSuccess(false);
+                }}
+                placeholder="Enter 6-digit code (e.g. 185834)"
+                className="flex-1 px-4 py-3 bg-gray-950 border border-gray-800 focus:border-emerald-500 rounded-xl text-sm font-mono tracking-wider text-white placeholder-gray-600 focus:outline-none transition-all"
+              />
+              <button
+                type="button"
+                onClick={handleManualPairingSubmit}
+                disabled={pairingInputCode.length !== 6 || isPairingLoading}
+                className="py-3 px-5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-[0_4px_12px_rgba(16,185,129,0.2)]"
+              >
+                {isPairingLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Pairing Device...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Pair Device</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {pairingError && (
+              <p className="text-xs text-red-400 font-medium">{pairingError}</p>
+            )}
+
+            {pairingSuccess && (
+              <p className="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-emerald-400 animate-bounce" />
+                <span>Device paired successfully! Your mobile device is now synchronized.</span>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Backlog Subjects Selection */}
       {semester > 1 && (

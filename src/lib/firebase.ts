@@ -868,3 +868,52 @@ export async function triggerSocialMilestone(
   }
 }
 
+/**
+ * Generate a random 6-digit pairing code and write a pending document in device_links
+ */
+export async function createDevicePairingCode(deviceId?: string): Promise<string> {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const docRef = doc(db, "device_links", code);
+  await setDoc(docRef, {
+    status: "pending",
+    createdAt: new Date().toISOString(),
+    deviceId: deviceId || "unknown"
+  });
+  return code;
+}
+
+/**
+ * Link an authenticated Google account user state with a pending pairing code
+ */
+export async function linkDeviceWithAccount(code: string, uid: string, userState: any): Promise<void> {
+  const docRef = doc(db, "device_links", code);
+  await setDoc(docRef, {
+    status: "paired",
+    uid: uid,
+    userState: userState,
+    pairedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+/**
+ * Real-time listener for device pairing completion
+ */
+export function listenToDevicePairing(
+  code: string, 
+  onPair: (uid: string, userState: any) => void, 
+  onError: (err: any) => void
+): () => void {
+  const docRef = doc(db, "device_links", code);
+  return onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      if (data && data.status === "paired" && data.uid) {
+        onPair(data.uid, data.userState || null);
+      }
+    }
+  }, (err) => {
+    console.error("Error listening to device link snapshot:", err);
+    onError(err);
+  });
+}
+

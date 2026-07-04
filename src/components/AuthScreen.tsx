@@ -10,9 +10,13 @@ import {
   ShieldCheck,
   AlertCircle,
   LogOut,
-  ExternalLink
+  ExternalLink,
+  Smartphone,
+  Copy,
+  Check,
+  ArrowLeft
 } from 'lucide-react';
-import { auth, googleProvider, isUsernameUnique, loadUserFromFirestore, db } from '../lib/firebase';
+import { auth, googleProvider, isUsernameUnique, loadUserFromFirestore, db, createDevicePairingCode, listenToDevicePairing } from '../lib/firebase';
 import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { UserState } from '../types';
@@ -31,12 +35,64 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenProps) {
-  const [step, setStep] = useState<'welcome' | 'username'>('welcome');
+  const [step, setStep] = useState<'welcome' | 'username' | 'pairing'>('welcome');
   const [authData, setAuthData] = useState<{
     uid?: string;
     email?: string;
     displayName?: string;
   }>({});
+
+  // Pairing State
+  const [pairingCode, setPairingCode] = useState('');
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [copiedPairingLink, setCopiedPairingLink] = useState(false);
+
+  // Trigger Device Pairing Code Generation (Option A)
+  const handleStartPairingFlow = async () => {
+    setIsGeneratingCode(true);
+    setAuthError(null);
+    try {
+      const code = await createDevicePairingCode();
+      setPairingCode(code);
+      setStep('pairing');
+    } catch (err: any) {
+      console.error("Failed to generate device pairing code:", err);
+      setAuthError({
+        message: "Failed to generate pairing code. Please make sure your network is connected and Firestore is working."
+      });
+    } finally {
+      setIsGeneratingCode(false);
+    }
+  };
+
+  // Real-time listener for pairing completion
+  useEffect(() => {
+    if (step !== 'pairing' || !pairingCode) return;
+
+    const unsubscribe = listenToDevicePairing(
+      pairingCode,
+      (uid, userState) => {
+        console.log("Device paired successfully! Signed in with UID:", uid);
+        onAuthCompleteRef.current({
+          uid,
+          email: userState?.email,
+          displayName: userState?.displayName,
+          isOffline: false,
+          username: userState?.username,
+          onboarded: userState?.onboarded || false,
+          fullState: userState
+        });
+      },
+      (err) => {
+        setAuthError({
+          message: "Pairing session lost. Please try generating a new code: " + err.message
+        });
+        setStep('welcome');
+      }
+    );
+
+    return () => unsubscribe();
+  }, [step, pairingCode]);
 
   const [username, setUsername] = useState('');
   const [isValidating, setIsValidating] = useState(false);
@@ -613,6 +669,26 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                     )}
                     <span>Continue with Google</span>
                   </button>
+
+                  {/* Device Pairing Option (Option A) */}
+                  <div className="pt-2.5 border-t border-gray-850 mt-4 space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleStartPairingFlow}
+                      disabled={isGeneratingCode}
+                      className="w-full py-3 bg-gray-900 border border-gray-800 hover:bg-gray-850 hover:border-gray-700 disabled:opacity-55 active:scale-98 text-gray-300 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      {isGeneratingCode ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                      ) : (
+                        <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                      )}
+                      <span>Pair Android / Mobile App (Option A)</span>
+                    </button>
+                    <p className="text-[10px] text-gray-500 leading-normal max-w-xs mx-auto">
+                      Are you running the Android application or widget? Generate an instant Pairing Code under Option A to sync across devices seamlessly!
+                    </p>
+                  </div>
                 </div>
 
                 <div className="text-[10px] text-gray-500 pt-2 flex items-center justify-center gap-1">
@@ -751,6 +827,93 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                       </>
                     )}
                   </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* STEP 3: DEVICE PAIRING (OPTION A) */}
+            {step === 'pairing' && (
+              <motion.div
+                key="pairing"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="space-y-6 text-center"
+              >
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setStep('welcome')}
+                    className="p-1.5 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  <h2 className="text-xs font-black font-mono text-emerald-400 uppercase tracking-widest text-left flex-1">
+                    Option A: Mobile Pairing
+                  </h2>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="mx-auto w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 animate-pulse">
+                    <Smartphone className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Your Pairing Code</h3>
+                  <p className="text-xs text-gray-400 max-w-xs mx-auto leading-relaxed">
+                    Use this code to sync this Android device with your Google profile from a browser.
+                  </p>
+                </div>
+
+                {/* Massive 6-digit code display */}
+                <div className="bg-gray-950/60 border border-gray-850 py-5 px-6 rounded-2xl tracking-[0.2em] text-3xl font-black text-emerald-400 font-mono shadow-inner select-all flex items-center justify-center gap-1.5">
+                  <span>{pairingCode.slice(0, 3)}</span>
+                  <span className="text-gray-600 font-sans tracking-normal text-xl select-none">-</span>
+                  <span>{pairingCode.slice(3, 6)}</span>
+                </div>
+
+                {/* Instructions */}
+                <div className="p-4 bg-gray-950/40 border border-gray-850 rounded-xl text-left space-y-2 text-xs text-gray-400">
+                  <p className="font-semibold text-white">Steps to Pair:</p>
+                  <ol className="list-decimal pl-4 space-y-1.5 leading-relaxed">
+                    <li>Open a web browser on another device or computer.</li>
+                    <li>
+                      Go to the web app:{" "}
+                      <span className="text-blue-400 font-bold select-all break-all block mt-0.5 font-mono">
+                        https://ais-dev-5qkfwaoj2q5v7zsluse4zi-358182587374.asia-east1.run.app
+                      </span>
+                    </li>
+                    <li>Sign in and enter this pairing code under Settings.</li>
+                    <li>Or click the link below to copy and open.</li>
+                  </ol>
+                </div>
+
+                {/* Copy / Direct URL Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const realUrl = `https://ais-dev-5qkfwaoj2q5v7zsluse4zi-358182587374.asia-east1.run.app/?pair_code=${pairingCode}`;
+                    navigator.clipboard.writeText(realUrl).then(() => {
+                      setCopiedPairingLink(true);
+                      setTimeout(() => setCopiedPairingLink(false), 2000);
+                    });
+                  }}
+                  className="w-full py-2.5 bg-gray-900 border border-gray-800 hover:bg-gray-850 hover:border-gray-700 text-gray-300 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {copiedPairingLink ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Copied Pairing URL!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy Pairing Link (Option A)</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Polling/Loading feedback */}
+                <div className="flex items-center justify-center gap-2 text-[11px] text-gray-500 pt-1">
+                  <Loader2 className="w-3 h-3 animate-spin text-emerald-500" />
+                  <span>Waiting for your web browser session...</span>
                 </div>
               </motion.div>
             )}
