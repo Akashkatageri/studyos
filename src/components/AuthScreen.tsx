@@ -116,16 +116,26 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         }
       } catch (err: any) {
         console.error("Google Redirect Authentication error:", err);
-        let errorObj = { message: "" };
         const rawMsg = err.message || String(err);
+        const errCode = err.code || "";
 
-        if (rawMsg.includes("auth/missing-initial-state") || rawMsg.includes("missing-initial-state")) {
-          setRedirectWarning("Your browser's privacy or cookie settings interrupted the redirect authentication. Please click 'Continue with Google' again to log in securely using the popup method.");
+        // Check if the error is due to missing initial state (common in storage-partitioned browsers like Safari, Brave, Chrome Incognito on localhost)
+        const isMissingState = 
+          errCode === "auth/missing-initial-state" || 
+          rawMsg.toLowerCase().includes("missing-initial-state") || 
+          rawMsg.toLowerCase().includes("missing initial state") ||
+          rawMsg.toLowerCase().includes("sessionstorage");
+
+        if (isMissingState) {
+          // Swallow/ignore this error silently on page load, as there was no active redirect in progress anyway.
+          // This ensures the page loads cleanly with the "Continue with Google" button ready for popup authentication.
+          console.warn("Ignoring benign redirect/storage partition error on mount:", rawMsg);
           setIsLoadingAuth(false);
           return;
         }
 
-        if (rawMsg.includes("auth/unauthorized-domain")) {
+        let errorObj = { message: "" };
+        if (rawMsg.includes("auth/unauthorized-domain") || errCode === "auth/unauthorized-domain") {
           errorObj.message = `This domain (${window.location.hostname}) is not authorized for OAuth in Firebase. Please add "${window.location.hostname}" to your Authorized Domains in the Firebase Console (Authentication > Settings > Authorized Domains).`;
         } else {
           errorObj.message = "Google Redirect Authentication failed: " + rawMsg;

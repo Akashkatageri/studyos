@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
-import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 
 export default function AuthPopupScreen() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isPartitionError, setIsPartitionError] = useState(false);
 
   const handleAuthSuccess = async (user: any) => {
     setStatus('success');
@@ -51,13 +52,52 @@ export default function AuthPopupScreen() {
   const startRedirectSignIn = async () => {
     setStatus('loading');
     setErrorMsg('');
+    setIsPartitionError(false);
     try {
       await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
       console.error("Popup Redirect Trigger Error:", err);
-      setStatus('error');
-      setErrorMsg(err.message || String(err));
+      handleAuthError(err);
     }
+  };
+
+  const startPopupSignIn = async () => {
+    setStatus('loading');
+    setErrorMsg('');
+    setIsPartitionError(false);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result && result.user) {
+        await handleAuthSuccess(result.user);
+      }
+    } catch (err: any) {
+      console.error("Popup Sign-In Error:", err);
+      handleAuthError(err);
+    }
+  };
+
+  const handleAuthError = (err: any) => {
+    setStatus('error');
+    let msg = err.message || String(err);
+    const errCode = err.code || "";
+
+    const isPartition = 
+      errCode === "auth/missing-initial-state" || 
+      msg.toLowerCase().includes("missing-initial-state") || 
+      msg.toLowerCase().includes("missing initial state") ||
+      msg.toLowerCase().includes("sessionstorage");
+
+    if (isPartition) {
+      setIsPartitionError(true);
+      msg = "Your browser's privacy or cookie settings interrupted the secure redirect authentication. Please click 'Sign In via Popup Method' below to log in directly.";
+    } else if (msg.includes("auth/popup-blocked")) {
+      msg = "Google login popup was blocked. Please allow popups for this domain and try again.";
+    } else if (msg.includes("auth/popup-closed-by-user")) {
+      msg = "The authentication window was closed. Please try again.";
+    } else if (msg.includes("auth/unauthorized-domain") || errCode === "auth/unauthorized-domain") {
+      msg = `This domain (${window.location.hostname}) is not authorized for Google Sign-In in your Firebase Console. Please add it to your Authorized Domains in the Firebase settings.`;
+    }
+    setErrorMsg(msg);
   };
 
   useEffect(() => {
@@ -85,16 +125,7 @@ export default function AuthPopupScreen() {
       } catch (err: any) {
         console.error("Popup Authentication Error:", err);
         if (active) {
-          setStatus('error');
-          let msg = err.message || String(err);
-          if (msg.includes("auth/popup-blocked")) {
-            msg = "Google login popup was blocked. Please allow popups for this domain and try again.";
-          } else if (msg.includes("auth/popup-closed-by-user")) {
-            msg = "The authentication window was closed. Please try again.";
-          } else if (msg.includes("auth/unauthorized-domain")) {
-            msg = `This domain (${window.location.hostname}) is not authorized for Google Sign-In in your Firebase Console. Please add it to your Authorized Domains in the Firebase settings.`;
-          }
-          setErrorMsg(msg);
+          handleAuthError(err);
         }
       }
     };
@@ -151,18 +182,26 @@ export default function AuthPopupScreen() {
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-red-400 tracking-tight font-display">Connection Failed</h2>
-              <p className="text-xs text-gray-300 mt-2 bg-gray-950 p-3 rounded-xl border border-gray-900 font-mono text-[11px] text-left break-words max-h-32 overflow-y-auto">
+              <h2 className="text-base font-bold text-red-400 tracking-tight font-display">
+                {isPartitionError ? "Security Settings Fallback" : "Connection Failed"}
+              </h2>
+              <p className="text-xs text-gray-300 mt-2 bg-gray-950 p-3 rounded-xl border border-gray-900 font-sans text-xs text-left leading-relaxed">
                 {errorMsg}
               </p>
             </div>
             
             <div className="pt-2 flex flex-col gap-2">
               <button
-                onClick={startRedirectSignIn}
+                onClick={startPopupSignIn}
                 className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-98 cursor-pointer"
               >
-                Retry Google Authentication
+                Sign In via Popup Method
+              </button>
+              <button
+                onClick={startRedirectSignIn}
+                className="w-full py-2 bg-gray-950 hover:bg-gray-900 text-gray-300 border border-gray-800 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                Try Secure Redirect Again
               </button>
               <button
                 onClick={() => window.close()}
