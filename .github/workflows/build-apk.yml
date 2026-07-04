@@ -18,14 +18,17 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build Web Application
         run: npm run build
+
+      - name: Create Web Directory if Missing
+        run: mkdir -p dist
 
       - name: Sync Web Assets to Android Project
         run: npx cap sync android
