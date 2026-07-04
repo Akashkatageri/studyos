@@ -52,6 +52,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoadingAuth, setIsLoadingAuth] = useState(false);
   const [authError, setAuthError] = useState<{ message: string; isOfflineError?: boolean; raw?: string } | null>(null);
+  const [redirectWarning, setRedirectWarning] = useState<string | null>(null);
   const [usernameSubmitError, setUsernameSubmitError] = useState<string | null>(null);
   const [isSubmittingUsername, setIsSubmittingUsername] = useState(false);
 
@@ -197,6 +198,12 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         let errorObj = { message: "", isOfflineError: false, raw: "" };
         const rawMsg = err.message || String(err);
 
+        if (rawMsg.includes("auth/missing-initial-state") || rawMsg.includes("missing-initial-state")) {
+          setRedirectWarning("Your browser's privacy or cookie settings interrupted the redirect authentication. Don't worry! Just click 'Continue with Google' again to log in securely using the popup method.");
+          setIsLoadingAuth(false);
+          return;
+        }
+
         try {
           const parsed = JSON.parse(err.message);
           if (parsed.error) {
@@ -250,6 +257,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     setIsLoadingAuth(true);
     setShowIframeWarning(false);
     setAuthError(null);
+    setRedirectWarning(null);
     try {
       if (isNativeAndroid) {
         await startDevicePairing();
@@ -1039,6 +1047,18 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                     </div>
                     <p className="text-[11px] text-gray-300 leading-relaxed font-sans">
                       You are linking an Android device with code <strong className="text-blue-300 font-mono text-xs">{incomingPairCode}</strong>. Please sign in with Google below to authorize this device instantly.
+                    </p>
+                  </div>
+                )}
+
+                {redirectWarning && (
+                  <div className="p-4 bg-amber-950/20 border border-amber-900/40 rounded-2xl text-left space-y-2 shadow-md">
+                    <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                      <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 animate-pulse" />
+                      <span>Google Sign-In Redirect Interrupted</span>
+                    </div>
+                    <p className="text-[11px] text-gray-300 leading-relaxed font-sans">
+                      {redirectWarning}
                     </p>
                   </div>
                 )}
