@@ -1,73 +1,110 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 
 export default function AuthPopupScreen() {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleAuthClick = async () => {
+  const handleAuthSuccess = async (user: any) => {
+    setStatus('success');
+    
+    let idToken = null;
+    try {
+      idToken = await user.getIdToken();
+    } catch (e) {
+      console.warn("Failed to retrieve user ID token:", e);
+    }
+
+    const authPayload = {
+      type: 'firebase-auth-success',
+      idToken,
+      accessToken: null,
+      user: {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL
+      },
+      timestamp: Date.now()
+    };
+
+    // Fallback for mobile browser iframes where window.opener might be null/blocked
+    try {
+      localStorage.setItem('studyos_auth_success', JSON.stringify(authPayload));
+    } catch (storageErr) {
+      console.warn("Failed to write to localStorage in popup tab:", storageErr);
+    }
+    
+    // Notify the parent window (iframe) that authentication was successful with tokens
+    if (window.opener) {
+      window.opener.postMessage(authPayload, '*');
+    }
+    
+    // Close the popup window after a brief friendly confirmation delay
+    setTimeout(() => {
+      window.close();
+    }, 1200);
+  };
+
+  const startRedirectSignIn = async () => {
     setStatus('loading');
     setErrorMsg('');
     try {
-      // Since this is triggered by a direct user click, the browser will never block it!
-      const result = await signInWithPopup(auth, googleProvider);
-      if (result.user) {
-        setStatus('success');
-        
-        // Extract Google credential and tokens
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        const idToken = credential?.idToken || null;
-        const accessToken = credential?.accessToken || null;
-
-        const authPayload = {
-          type: 'firebase-auth-success',
-          idToken,
-          accessToken,
-          user: {
-            uid: result.user.uid,
-            email: result.user.email,
-            displayName: result.user.displayName,
-            photoURL: result.user.photoURL
-          },
-          timestamp: Date.now()
-        };
-
-        // Fallback for mobile browser iframes where window.opener might be null/blocked
-        try {
-          localStorage.setItem('studyos_auth_success', JSON.stringify(authPayload));
-        } catch (storageErr) {
-          console.warn("Failed to write to localStorage in popup tab:", storageErr);
-        }
-        
-        // Notify the parent window (iframe) that authentication was successful with tokens
-        if (window.opener) {
-          window.opener.postMessage(authPayload, '*');
-        }
-        
-        // Close the popup window after a brief friendly confirmation delay
-        setTimeout(() => {
-          window.close();
-        }, 1200);
-      } else {
-        throw new Error("No user profile received from Google Authentication.");
-      }
+      await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
-      console.error("Popup Authentication Error:", err);
+      console.error("Popup Redirect Trigger Error:", err);
       setStatus('error');
-      
-      let msg = err.message || String(err);
-      if (msg.includes("auth/popup-blocked")) {
-        msg = "Google login popup was blocked. Please allow popups for this domain and try again.";
-      } else if (msg.includes("auth/popup-closed-by-user")) {
-        msg = "The authentication window was closed before completion. Please try again.";
-      } else if (msg.includes("auth/unauthorized-domain")) {
-        msg = "This domain is not authorized for Google Sign-In in your Firebase Console. Please add it to your Authorized Domains.";
-      }
-      setErrorMsg(msg);
+      setErrorMsg(err.message || String(err));
     }
   };
+
+  useEffect(() => {
+    let active = true;
+
+    const handleRedirectResultAndSync = async () => {
+      try {
+        // 1. Check if we have a redirect result (returning from Google redirect)
+        const result = await getRedirectResult(auth);
+        if (result && result.user && active) {
+          await handleAuthSuccess(result.user);
+          return;
+        }
+
+        // 2. Check if already logged in (standard session restore)
+        if (auth.currentUser && active) {
+          await handleAuthSuccess(auth.currentUser);
+          return;
+        }
+
+        // 3. If neither, trigger standard Google Sign-In redirect immediately!
+        if (active) {
+          await signInWithRedirect(auth, googleProvider);
+        }
+      } catch (err: any) {
+        console.error("Popup Authentication Error:", err);
+        if (active) {
+          setStatus('error');
+          let msg = err.message || String(err);
+          if (msg.includes("auth/popup-blocked")) {
+            msg = "Google login popup was blocked. Please allow popups for this domain and try again.";
+          } else if (msg.includes("auth/popup-closed-by-user")) {
+            msg = "The authentication window was closed. Please try again.";
+          } else if (msg.includes("auth/unauthorized-domain")) {
+            msg = `This domain (${window.location.hostname}) is not authorized for Google Sign-In in your Firebase Console. Please add it to your Authorized Domains in the Firebase settings.`;
+          }
+          setErrorMsg(msg);
+        }
+      }
+    };
+
+    handleRedirectResultAndSync();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0C0F12] text-white flex flex-col items-center justify-center p-6 text-center font-sans select-none relative">
@@ -76,45 +113,9 @@ export default function AuthPopupScreen() {
       
       <div className="w-full max-w-sm bg-[#141A1F] rounded-3xl border border-gray-800 p-8 space-y-6 shadow-2xl relative z-10">
         {/* Brand */}
-        <div className="mx-auto w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.3)] animate-bounce">
+        <div className="mx-auto w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.3)] animate-pulse">
           <BookOpen className="w-6 h-6 text-white" />
         </div>
-
-        {status === 'idle' && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="text-lg font-bold text-white tracking-tight font-display">Confirm Google Sign-In</h2>
-              <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                Click the button below to authorize StudyOS via Google. This secure popup bypasses iframe security restrictions.
-              </p>
-            </div>
-            
-            <button
-              onClick={handleAuthClick}
-              className="w-full py-3.5 bg-white text-gray-950 hover:bg-gray-100 disabled:opacity-50 active:scale-98 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-              <span>Continue with Google</span>
-            </button>
-          </div>
-        )}
 
         {status === 'loading' && (
           <div className="space-y-4">
@@ -122,9 +123,9 @@ export default function AuthPopupScreen() {
               <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-tight">Connecting Google Account</h2>
+              <h2 className="text-base font-bold text-white tracking-tight">Connecting to Google</h2>
               <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
-                Please complete the account selection and sign-in inside the Google window.
+                Redirecting you to the official Google Account selection page...
               </p>
             </div>
           </div>
@@ -138,7 +139,7 @@ export default function AuthPopupScreen() {
             <div>
               <h2 className="text-base font-bold text-emerald-400 tracking-tight font-display">Authentication Successful!</h2>
               <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
-                Your profile has been connected securely. Closing this helper window...
+                Your profile has been connected securely. Closing this window...
               </p>
             </div>
           </div>
@@ -158,7 +159,7 @@ export default function AuthPopupScreen() {
             
             <div className="pt-2 flex flex-col gap-2">
               <button
-                onClick={handleAuthClick}
+                onClick={startRedirectSignIn}
                 className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-98 cursor-pointer"
               >
                 Retry Google Authentication

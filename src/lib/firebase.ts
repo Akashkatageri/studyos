@@ -44,7 +44,8 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-// Initialize Firestore
+// Initialize Firestore with the named database where all the collections reside.
+// This ensures that downloaded code running on localhost still connects to the correct database.
 export const db = getFirestore(app, "ai-studio-studyos-dab98d62-f9f3-4125-906a-d48f2df82335");
 
 // -------------------------------------------------------------------

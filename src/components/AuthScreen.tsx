@@ -10,17 +10,11 @@ import {
   ShieldCheck,
   AlertCircle,
   LogOut,
-  RotateCcw,
-  ExternalLink,
-  Smartphone,
-  Sparkles,
-  Link2,
-  Copy,
-  Check
+  ExternalLink
 } from 'lucide-react';
-import { auth, googleProvider, isUsernameUnique, db, loadUserFromFirestore } from '../lib/firebase';
-import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithCredential, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { auth, googleProvider, isUsernameUnique, loadUserFromFirestore, db } from '../lib/firebase';
+import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { UserState } from '../types';
 
 interface AuthScreenProps {
@@ -38,7 +32,6 @@ interface AuthScreenProps {
 
 export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenProps) {
   const [step, setStep] = useState<'welcome' | 'username'>('welcome');
-  const [isOffline, setIsOffline] = useState(false);
   const [authData, setAuthData] = useState<{
     uid?: string;
     email?: string;
@@ -51,55 +44,15 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoadingAuth, setIsLoadingAuth] = useState(false);
-  const [authError, setAuthError] = useState<{ message: string; isOfflineError?: boolean; raw?: string } | null>(null);
+  const [authError, setAuthError] = useState<{ message: string; raw?: string } | null>(null);
   const [redirectWarning, setRedirectWarning] = useState<string | null>(null);
   const [usernameSubmitError, setUsernameSubmitError] = useState<string | null>(null);
   const [isSubmittingUsername, setIsSubmittingUsername] = useState(false);
 
-  // Email Sync & Demo Account States
-  const [authMethod, setAuthMethod] = useState<'google' | 'email'>('google');
-  const [emailInput, setEmailInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-
   const [isIframe, setIsIframe] = useState(false);
   const [showIframeWarning, setShowIframeWarning] = useState(false);
-  const [showDomainWarning, setShowDomainWarning] = useState(false);
 
-  // Device pairing states
-  const [deviceLinkCode, setDeviceLinkCode] = useState<string | null>(null);
-  const [deviceLinkStatus, setDeviceLinkStatus] = useState<'idle' | 'generating' | 'waiting' | 'authorized' | 'failed'>('idle');
-  const [incomingPairCode, setIncomingPairCode] = useState<string | null>(null);
-  const [pairingSuccess, setPairingSuccess] = useState(false);
-  const [isPairingSubmitting, setIsPairingSubmitting] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
-  const [currentWebUser, setCurrentWebUser] = useState<any>(null);
-
-  // Monitor auth state to support one-click authorization when already logged in on the web
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentWebUser(user);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Detect incoming pairing code in URL
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('pair_code');
-      if (code && /^[0-9]{6}$/.test(code)) {
-        setIncomingPairCode(code);
-      }
-    }
-  }, []);
-
-  const isNativeAndroid = typeof window !== 'undefined' && (
-    window.location.protocol === 'capacitor:' || 
-    (window as any).Capacitor || 
-    (window.location.hostname === 'localhost' && /android/i.test(navigator.userAgent))
-  );
-
+  // Detect if running inside an iframe (such as AI Studio preview stage)
   useEffect(() => {
     try {
       if (window.self !== window.top) {
@@ -108,17 +61,6 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     } catch (e) {
       setIsIframe(true);
     }
-
-    // Verify if current hostname is standard or not to provide a dynamic setup warning
-    const hostname = window.location.hostname;
-    if (
-      hostname !== "localhost" && 
-      hostname !== "127.0.0.1" && 
-      !hostname.endsWith(".firebaseapp.com") && 
-      !hostname.endsWith(".web.app")
-    ) {
-      setShowDomainWarning(true);
-    }
   }, []);
 
   const onAuthCompleteRef = React.useRef(onAuthComplete);
@@ -126,36 +68,15 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     onAuthCompleteRef.current = onAuthComplete;
   }, [onAuthComplete]);
 
-  // Restore authentication result using getRedirectResult() on mount
+  // Restore authentication result using getRedirectResult() on mount (handles mobile redirect returns)
   useEffect(() => {
     const handleRedirectResult = async () => {
-      if (isNativeAndroid) {
-        setIsLoadingAuth(false);
-        return; // Skip getRedirectResult on native Android to avoid errors/hangs
-      }
       setIsLoadingAuth(true);
       setAuthError(null);
       try {
         const result = await getRedirectResult(auth);
         if (result) {
           const user = result.user;
-          const params = new URLSearchParams(window.location.search);
-          const pCode = params.get('pair_code');
-          if (pCode && /^[0-9]{6}$/.test(pCode)) {
-            const idToken = await user.getIdToken();
-            await setDoc(doc(db, 'device_links', pCode), {
-              status: 'authorized',
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              idToken,
-              accessToken: null
-            }, { merge: true });
-            setPairingSuccess(true);
-            setIsLoadingAuth(false);
-            return;
-          }
-
           const email = user.email || undefined;
           const displayName = user.displayName || undefined;
           const uid = user.uid;
@@ -165,15 +86,10 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
           try {
             cloudData = await loadUserFromFirestore(uid);
           } catch (dbErr: any) {
-            console.warn("Database check failed during Google Redirect Sign-In, preparing fallback:", dbErr);
-            const errMsg = dbErr?.message || String(dbErr);
-            throw new Error(JSON.stringify({
-              error: "Failed to connect to the cloud database. " + 
-                     "If you are setting up a new Firebase project, make sure 'Firestore Database' is created/enabled in your Firebase Console. " +
-                     "Alternatively, you can choose 'Continue Offline using Google Profile' below to start your journey locally.",
-              isOfflineError: true,
-              raw: errMsg
-            }));
+            console.error("Database check failed during Google Redirect Sign-In:", dbErr);
+            throw new Error(
+              "Failed to connect to the cloud database. Please check your network connection and verify Firestore Database is enabled."
+            );
           }
 
           if (cloudData && cloudData.onboarded) {
@@ -190,7 +106,6 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
           }
 
           setAuthData({ uid, email, displayName });
-          setIsOffline(false);
 
           // Generate suggested username from display name
           const base = (displayName || email || "user")
@@ -201,34 +116,19 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         }
       } catch (err: any) {
         console.error("Google Redirect Authentication error:", err);
-        let errorObj = { message: "", isOfflineError: false, raw: "" };
+        let errorObj = { message: "" };
         const rawMsg = err.message || String(err);
 
         if (rawMsg.includes("auth/missing-initial-state") || rawMsg.includes("missing-initial-state")) {
-          setRedirectWarning("Your browser's privacy or cookie settings interrupted the redirect authentication. Don't worry! Just click 'Continue with Google' again to log in securely using the popup method.");
+          setRedirectWarning("Your browser's privacy or cookie settings interrupted the redirect authentication. Please click 'Continue with Google' again to log in securely using the popup method.");
           setIsLoadingAuth(false);
           return;
         }
 
-        try {
-          const parsed = JSON.parse(err.message);
-          if (parsed.error) {
-            errorObj.message = parsed.error;
-            errorObj.isOfflineError = parsed.isOfflineError;
-            errorObj.raw = parsed.raw;
-          }
-        } catch (parseErr) {
-          if (rawMsg.includes("auth/unauthorized-domain")) {
-            errorObj.message = `This domain (${window.location.hostname}) is not authorized for OAuth operations in your Firebase project. Please add it to your Authorized Domains in the Firebase Console (Authentication > Settings > Authorized Domains).`;
-            errorObj.raw = rawMsg;
-          } else {
-            const isOffline = rawMsg.includes("offline") || rawMsg.includes("client is offline") || rawMsg.includes("network") || rawMsg.includes("failed-precondition") || rawMsg.includes("permission-denied");
-            errorObj.message = isOffline
-              ? "Failed to connect to the cloud database. If you are setting up a new Firebase project, make sure 'Firestore Database' is created/enabled in your Firebase Console. Alternatively, you can choose to Continue Offline."
-              : "Google Redirect Authentication failed: " + rawMsg;
-            errorObj.isOfflineError = isOffline;
-            errorObj.raw = rawMsg;
-          }
+        if (rawMsg.includes("auth/unauthorized-domain")) {
+          errorObj.message = `This domain (${window.location.hostname}) is not authorized for OAuth in Firebase. Please add "${window.location.hostname}" to your Authorized Domains in the Firebase Console (Authentication > Settings > Authorized Domains).`;
+        } else {
+          errorObj.message = "Google Redirect Authentication failed: " + rawMsg;
         }
 
         setAuthError(errorObj);
@@ -240,16 +140,14 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     handleRedirectResult();
   }, []);
 
+  // Monitor initial parent state sync
   useEffect(() => {
-    // If the parent already has an authenticated user who is not yet onboarded (username is missing),
-    // and the AuthScreen is still on the welcome step, transition them directly to username selection.
     if (step === 'welcome' && initialUser && initialUser.uid && !initialUser.username) {
       setAuthData({
         uid: initialUser.uid,
         email: initialUser.email,
         displayName: initialUser.displayName
       });
-      setIsOffline(false);
       const base = (initialUser.displayName || initialUser.email || "user")
         .toLowerCase()
         .replace(/[^a-z0-9_]/g, '');
@@ -258,20 +156,15 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     }
   }, [initialUser, step]);
 
-  // 1. Google Sign-In with Desktop (Popup) and Mobile (Redirect) optimization
+  // Handle Google Sign-In (with iframe popup optimization and standard web fallback)
   const handleGoogleSignIn = async () => {
     setIsLoadingAuth(true);
     setShowIframeWarning(false);
     setAuthError(null);
     setRedirectWarning(null);
     try {
-      if (isNativeAndroid) {
-        await startDevicePairing();
-        return;
-      }
-
       if (isIframe) {
-        // Since we are running inside an iframe, open our own page as a top-level popup to complete Google Sign In safely!
+        // Since we are running inside an iframe, open our own page as a top-level popup to complete Google Sign In safely
         const popupUrl = `${window.location.origin}${window.location.pathname}?auth_popup=true`;
         const width = 500;
         const height = 650;
@@ -288,7 +181,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
           throw new Error("Popup blocked by browser. Please allow popups for this site, or click the 'Open App in New Tab' button above.");
         }
         
-        // Shared handler for successful authentication payload (used by window message AND localStorage poll)
+        // Handle successful auth payload received from the popup tab
         const handleAuthSuccessPayload = async (data: any) => {
           setIsLoadingAuth(true);
           try {
@@ -325,9 +218,6 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                 });
               } else {
                 setAuthData({ uid, email, displayName });
-                setIsOffline(false);
-                
-                // Suggest username
                 const base = (displayName || email || "user")
                   .toLowerCase()
                   .replace(/[^a-z0-9_]/g, '');
@@ -340,16 +230,14 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
           } catch (err: any) {
             console.error("Iframe token integration failed:", err);
             setAuthError({
-              message: "Syncing Google sign-in with your preview session failed: " + (err.message || String(err)),
-              isOfflineError: false,
-              raw: String(err)
+              message: "Syncing Google sign-in with your preview session failed: " + (err.message || String(err))
             });
           } finally {
             setIsLoadingAuth(false);
           }
         };
 
-        // Listen for message from the popup
+        // Message listener from the popup tab
         const handleAuthMessage = async (e: MessageEvent) => {
           if (e.data && e.data.type === 'firebase-auth-success') {
             window.removeEventListener('message', handleAuthMessage);
@@ -360,7 +248,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         };
         window.addEventListener('message', handleAuthMessage);
 
-        // Keep checking if local storage was updated (mobile browser opener backup) OR popup closed
+        // Keep checking if localStorage was updated (mobile browser opener backup)
         const pollTimer = setInterval(async () => {
           try {
             const stored = localStorage.getItem('studyos_auth_success');
@@ -391,12 +279,11 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         return;
       }
 
-      // On desktop AND mobile direct tabs: Try using signInWithPopup() first since it works beautifully on mobile direct tabs
+      // Outside an iframe: Standard popup Auth selection page
       let result;
       try {
         result = await signInWithPopup(auth, googleProvider);
       } catch (err: any) {
-        // Fallback to signInWithRedirect if popup is blocked by the mobile browser configuration
         if (err.code === 'auth/popup-blocked' || err.message?.includes('popup-blocked')) {
           console.warn("Google Sign-In popup blocked. Falling back to Redirect...");
           await signInWithRedirect(auth, googleProvider);
@@ -406,28 +293,19 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
       }
 
       const user = result.user;
-      if (incomingPairCode) {
-        await handleAuthorizeDevice(user);
-        return;
-      }
-      
       const email = user.email || undefined;
       const displayName = user.displayName || undefined;
       const uid = user.uid;
 
-      // Check if profile already exists in Firestore (Any of the separate collections exist)
+      // Check if profile exists in Firestore database
       let cloudData = null;
       try {
         cloudData = await loadUserFromFirestore(uid);
       } catch (dbErr: any) {
-        console.warn("Database check failed during Google Sign-In, preparing fallback:", dbErr);
-        const errMsg = dbErr?.message || String(dbErr);
-        throw new Error(JSON.stringify({
-          error: "Failed to connect to the cloud database. " + 
-                 "If you are setting up a new Firebase project, make sure 'Firestore Database' is created/enabled in your Firebase Console.",
-          isOfflineError: false,
-          raw: errMsg
-        }));
+        console.error("Database check failed during Google Sign-In:", dbErr);
+        throw new Error(
+          "Failed to connect to the cloud database. Please verify your internet connection and Firestore setup."
+        );
       }
 
       if (cloudData && cloudData.onboarded) {
@@ -444,9 +322,6 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
       }
 
       setAuthData({ uid, email, displayName });
-      setIsOffline(false);
-
-      // Generate suggested username from display name
       const base = (displayName || email || "user")
         .toLowerCase()
         .replace(/[^a-z0-9_]/g, '');
@@ -456,211 +331,26 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
       console.error("Google Authentication error:", err);
       setShowIframeWarning(true);
       
-      let errorObj = { message: "", isOfflineError: false, raw: "" };
-      try {
-        const parsed = JSON.parse(err.message);
-        if (parsed.error) {
-          errorObj.message = parsed.error;
-          errorObj.isOfflineError = parsed.isOfflineError;
-          errorObj.raw = parsed.raw;
-        }
-      } catch (parseErr) {
-        const rawMsg = err.message || String(err);
-        
-        // Handle specific Firebase popup blocker and cancellation errors elegantly
-        if (rawMsg.includes("auth/unauthorized-domain")) {
-          errorObj.message = `This domain (${window.location.hostname}) is not authorized for OAuth in Firebase. Please add "${window.location.hostname}" to your Authorized Domains in the Firebase Console (Authentication > Settings > Authorized Domains).`;
-          errorObj.raw = rawMsg;
-        } else if (rawMsg.includes("auth/popup-blocked")) {
-          errorObj.message = "The sign-in popup was blocked by your browser. Please allow popups for this site, or open the app in a new tab.";
-          errorObj.raw = rawMsg;
-        } else if (rawMsg.includes("auth/popup-closed-by-user")) {
-          errorObj.message = "The sign-in popup was closed before completing. If you didn't close it, please check your network connection or try again.";
-          errorObj.raw = rawMsg;
-        } else {
-          const isOffline = rawMsg.includes("offline") || rawMsg.includes("client is offline") || rawMsg.includes("network") || rawMsg.includes("failed-precondition") || rawMsg.includes("permission-denied");
-          errorObj.message = isOffline
-            ? "Failed to connect to the cloud database. If you are setting up a new Firebase project, make sure 'Firestore Database' is created/enabled in your Firebase Console. Alternatively, you can choose to Continue Offline."
-            : "Google Authentication failed: " + rawMsg;
-          errorObj.isOfflineError = isOffline;
-          errorObj.raw = rawMsg;
-        }
-      }
-      
-      setAuthError(errorObj);
-    } finally {
-      setIsLoadingAuth(false);
-    }
-  };
-
-  // Handle Email & Password custom Authentication (highly reliable, works everywhere!)
-  const handleEmailSignIn = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!emailInput || !passwordInput) {
-      setAuthError({ message: "Please fill in all email and password fields.", isOfflineError: false });
-      return;
-    }
-
-    setIsLoadingAuth(true);
-    setAuthError(null);
-    setRedirectWarning(null);
-
-    try {
-      let user;
-      if (isSignUp) {
-        // Create new account
-        const result = await createUserWithEmailAndPassword(auth, emailInput.trim(), passwordInput);
-        user = result.user;
-      } else {
-        // Sign into existing account
-        const result = await signInWithEmailAndPassword(auth, emailInput.trim(), passwordInput);
-        user = result.user;
-      }
-
-      const uid = user.uid;
-      const emailVal = user.email || undefined;
-      const displayName = user.displayName || emailVal?.split('@')[0] || "Scholar";
-
-      if (incomingPairCode) {
-        await handleAuthorizeDevice(user);
-        return;
-      }
-
-      let cloudData = null;
-      try {
-        cloudData = await loadUserFromFirestore(uid);
-      } catch (dbErr: any) {
-        console.warn("Database check failed during Email Sign-In, preparing fallback:", dbErr);
-        const errMsg = dbErr?.message || String(dbErr);
-        throw new Error(JSON.stringify({
-          error: "Failed to connect to the cloud database. " + 
-                 "If you are setting up a new Firebase project, make sure 'Firestore Database' is created/enabled in your Firebase Console.",
-          isOfflineError: false,
-          raw: errMsg
-        }));
-      }
-
-      if (cloudData && cloudData.onboarded) {
-        onAuthComplete({
-          uid,
-          email: emailVal,
-          displayName,
-          isOffline: false,
-          username: cloudData.username,
-          onboarded: true,
-          fullState: cloudData
-        });
-        return;
-      }
-
-      setAuthData({ uid, email: emailVal, displayName });
-      setIsOffline(false);
-
-      // Generate suggested username from display name
-      const base = displayName
-        .toLowerCase()
-        .replace(/[^a-z0-9_]/g, '');
-      setUsername(base.slice(0, 15));
-      setStep('username');
-    } catch (err: any) {
-      console.error("Email Authentication error:", err);
-      let errorObj = { message: "", isOfflineError: false, raw: "" };
+      let errorObj = { message: "" };
       const rawMsg = err.message || String(err);
-
-      if (rawMsg.includes("auth/email-already-in-use")) {
-        errorObj.message = "This email is already in use. Try signing in instead, or use a different email.";
-      } else if (rawMsg.includes("auth/weak-password")) {
-        errorObj.message = "The password is too weak (minimum 6 characters).";
-      } else if (rawMsg.includes("auth/invalid-credential") || rawMsg.includes("auth/user-not-found") || rawMsg.includes("auth/wrong-password")) {
-        errorObj.message = "Invalid email or password. Please verify your credentials and try again.";
-      } else if (rawMsg.includes("auth/invalid-email")) {
-        errorObj.message = "Please enter a valid email address.";
+      
+      if (rawMsg.includes("auth/unauthorized-domain")) {
+        errorObj.message = `This domain (${window.location.hostname}) is not authorized for OAuth in Firebase. Please add "${window.location.hostname}" to your Authorized Domains in the Firebase Console.`;
+      } else if (rawMsg.includes("auth/popup-blocked")) {
+        errorObj.message = "The sign-in popup was blocked by your browser. Please allow popups for this site, or open the app in a new tab.";
+      } else if (rawMsg.includes("auth/popup-closed-by-user")) {
+        errorObj.message = "The sign-in popup was closed before completion. Please try again.";
       } else {
-        const isOffline = rawMsg.includes("offline") || rawMsg.includes("client is offline") || rawMsg.includes("network") || rawMsg.includes("failed-precondition") || rawMsg.includes("permission-denied");
-        errorObj.message = isOffline
-          ? "Failed to connect to the cloud database. If you are setting up a new Firebase project, make sure 'Firestore Database' is created/enabled in your Firebase Console. Alternatively, you can choose to Continue Offline."
-          : "Authentication failed: " + rawMsg;
-        errorObj.isOfflineError = isOffline;
-        errorObj.raw = rawMsg;
+        errorObj.message = "Google Authentication failed: " + rawMsg;
       }
+      
       setAuthError(errorObj);
     } finally {
       setIsLoadingAuth(false);
     }
   };
 
-  // Instant guest cloud accounts (persisted, full cloud sync capabilities, 100% reliable on all preview domains!)
-  const handleGuestCloudLogin = async () => {
-    setIsLoadingAuth(true);
-    setAuthError(null);
-    setRedirectWarning(null);
-    try {
-      const randomId = Math.floor(100000 + Math.random() * 900000);
-      const email = `cloud_scholar_${randomId}@studyos.net`;
-      const password = `scholar_secure_${randomId}`;
-      
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      const user = result.user;
-      const emailVal = user.email || undefined;
-      const displayName = "Cloud Scholar " + randomId;
-      const uid = user.uid;
-      
-      setAuthData({ uid, email: emailVal, displayName });
-      setIsOffline(false);
-      
-      // Auto-suggest username
-      setUsername(`scholar_${randomId}`);
-      setStep('username');
-    } catch (err: any) {
-      console.error("Guest Cloud Sign-Up error:", err);
-      // Fallback: Use stable demo account
-      try {
-        const demoEmail = "demo_scholar@studyos.net";
-        const demoPassword = "demo_scholar_secure_123";
-        let result;
-        try {
-          result = await signInWithEmailAndPassword(auth, demoEmail, demoPassword);
-        } catch (signErr) {
-          result = await createUserWithEmailAndPassword(auth, demoEmail, demoPassword);
-        }
-        const user = result.user;
-        const uid = user.uid;
-        
-        let cloudData = null;
-        try {
-          cloudData = await loadUserFromFirestore(uid);
-        } catch (_) {}
-        
-        if (cloudData && cloudData.onboarded) {
-          onAuthComplete({
-            uid,
-            email: user.email || undefined,
-            displayName: user.displayName || "Demo Scholar",
-            isOffline: false,
-            username: cloudData.username,
-            onboarded: true,
-            fullState: cloudData
-          });
-        } else {
-          setAuthData({ uid, email: user.email || undefined, displayName: "Demo Scholar" });
-          setIsOffline(false);
-          setUsername("demo_scholar_" + Math.floor(100 + Math.random() * 900));
-          setStep('username');
-        }
-      } catch (fallbackErr: any) {
-        console.error("Guest Cloud Fallback failed:", fallbackErr);
-        setAuthError({
-          message: "Guest cloud login failed: " + (fallbackErr.message || String(fallbackErr)),
-          isOfflineError: true,
-          raw: String(fallbackErr)
-        });
-      }
-    } finally {
-      setIsLoadingAuth(false);
-    }
-  };
-
-  // Sign out / Disconnect active session to switch Google account or restart flow
+  // Sign out and reset local authentication fields
   const handleSignOutAndReset = async () => {
     setIsLoadingAuth(true);
     setAuthError(null);
@@ -672,160 +362,11 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     }
     setAuthData({});
     setUsername('');
-    setIsOffline(false);
     setStep('welcome');
     setIsLoadingAuth(false);
   };
 
-  // Setup a secure, local offline session
-  const handleContinueOffline = () => {
-    setIsOffline(true);
-    setAuthData({
-      uid: "offline_user_" + Math.floor(1000 + Math.random() * 9000),
-      displayName: "Offline Scholar",
-      email: "offline@studyos.local"
-    });
-    // Set a default available username and step forward
-    setUsername("scholar_" + Math.floor(100 + Math.random() * 900));
-    setStep('username');
-  };
-
-  // Start the pairing process on native Android
-  const startDevicePairing = async () => {
-    setIsLoadingAuth(true);
-    setAuthError(null);
-    setDeviceLinkStatus('generating');
-    try {
-      const code = String(Math.floor(100000 + Math.random() * 900000));
-      setDeviceLinkCode(code);
-      setDeviceLinkStatus('waiting');
-      
-      const linkRef = doc(db, 'device_links', code);
-      await setDoc(linkRef, {
-        code,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      });
-
-      const unsubscribe = onSnapshot(linkRef, async (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          if (data.status === 'authorized') {
-            unsubscribe();
-            setIsLoadingAuth(true);
-            try {
-              const credential = GoogleAuthProvider.credential(data.idToken, data.accessToken || undefined);
-              const result = await signInWithCredential(auth, credential);
-              const firebaseUser = result.user;
-              
-              if (firebaseUser) {
-                try {
-                  await deleteDoc(linkRef);
-                } catch (delErr) {
-                  console.warn("Could not delete temporary pairing document:", delErr);
-                }
-
-                const uid = firebaseUser.uid;
-                const email = firebaseUser.email || undefined;
-                const displayName = firebaseUser.displayName || undefined;
-                
-                let cloudData = null;
-                try {
-                  cloudData = await loadUserFromFirestore(uid);
-                } catch (dbErr) {
-                  console.warn("Failed to load user during device linking:", dbErr);
-                }
-
-                if (cloudData && cloudData.onboarded) {
-                  onAuthCompleteRef.current({
-                    uid,
-                    email,
-                    displayName,
-                    isOffline: false,
-                    username: cloudData.username,
-                    onboarded: true,
-                    fullState: cloudData
-                  });
-                } else {
-                  setAuthData({ uid, email, displayName });
-                  setIsOffline(false);
-                  
-                  const base = (displayName || email || "user")
-                    .toLowerCase()
-                    .replace(/[^a-z0-9_]/g, '');
-                  setUsername(base.slice(0, 15));
-                  setStep('username');
-                }
-              }
-            } catch (authErr: any) {
-              console.error("Sign-in with paired credentials failed:", authErr);
-              setAuthError({
-                message: "Authentication failed. Please verify your connection: " + (authErr.message || String(authErr)),
-                isOfflineError: false
-              });
-              setDeviceLinkStatus('failed');
-            } finally {
-              setIsLoadingAuth(false);
-            }
-          }
-        }
-      }, (err) => {
-        console.error("Device link live listener error:", err);
-      });
-
-      // Timeout after 5 minutes
-      setTimeout(async () => {
-        try {
-          unsubscribe();
-          await deleteDoc(linkRef);
-        } catch (_) {}
-        setDeviceLinkStatus((prev) => prev === 'waiting' ? 'failed' : prev);
-      }, 300000);
-
-    } catch (err: any) {
-      console.error("Failed to generate device link:", err);
-      setAuthError({
-        message: "Failed to initialize secure link. Please check your internet connection.",
-        isOfflineError: false
-      });
-      setDeviceLinkStatus('failed');
-      setIsLoadingAuth(false);
-    }
-  };
-
-  // Handles completing the pairing handshake on the WEB browser side
-  const handleAuthorizeDevice = async (userObject?: any) => {
-    const activeUser = userObject || auth.currentUser;
-    if (!activeUser || !incomingPairCode) return;
-    
-    setIsPairingSubmitting(true);
-    setAuthError(null);
-    try {
-      const idToken = await activeUser.getIdToken();
-      
-      const linkRef = doc(db, 'device_links', incomingPairCode);
-      await setDoc(linkRef, {
-        status: 'authorized',
-        uid: activeUser.uid,
-        email: activeUser.email,
-        displayName: activeUser.displayName,
-        idToken,
-        accessToken: null
-      }, { merge: true });
-      
-      setPairingSuccess(true);
-    } catch (err: any) {
-      console.error("Failed to authorize paired device:", err);
-      setAuthError({
-        message: "Failed to authorize device: " + (err.message || String(err)),
-        isOfflineError: false
-      });
-    } finally {
-      setIsPairingSubmitting(false);
-    }
-  };
-
-  // 3. Username validation effect
+  // Username validation helper
   useEffect(() => {
     if (!username) {
       setIsAvailable(null);
@@ -834,7 +375,6 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
       return;
     }
 
-    // Letters, numbers, underscores only
     const regex = /^[a-zA-Z0-9_]+$/;
     if (!regex.test(username)) {
       setUsernameError("Usernames can contain only letters, numbers, and underscores.");
@@ -851,15 +391,6 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     }
 
     setUsernameError(null);
-
-    // Bypassing network check if user selected offline mode
-    if (isOffline) {
-      setIsAvailable(true);
-      setSuggestions([]);
-      setIsValidating(false);
-      return;
-    }
-
     setIsValidating(true);
 
     const checkUnique = setTimeout(async () => {
@@ -868,10 +399,8 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         setIsAvailable(unique);
         if (!unique) {
           setUsernameError("This username is already taken.");
-          // Generate suggestions
           const cleanBase = username.slice(0, 12);
           const sugList = [
-            `${cleanBase}_vtu`,
             `${cleanBase}_stud`,
             `${cleanBase}_${Math.floor(100 + Math.random() * 900)}`
           ];
@@ -881,15 +410,14 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         }
       } catch (err) {
         console.error("Error checking username uniqueness:", err);
-        // Fallback: if checking uniqueness fails due to offline/uninitialized db, allow offline transition
-        setIsAvailable(true);
+        setIsAvailable(true); // default fallback to unblock
       } finally {
         setIsValidating(false);
       }
     }, 400);
 
     return () => clearTimeout(checkUnique);
-  }, [username, authData.uid, isOffline]);
+  }, [username, authData.uid]);
 
   const handleSubmitUsername = async () => {
     if (!username || isAvailable !== true || usernameError) return;
@@ -913,7 +441,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
       } catch (err: any) {
         console.error("Failed to reserve username in Firestore:", err);
         setUsernameSubmitError(
-          "Could not reserve username in cloud database. If you just set up Firebase, make sure the Firestore Database is fully enabled in your Firebase console."
+          "Could not reserve username in cloud database. Please verify your connection."
         );
         setIsSubmittingUsername(false);
         return;
@@ -925,7 +453,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
       uid: authData.uid,
       email: authData.email,
       displayName: authData.displayName,
-      isOffline,
+      isOffline: false,
       username: username.trim()
     });
   };
@@ -941,232 +469,8 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         <div className="p-8 space-y-6">
           <AnimatePresence mode="wait">
             
-            {/* 1. WEBPAGE PORTAL: INCOMING DEVICE LINKING SUCCESS */}
-            {incomingPairCode && pairingSuccess && (
-              <motion.div
-                key="pairing-success"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-6 text-center py-6"
-              >
-                <div className="mx-auto w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center shadow-lg animate-bounce">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-400" />
-                </div>
-                <div className="space-y-2">
-                  <h2 className="text-xl font-bold font-display text-white">
-                    Device Linked Successfully!
-                  </h2>
-                  <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto">
-                    Your Android app has been paired with your Google Account <code className="px-1.5 py-0.5 bg-gray-950 rounded text-emerald-400 font-mono text-[11px]">{auth.currentUser?.email}</code>.
-                  </p>
-                </div>
-                <div className="p-4 bg-emerald-950/10 border border-emerald-900/30 rounded-2xl text-[11px] text-gray-300 leading-relaxed font-sans">
-                  You can now return to the StudyOS app on your Android device. It will automatically log you in. You can close this web browser tab.
-                </div>
-                <button
-                  onClick={() => window.close()}
-                  className="w-full py-2.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
-                >
-                  Close Window
-                </button>
-              </motion.div>
-            )}
-
-            {/* 2. WEBPAGE PORTAL: ALREADY SIGNED-IN USER PAIRING REQUEST */}
-            {incomingPairCode && auth.currentUser && !pairingSuccess && (
-              <motion.div
-                key="pairing-auth-request"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="space-y-6 text-center py-4"
-              >
-                <div className="mx-auto w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center shadow-lg">
-                  <Link2 className="w-8 h-8 text-blue-400 animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <h2 className="text-xl font-bold font-display text-white">
-                    Link Android Device
-                  </h2>
-                  <p className="text-xs text-gray-400 max-w-xs mx-auto leading-relaxed font-sans">
-                    StudyOS wants to link your Android device using code <strong className="text-blue-400 font-mono text-sm tracking-wider">{incomingPairCode}</strong> to your active Google Account:
-                  </p>
-                  <div className="inline-block px-3 py-1.5 bg-gray-950 border border-gray-800 rounded-xl text-xs font-mono text-blue-300 mt-2">
-                    {auth.currentUser.email}
-                  </div>
-                </div>
-
-                {authError && (
-                  <div className="p-3 bg-red-950/20 border border-red-900/50 rounded-xl text-xs text-red-400 text-left font-sans">
-                    {authError.message}
-                  </div>
-                )}
-
-                <div className="space-y-3 pt-2">
-                  <button
-                    onClick={() => handleAuthorizeDevice()}
-                    disabled={isPairingSubmitting}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg"
-                  >
-                    {isPairingSubmitting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <ShieldCheck className="w-4 h-4" />
-                    )}
-                    <span>Authorize & Link Device</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => auth.signOut()}
-                    className="w-full py-2 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-400 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
-                  >
-                    Use a different account
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* 3. NATIVE ANDROID: PAIRING CODE GENERATOR & INSTRUCTIONS SCREEN */}
-            {isNativeAndroid && deviceLinkStatus !== 'idle' && (
-              <motion.div
-                key="android-pairing-screen"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="space-y-6 text-center py-4"
-              >
-                <div className="mx-auto w-16 h-16 bg-indigo-500/10 border border-indigo-500/20 rounded-full flex items-center justify-center shadow-lg">
-                  <Smartphone className="w-8 h-8 text-indigo-400" />
-                </div>
-
-                <div className="space-y-2">
-                  <h2 className="text-xl font-bold font-display text-white">
-                    Verify Google Account
-                  </h2>
-                  <p className="text-xs text-gray-400 max-w-xs mx-auto leading-relaxed font-sans">
-                    To connect your Google Account securely on Android, please verify this device.
-                  </p>
-                </div>
-
-                {deviceLinkStatus === 'generating' && (
-                  <div className="py-8 flex flex-col items-center justify-center gap-3">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                    <p className="text-xs text-gray-500 font-mono">Generating secure code...</p>
-                  </div>
-                )}
-
-                {deviceLinkStatus === 'waiting' && (
-                  <div className="space-y-6">
-                    {/* The 6-digit Code */}
-                    <div className="bg-gray-950 border border-gray-900 rounded-2xl p-5 shadow-inner">
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-                        Your Verification Code
-                      </div>
-                      <div className="text-3xl font-black tracking-[0.2em] text-blue-400 font-mono pl-[0.2em]">
-                        {deviceLinkCode?.slice(0,3)} {deviceLinkCode?.slice(3)}
-                      </div>
-                    </div>
-
-                    {/* Instruction Steps */}
-                    <div className="text-left space-y-4 bg-gray-950/40 p-4 border border-gray-900 rounded-2xl">
-                      <div className="flex gap-3 items-start">
-                        <div className="w-5 h-5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-[10px] font-bold mt-0.5 flex-shrink-0">
-                          1
-                        </div>
-                        <div className="text-xs text-gray-300 leading-relaxed font-sans flex-1">
-                          Click the button below to authorize on this device, or open this link on your computer/phone:
-                          <div className="mt-1.5 flex items-center gap-2 bg-gray-950 rounded-lg p-2 border border-gray-900">
-                            <span className="text-[10px] font-mono text-gray-400 truncate select-all flex-1">
-                              {window.location.host}
-                            </span>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?pair_code=${deviceLinkCode}`);
-                                setCopiedLink(true);
-                                setTimeout(() => setCopiedLink(false), 2000);
-                              }}
-                              className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-900 transition-all cursor-pointer"
-                            >
-                              {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-3 items-start">
-                        <div className="w-5 h-5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-[10px] font-bold mt-0.5 flex-shrink-0">
-                          2
-                        </div>
-                        <p className="text-xs text-gray-300 leading-relaxed font-sans">
-                          Sign in with your Google account.
-                        </p>
-                      </div>
-
-                      <div className="flex gap-3 items-start">
-                        <div className="w-5 h-5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center text-[10px] font-bold mt-0.5 flex-shrink-0">
-                          3
-                        </div>
-                        <p className="text-xs text-gray-300 leading-relaxed font-sans">
-                          This screen will update and sign you in automatically!
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 pt-2">
-                      <button
-                        onClick={() => window.open(`${window.location.origin}${window.location.pathname}?pair_code=${deviceLinkCode}`, '_blank')}
-                        className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>Authorize on this Device</span>
-                      </button>
-
-                      <button
-                        onClick={() => setDeviceLinkStatus('idle')}
-                        className="w-full py-2 bg-gray-900/60 border border-gray-800 hover:bg-gray-800 text-gray-400 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-
-                    <p className="text-[10px] text-gray-500 flex items-center justify-center gap-1 animate-pulse font-sans">
-                      <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
-                      <span>Waiting for secure pairing authorization...</span>
-                    </p>
-                  </div>
-                )}
-
-                {deviceLinkStatus === 'failed' && (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-red-950/20 border border-red-900/40 rounded-2xl text-left space-y-2">
-                      <div className="flex items-center gap-2 text-red-400 font-bold text-xs">
-                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                        <span>Pairing Timed Out or Failed</span>
-                      </div>
-                      <p className="text-xs text-gray-300 leading-relaxed font-sans">
-                        The 5-minute session expired or there was a connection error. Please try again.
-                      </p>
-                    </div>
-                    <button
-                      onClick={startDevicePairing}
-                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
-                    >
-                      Try Again
-                    </button>
-                    <button
-                      onClick={() => setDeviceLinkStatus('idle')}
-                      className="w-full py-2 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-400 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
-                    >
-                      Back
-                    </button>
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {/* 4. STEP 1: WELCOME SCREEN */}
-            {step === 'welcome' && (!incomingPairCode || !auth.currentUser || pairingSuccess) && (!isNativeAndroid || deviceLinkStatus === 'idle') && (
+            {/* STEP 1: WELCOME SCREEN */}
+            {step === 'welcome' && (
               <motion.div
                 key="welcome"
                 initial={{ opacity: 0, y: 15 }}
@@ -1204,23 +508,11 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                     </p>
                     <button
                       onClick={() => window.open(window.location.href, '_blank')}
-                      className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
+                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>Open App in New Tab</span>
                     </button>
-                  </div>
-                )}
-
-                {incomingPairCode && (
-                  <div className="p-4 bg-blue-950/20 border border-blue-900/40 rounded-2xl text-left space-y-2 shadow-md">
-                    <div className="flex items-center gap-2 text-blue-400 font-bold text-xs">
-                      <Link2 className="w-4 h-4 text-blue-400 flex-shrink-0 animate-pulse" />
-                      <span>Device Pairing Mode Active</span>
-                    </div>
-                    <p className="text-[11px] text-gray-300 leading-relaxed font-sans">
-                      You are linking an Android device with code <strong className="text-blue-300 font-mono text-xs">{incomingPairCode}</strong>. Please sign in with Google below to authorize this device instantly.
-                    </p>
                   </div>
                 )}
 
@@ -1232,18 +524,6 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                     </div>
                     <p className="text-[11px] text-gray-300 leading-relaxed font-sans">
                       {redirectWarning}
-                    </p>
-                  </div>
-                )}
-
-                {isNativeAndroid && (
-                  <div className="p-4 bg-indigo-950/20 border border-indigo-900/40 rounded-2xl text-left space-y-2 shadow-md">
-                    <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs animate-pulse">
-                      <Smartphone className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-                      <span>Android App Mode Fully Enabled</span>
-                    </div>
-                    <p className="text-[11px] text-gray-300 leading-relaxed font-sans">
-                      Secure Google Account Sync is active! Click <strong>Continue with Google</strong> below to pair this device with your Google account.
                     </p>
                   </div>
                 )}
@@ -1280,16 +560,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                       </div>
                     </div>
                     
-                    <div className="pt-1.5 border-t border-red-900/30 flex flex-col gap-2">
-                      {!isNativeAndroid && (
-                        <button
-                          onClick={handleContinueOffline}
-                          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Continue Offline instead</span>
-                        </button>
-                      )}
+                    <div className="pt-1.5 border-t border-red-900/30">
                       <button
                         onClick={handleSignOutAndReset}
                         className="w-full py-2 bg-gray-900/80 border border-gray-800 hover:bg-gray-800 hover:border-gray-700 text-gray-300 hover:text-white text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
@@ -1301,166 +572,42 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                   </div>
                 )}
 
-                {/* Modern Authentication Method Switcher Tabs */}
-                <div className="flex p-1 bg-gray-950 border border-gray-900 rounded-2xl">
+                <div className="space-y-3 pt-1">
+                  {/* Google Sign In */}
                   <button
-                    type="button"
-                    onClick={() => { setAuthMethod('google'); setAuthError(null); }}
-                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                      authMethod === 'google'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
+                    onClick={handleGoogleSignIn}
+                    disabled={isLoadingAuth}
+                    className="w-full py-3.5 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-50 active:scale-98 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md"
                   >
-                    <span>Google Sync</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setAuthMethod('email'); setAuthError(null); }}
-                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                      authMethod === 'email'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    <span>Email Sync</span>
+                    {isLoadingAuth ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                        />
+                      </svg>
+                    )}
+                    <span>Continue with Google</span>
                   </button>
                 </div>
 
-                {authMethod === 'google' && (
-                  <div className="space-y-3 pt-1">
-                    {/* Google Sign In */}
-                    <button
-                      onClick={handleGoogleSignIn}
-                      disabled={isLoadingAuth}
-                      className="w-full py-3.5 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-50 active:scale-98 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md"
-                    >
-                      {isLoadingAuth ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
-                      ) : (
-                        <svg className="w-4 h-4" viewBox="0 0 24 24">
-                          <path
-                            fill="#4285F4"
-                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                          />
-                          <path
-                            fill="#34A853"
-                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                          />
-                          <path
-                            fill="#FBBC05"
-                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                          />
-                          <path
-                            fill="#EA4335"
-                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                          />
-                        </svg>
-                      )}
-                      <span>Continue with Google</span>
-                    </button>
-
-                    {/* Study Offline Option */}
-                    {!isNativeAndroid && (
-                      <button
-                        type="button"
-                        onClick={handleContinueOffline}
-                        disabled={isLoadingAuth}
-                        className="w-full py-3 bg-[#111114] border border-gray-800 hover:bg-gray-900 hover:border-gray-700 text-gray-400 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-98"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5 text-blue-400" />
-                        <span>Study Offline (Local Session)</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {authMethod === 'email' && (
-                  <form onSubmit={(e) => { e.preventDefault(); handleEmailSignIn(); }} className="space-y-4 pt-1">
-                    <div className="space-y-3.5">
-                      <div className="space-y-1 text-left">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                          Email Address
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          value={emailInput}
-                          onChange={(e) => setEmailInput(e.target.value)}
-                          className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all font-mono"
-                          placeholder="your-email@example.com"
-                        />
-                      </div>
-                      <div className="space-y-1 text-left">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                          Password
-                        </label>
-                        <input
-                          type="password"
-                          required
-                          value={passwordInput}
-                          onChange={(e) => setPasswordInput(e.target.value)}
-                          className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all font-mono"
-                          placeholder="Min. 6 characters"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2.5 pt-1">
-                      <button
-                        type="submit"
-                        disabled={isLoadingAuth}
-                        className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 active:scale-98 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md font-sans"
-                      >
-                        {isLoadingAuth ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-white" />
-                        ) : (
-                          <Check className="w-4 h-4" />
-                        )}
-                        <span>{isSignUp ? 'Create Cloud Account' : 'Sign In with Email'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleGuestCloudLogin}
-                        disabled={isLoadingAuth}
-                        className="w-full py-3 bg-gradient-to-r from-indigo-950/40 to-blue-950/40 border border-indigo-900/60 hover:from-indigo-950/60 hover:to-blue-950/60 hover:border-indigo-800/80 text-indigo-300 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md font-sans"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-                        <span>✨ One-Click Guest Cloud Login</span>
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-gray-500 font-sans pt-1">
-                      <span>{isSignUp ? "Already have an account?" : "New to StudyOS?"}</span>
-                      <button
-                        type="button"
-                        onClick={() => { setIsSignUp(!isSignUp); setAuthError(null); }}
-                        className="text-blue-400 hover:text-blue-300 font-bold underline transition-all cursor-pointer"
-                      >
-                        {isSignUp ? "Sign In Instead" : "Create Account"}
-                      </button>
-                    </div>
-
-                    {!isNativeAndroid && (
-                      <div className="pt-2 border-t border-gray-900">
-                        <button
-                          type="button"
-                          onClick={handleContinueOffline}
-                          disabled={isLoadingAuth}
-                          className="w-full py-2.5 bg-[#111114] border border-gray-800 hover:bg-gray-900 hover:border-gray-700 text-gray-400 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-98"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5 text-blue-400" />
-                          <span>Study Offline (Local Session)</span>
-                        </button>
-                      </div>
-                    )}
-                  </form>
-                )}
-
                 <div className="text-[10px] text-gray-500 pt-2 flex items-center justify-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-blue-500/80" />
-                  <span>Secure Account Authentication</span>
+                  <span>Secure Google Authentication</span>
                 </div>
               </motion.div>
             )}
