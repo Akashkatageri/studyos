@@ -11,7 +11,8 @@ import {
   Check,
   Smartphone,
   Eye,
-  Info
+  Info,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -34,6 +35,7 @@ export default function AndroidWidgetSimulator({
   const [copied, setCopied] = useState(false);
   const [petCount, setPetCount] = useState(0);
   const [isHeartAnimating, setIsHeartAnimating] = useState(false);
+  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
 
   const streak = userState.academicStudyStreak ?? userState.streak ?? 0;
   const focusMinutes = userState.todayFocusMinutes || 0;
@@ -336,24 +338,111 @@ export default function AndroidWidgetSimulator({
           </div>
           <div className="flex gap-2">
             <button
-              onClick={handleCopyInstructions}
+              onClick={() => setIsInstructionsOpen(true)}
               className="flex-1 py-1.5 bg-gray-900 hover:bg-gray-850 active:scale-98 text-[10px] font-bold text-gray-300 hover:text-white rounded-lg border border-gray-800 transition-all flex items-center justify-center gap-1 cursor-pointer"
             >
-              {copied ? (
-                <>
-                  <Check className="w-3 h-3 text-emerald-400" />
-                  <span>Copied Instructions!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3 h-3" />
-                  <span>How to Add to Phone Screen</span>
-                </>
-              )}
+              <Smartphone className="w-3 h-3 text-emerald-400" />
+              <span>How to Add to Phone Screen</span>
             </button>
           </div>
         </div>
       </div>
+
+      {/* Step-by-Step Widget Installation Modal */}
+      <AnimatePresence>
+        {isInstructionsOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="max-w-md w-full bg-[#0D1115] border border-gray-850 rounded-2xl p-6 space-y-6 shadow-2xl relative overflow-hidden text-left"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-gray-850 pb-3">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider font-mono">How to Add Widget</h3>
+                </div>
+                <button
+                  onClick={() => setIsInstructionsOpen(false)}
+                  className="p-1 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Steps List */}
+              <div className="space-y-4">
+                {/* Step 1 */}
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
+                    1
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wide font-mono">Install StudyOS</h4>
+                    <p className="text-[11px] text-gray-400 leading-normal">
+                      Open StudyOS in Google Chrome or Safari on your phone. Tap the browser's menu (three dots or Share button) and click <span className="text-blue-400 font-semibold">"Install App"</span> or <span className="text-blue-400 font-semibold">"Add to Home Screen"</span>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
+                    2
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wide font-mono">Go to Widgets</h4>
+                    <p className="text-[11px] text-gray-400 leading-normal">
+                      Go to your phone's Home Screen. Long-press on any empty space, and select <span className="text-blue-400 font-semibold">"Widgets"</span> from the options menu.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
+                    3
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wide font-mono">Place on Screen</h4>
+                    <p className="text-[11px] text-gray-400 leading-normal">
+                      Scroll to find <span className="text-blue-400 font-semibold">"StudyOS"</span> (or Chrome widgets if running as a web shortcut). Drag and drop the 2x1 Study Companion widget onto your home screen!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2 border-t border-gray-850">
+                <button
+                  onClick={handleCopyInstructions}
+                  className="flex-1 py-2.5 bg-gray-900 hover:bg-gray-850 active:scale-98 text-xs font-bold text-gray-300 hover:text-white rounded-xl border border-gray-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Copied Instructions!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy Steps</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setIsInstructionsOpen(false)}
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-98 text-xs font-bold text-white rounded-xl transition-all flex items-center justify-center cursor-pointer shadow-md shadow-blue-600/20"
+                >
+                  Got It
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

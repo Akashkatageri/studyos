@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserState, Subject, Topic, Revision } from './types';
 import { getTemplateSubjects, COURSE_TEMPLATES, findTopicById } from './data';
-import { Home, ListCollapse, BarChart3, Users, User, Settings, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus, Smartphone, Check, Loader2 } from 'lucide-react';
+import { Home, ListCollapse, BarChart3, Users, User, Settings, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus, Smartphone, Check, Loader2, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Components
@@ -176,6 +176,16 @@ export default function App() {
       }
     }
   }, [userState, pendingPairCode, pairingSuccess, isPairingLoading]);
+
+  // Auto-redirect back to native app when successfully paired in browser
+  useEffect(() => {
+    if (pendingPairCode && userState && userState.uid) {
+      const redirectTimer = setTimeout(() => {
+        window.location.href = "com.studyos.app://";
+      }, 1500);
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [pendingPairCode, userState]);
 
   // Semester manual transition states
   const [isSemTransitionOpen, setIsSemTransitionOpen] = useState(false);
@@ -686,9 +696,17 @@ export default function App() {
             </div>
           </div>
 
-          <div className="pt-2">
-            <p className="text-xs text-gray-500 leading-relaxed">
-              You can now safely close this browser window and return to the StudyOS app on your phone!
+          <div className="pt-2 space-y-4">
+            <a
+              href="com.studyos.app://"
+              className="w-full py-3 bg-blue-600 hover:bg-blue-500 active:scale-98 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-blue-600/20"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Open StudyOS App</span>
+            </a>
+
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              If the app doesn't open automatically, click the button above or manually return to the StudyOS app on your phone.
             </p>
           </div>
         </div>

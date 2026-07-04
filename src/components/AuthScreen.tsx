@@ -106,6 +106,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
   const [redirectWarning, setRedirectWarning] = useState<string | null>(null);
   const [usernameSubmitError, setUsernameSubmitError] = useState<string | null>(null);
   const [isSubmittingUsername, setIsSubmittingUsername] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const [isIframe, setIsIframe] = useState(false);
   const [showIframeWarning, setShowIframeWarning] = useState(false);
@@ -572,13 +573,21 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                 className="space-y-6 text-center"
               >
                 {/* App Brand Icon */}
-                <div className="mx-auto w-20 h-20 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(124,92,255,0.35)] hover:scale-105 transition-transform duration-300">
-                  <img 
-                    src="/logo.png" 
-                    alt="StudyOS Logo" 
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
+                <div className="mx-auto w-20 h-20 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:scale-105 transition-transform duration-300 flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 border border-blue-400/20">
+                  {!logoError ? (
+                    <img 
+                      src="/logo.png" 
+                      alt="StudyOS Logo" 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={() => setLogoError(true)}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white relative">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15),transparent_70%)] animate-pulse" />
+                      <BookOpen className="w-10 h-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)]" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -696,26 +705,6 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                     )}
                     <span>Continue with Google</span>
                   </button>
-
-                  {/* Device Pairing Option (Option A) */}
-                  <div className="pt-2.5 border-t border-gray-850 mt-4 space-y-2">
-                    <button
-                      type="button"
-                      onClick={handleStartPairingFlow}
-                      disabled={isGeneratingCode}
-                      className="w-full py-3 bg-gray-900 border border-gray-800 hover:bg-gray-850 hover:border-gray-700 disabled:opacity-55 active:scale-98 text-gray-300 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                    >
-                      {isGeneratingCode ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-                      ) : (
-                        <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-                      )}
-                      <span>Pair Android / Mobile App (Option A)</span>
-                    </button>
-                    <p className="text-[10px] text-gray-500 leading-normal max-w-xs mx-auto">
-                      Are you running the Android application or widget? Generate an instant Pairing Code under Option A to sync across devices seamlessly!
-                    </p>
-                  </div>
                 </div>
 
                 <div className="text-[10px] text-gray-500 pt-2 flex items-center justify-center gap-1">

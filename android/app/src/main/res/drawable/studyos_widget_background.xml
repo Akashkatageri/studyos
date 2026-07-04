@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- Cosmic Obsidian Dark Slate Background -->
+    <solid android:color="#0C1014" />
+    
+    <!-- 1dp premium border representing StudyOS slate layout -->
+    <stroke
+        android:width="1.5dp"
+        android:color="#1F2937" />
+        
+    <!-- Smooth rounded corners (20dp to match the App's cards) -->
+    <corners android:radius="18dp" />
+</shape>
