@@ -305,9 +305,8 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
     } as UserState;
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, `users/${uid}`);
+    throw err;
   }
-  
-  return null;
 }
 
 // Merges local offline progress with cloud data to prevent loss

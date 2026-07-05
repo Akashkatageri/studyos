@@ -19,7 +19,7 @@ import TopicViewModal from './components/TopicViewModal';
 import CompletionAnimations from './components/CompletionAnimations';
 import BadgeUnlockModal from './components/BadgeUnlockModal';
 import { getUnlockedAchievementIds, ACHIEVEMENT_DEFS } from './utils/achievements';
-import { auth, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount } from './lib/firebase';
+import { auth, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount, mergeLocalAndCloudStates } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getSubjectsForCycle } from './utils/cycleSubjects';
 import { SoundManager } from './utils/soundManager';
@@ -362,19 +362,32 @@ export default function App() {
           }
 
           if (cloudData && cloudData.onboarded) {
-            const merged: UserState = {
-              ...cloudData,
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || undefined,
-              displayName: firebaseUser.displayName || cloudData.displayName || undefined,
-              isOffline: false,
-            };
+            const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+            let local = cached ? JSON.parse(cached) : null;
+            let merged: UserState;
+
+            if (local && local.username && local.uid === firebaseUser.uid) {
+              // Merge local offline progress with cloud data to prevent any data loss!
+              merged = mergeLocalAndCloudStates(local, cloudData);
+              merged.isOffline = false;
+            } else {
+              merged = {
+                ...cloudData,
+                uid: firebaseUser.uid,
+                email: firebaseUser.email || undefined,
+                displayName: firebaseUser.displayName || cloudData.displayName || undefined,
+                isOffline: false,
+              };
+            }
             setUserState(merged);
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
           } else {
             // Authenticated but no cloud profile yet or database is unreachable
             const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
             let local = cached ? JSON.parse(cached) : null;
+            // If we know a cloud profile exists (e.g. from cache) but loading failed, treat it as offline
+            const shouldBeOffline = dbErrorHappened || (local && local.onboarded && cloudData === null);
+
             // CRITICAL SECURITY & AUTHENTICATION FIX: Only restore local storage state if the cached UID matches the current Google user ID.
             // This prevents a new account from being hijacked and populated with the previous account's local cache.
             if (local && local.username && local.uid === firebaseUser.uid) {
@@ -383,7 +396,7 @@ export default function App() {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email || undefined,
                 displayName: firebaseUser.displayName || local.displayName || undefined,
-                isOffline: dbErrorHappened || local.isOffline === true,
+                isOffline: shouldBeOffline || local.isOffline === true,
               };
               setUserState(updatedLocal);
             } else {
@@ -392,7 +405,7 @@ export default function App() {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email || undefined,
                 displayName: firebaseUser.displayName || undefined,
-                isOffline: dbErrorHappened,
+                isOffline: shouldBeOffline,
                 onboarded: false,
               } as UserState);
             }
@@ -438,6 +451,79 @@ export default function App() {
     return () => {
       authUnsubscribed = true;
       unsubscribe();
+    };
+  }, []);
+
+  // 1e. Auto-reconnection & background resume synchronization
+  useEffect(() => {
+    let active = true;
+
+    const performSyncOnReconnect = async () => {
+      // Access the latest state safely using our ref
+      const currentState = userStateRef.current;
+      if (!currentState || !currentState.uid || !currentState.onboarded) return;
+
+      console.log("Internet connection detected or app resumed. Checking cloud state...");
+      
+      try {
+        const cloudData = await loadUserFromFirestore(currentState.uid);
+        if (!active) return;
+
+        if (cloudData) {
+          // Merge local offline progress into cloud data to prevent any data loss
+          const merged = mergeLocalAndCloudStates(currentState, cloudData);
+          const updatedState = {
+            ...merged,
+            isOffline: false,
+          };
+          
+          setUserState(updatedState);
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedState));
+
+          // Trigger a silent sync to cloud just to make sure Firestore is fully updated with any offline changes
+          await syncUserToFirestore(currentState.uid, updatedState);
+
+          setToast({
+            title: "📶 Back Online",
+            message: "Your internet connection is restored! Your progress has been successfully merged and synchronized with the cloud.",
+            type: "success"
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to automatically synchronize with cloud database on reconnect:", err);
+      }
+    };
+
+    const handleOnline = () => {
+      performSyncOnReconnect();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // App resumed or tab selected. Check if we're offline but navigator.onLine is true.
+        const currentState = userStateRef.current;
+        if (currentState && currentState.isOffline && navigator.onLine) {
+          performSyncOnReconnect();
+        }
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also do a proactive connection check if we boot/resume and think we are offline but navigator says online
+    const initialCheck = setTimeout(() => {
+      const currentState = userStateRef.current;
+      if (currentState && currentState.isOffline && navigator.onLine) {
+        performSyncOnReconnect();
+      }
+    }, 1500);
+
+    return () => {
+      active = false;
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(initialCheck);
     };
   }, []);
 
