@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Capacitor } from '@capacitor/core';
+import logoPng from '../assets/logo.png';
+import logoSvg from '../assets/logo.svg';
 import { 
   BookOpen, 
   ChevronRight, 
@@ -15,7 +17,8 @@ import {
   Smartphone,
   Copy,
   Check,
-  ArrowLeft
+  ArrowLeft,
+  HardDrive
 } from 'lucide-react';
 import { auth, googleProvider, isUsernameUnique, loadUserFromFirestore, db, createDevicePairingCode, listenToDevicePairing } from '../lib/firebase';
 import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
@@ -107,6 +110,36 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
   const [usernameSubmitError, setUsernameSubmitError] = useState<string | null>(null);
   const [isSubmittingUsername, setIsSubmittingUsername] = useState(false);
   const [logoError, setLogoError] = useState(false);
+
+  const [cachedUser, setCachedUser] = useState<any | null>(null);
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('studyos-user-state');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.username) {
+          setCachedUser(parsed);
+        }
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }, []);
+
+  const handleContinueOffline = () => {
+    if (cachedUser) {
+      onAuthCompleteRef.current({
+        uid: cachedUser.uid,
+        email: cachedUser.email,
+        displayName: cachedUser.displayName,
+        isOffline: true,
+        username: cachedUser.username,
+        onboarded: cachedUser.onboarded,
+        fullState: { ...cachedUser, isOffline: true }
+      });
+    }
+  };
 
   const [isIframe, setIsIframe] = useState(false);
   const [showIframeWarning, setShowIframeWarning] = useState(false);
@@ -610,17 +643,22 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                 <div className="mx-auto w-20 h-20 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:scale-105 transition-transform duration-300 flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 border border-blue-400/20">
                   {!logoError ? (
                     <img 
-                      src="/logo.png" 
+                      src={logoPng} 
                       alt="StudyOS Logo" 
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover animate-fade-in"
                       referrerPolicy="no-referrer"
-                      onError={() => setLogoError(true)}
+                      onError={() => {
+                        console.warn("logoPng failed to load, falling back to logoSvg");
+                        setLogoError(true);
+                      }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white relative">
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15),transparent_70%)] animate-pulse" />
-                      <BookOpen className="w-10 h-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)]" />
-                    </div>
+                    <img 
+                      src={logoSvg} 
+                      alt="StudyOS Logo" 
+                      className="w-full h-full p-2.5 object-contain animate-fade-in"
+                      referrerPolicy="no-referrer"
+                    />
                   )}
                 </div>
 
@@ -708,7 +746,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                   </div>
                 )}
 
-                <div className="space-y-3 pt-1">
+                 <div className="space-y-3 pt-1">
                   {/* Google Sign In */}
                   <button
                     onClick={handleGoogleSignIn}
@@ -739,6 +777,17 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                     )}
                     <span>Continue with Google</span>
                   </button>
+
+                  {cachedUser && (
+                    <button
+                      onClick={handleContinueOffline}
+                      disabled={isLoadingAuth}
+                      className="w-full py-3.5 bg-gray-900/40 text-gray-300 hover:text-white border border-gray-800/80 hover:bg-gray-800 disabled:opacity-50 active:scale-98 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      <HardDrive className="w-4 h-4 text-indigo-400" />
+                      <span>Access Cached Data Offline ({cachedUser.username})</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="text-[10px] text-gray-500 pt-2 flex items-center justify-center gap-1">

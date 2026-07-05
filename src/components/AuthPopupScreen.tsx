@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
-import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import logoPng from '../assets/logo.png';
 
 export default function AuthPopupScreen() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('loading');
@@ -131,13 +132,13 @@ export default function AuthPopupScreen() {
           return;
         }
 
-        // 2. Check if already logged in (standard session restore)
+        // 2. Clear any stale session in the popup domain if we don't have a redirect result
         if (auth.currentUser && active) {
-          await handleAuthSuccess(auth.currentUser);
-          return;
+          console.log("Signing out stale session to allow clean account selection.");
+          await signOut(auth);
         }
 
-        // 3. Instead of redirecting automatically, set status to idle to let the user sign in with popup
+        // 3. Set status to idle to let the user sign in with popup
         if (active) {
           setStatus('idle');
         }
@@ -175,8 +176,13 @@ export default function AuthPopupScreen() {
       
       <div className="w-full max-w-sm bg-[#141A1F] rounded-3xl border border-gray-800 p-8 space-y-6 shadow-2xl relative z-10">
         {/* Brand */}
-        <div className="mx-auto w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.3)] animate-pulse">
-          <BookOpen className="w-6 h-6 text-white" />
+        <div className="mx-auto w-16 h-16 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:scale-105 transition-transform duration-300 flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 border border-blue-400/20">
+          <img 
+            src={logoPng} 
+            alt="StudyOS Logo" 
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
         </div>
 
         {status === 'idle' && (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserState, Subject, Topic, Revision } from './types';
 import { getTemplateSubjects, COURSE_TEMPLATES, findTopicById } from './data';
-import { Home, ListCollapse, BarChart3, Users, User, Settings, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus, Smartphone, Check, Loader2, ExternalLink } from 'lucide-react';
+import { Home, ListCollapse, BarChart3, Users, User, Settings, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus, Smartphone, Check, Loader2, ExternalLink, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Components
@@ -24,6 +24,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { getSubjectsForCycle } from './utils/cycleSubjects';
 import { SoundManager } from './utils/soundManager';
 import { getLocalDateString } from './utils/dateUtils';
+import { syncAndroidWidget } from './utils/widgetSync';
 import { getLevelAndProgress, getDifficultyConfig, getSubjectDifficulty } from './utils/xpUtils';
 
 // New Study Habit Components
@@ -334,9 +335,9 @@ export default function App() {
 
       // Access latest userState from ref to safely check logged-in status
       const currentState = userStateRef.current;
-      const isSameUser = currentState && firebaseUser && currentState.uid === firebaseUser.uid;
+      const isSameUser = currentState && firebaseUser && currentState.uid === firebaseUser.uid && !currentState.isOffline;
 
-      // If the current state UID already matches the incoming firebaseUser UID, ignore redundant triggers
+      // If the current state UID already matches the incoming firebaseUser UID, and is online, ignore redundant triggers
       // to prevent race conditions during onboarding and username selection.
       if (isSameUser) {
         return;
@@ -404,12 +405,9 @@ export default function App() {
               const parsed = JSON.parse(cached);
               if (parsed.isOffline || parsed.onboarded) {
                 // If the profile in cache has a uid and isOffline is false, but firebaseUser is null,
-                // it means their Firebase session expired/logged out!
-                // In that case, we should NOT automatically sign them in. We should ask them to log in again.
+                // it might mean there is no internet connection or session is restoring offline.
+                // We automatically sign them in using cached data and transition to offline mode, so they aren't kicked out.
                 if (!parsed.isOffline && parsed.uid) {
-                  // Fall back to offline mode for the cached user state.
-                  // Since Firebase is still asynchronously initializing or has no active session,
-                  // we let the user access their offline cache instead of wiping it.
                   if (!parsed.inProgressTopics) {
                     parsed.inProgressTopics = [];
                   }
@@ -446,6 +444,9 @@ export default function App() {
   // 1c. Real-time synchronisation of UserState to Firestore with debouncing
   useEffect(() => {
     if (userState && userState.uid && userState.onboarded) {
+      // Sync with the Android native widget immediately when state changes
+      syncAndroidWidget(userState);
+
       const timer = setTimeout(() => {
         syncUserToFirestore(userState.uid!, userState).catch(err => {
           console.error("Real-time cloud synchronization error:", err);
@@ -803,13 +804,13 @@ export default function App() {
           saveState(newState);
         }} 
         onSignOut={async () => {
+          localStorage.removeItem(LOCAL_STORAGE_KEY);
+          setUserState(null);
           try {
             await auth.signOut();
           } catch (err) {
             console.warn("Error signing out:", err);
           }
-          localStorage.removeItem(LOCAL_STORAGE_KEY);
-          setUserState(null);
         }}
       />
     );
@@ -1232,13 +1233,13 @@ export default function App() {
 
   const handleLogout = async () => {
     setIsLoading(true);
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    setUserState(null);
     try {
       await auth.signOut();
     } catch (err) {
       console.warn("Error signing out:", err);
     }
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    setUserState(null);
     setIsLoading(false);
   };
 
@@ -1259,6 +1260,13 @@ export default function App() {
         userState={userState}
         onTabChange={(tab) => handleUpdateState({ activeTab: tab })}
       />
+
+      {userState.isOffline && (
+        <div id="offline-banner" className="bg-amber-500/10 border-b border-amber-500/10 px-4 py-2 flex items-center justify-center gap-2 text-xs font-semibold text-amber-400 select-none backdrop-blur-md">
+          <WifiOff className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+          <span>No internet connection detected. Working in offline mode (changes will sync once you are back online).</span>
+        </div>
+      )}
 
       {/* Main Content Sections */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 pt-6 pb-24 md:pt-6 md:pb-32">
