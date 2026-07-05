@@ -455,13 +455,6 @@ export default function FriendsTab({ userState, onUpdateState, onTriggerToast }:
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#141822]" />
                 )}
               </button>
-
-              <button
-                onClick={handleGoogleSignOut}
-                className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
-              >
-                Logout
-              </button>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">

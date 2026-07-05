@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
 import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../lib/firebase';
+import { auth, googleProvider, db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function AuthPopupScreen() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [isPartitionError, setIsPartitionError] = useState(false);
+
+  // Parse session_id from URL query params
+  const queryParams = new URLSearchParams(window.location.search);
+  const sessionId = queryParams.get('session_id');
 
   const handleAuthSuccess = async (user: any) => {
     setStatus('success');
@@ -30,6 +35,20 @@ export default function AuthPopupScreen() {
       },
       timestamp: Date.now()
     };
+
+    // If sessionId is present, write the payload to Firestore as a secure bridge
+    if (sessionId) {
+      try {
+        await setDoc(doc(db, 'auth_sessions', sessionId), {
+          status: 'success',
+          payload: authPayload,
+          createdAt: new Date().toISOString()
+        });
+        console.log("Auth session payload successfully posted to cloud bridge.");
+      } catch (cloudErr) {
+        console.error("Failed to post auth payload to cloud bridge:", cloudErr);
+      }
+    }
 
     // Fallback for mobile browser iframes where window.opener might be null/blocked
     try {

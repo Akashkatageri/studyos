@@ -405,10 +405,13 @@ export default function AndroidWidgetSimulator({
                   <div className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
                     3
                   </div>
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wide font-mono">Place on Screen</h4>
-                    <p className="text-[11px] text-gray-400 leading-normal">
-                      Scroll to find <span className="text-blue-400 font-semibold">"StudyOS"</span> (or Chrome widgets if running as a web shortcut). Drag and drop the 2x1 Study Companion widget onto your home screen!
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wide font-mono">Platform Limitations & Widget Support</h4>
+                    <p className="text-[11px] text-gray-400 leading-relaxed">
+                      Please note: Interactive 2x1 home screen widgets are a premium feature of our <strong>native Android Application (.apk)</strong>.
+                    </p>
+                    <p className="text-[11px] text-gray-400 leading-relaxed">
+                      If you are running StudyOS as a <strong>PWA / Web Shortcut</strong> inside Google Chrome or Safari, mobile browsers do not support native home screen widgets. Instead, you can add StudyOS as a high-performance home screen app shortcut icon for instant one-tap access, or link a native device using the Pairing Code in Settings to sync widgets!
                     </p>
                   </div>
                 </div>

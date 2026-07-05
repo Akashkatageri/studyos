@@ -173,6 +173,7 @@ export async function syncUserToFirestore(uid: string, state: UserState): Promis
       joinedDate: state.joinedDate || new Date().toISOString(),
       status: publicProfile.status || 'offline',
       lastActive: state.lastActiveDate || null,
+      lastActiveDate: state.lastActiveDate || null,
       badges: state.unlockedAchievements || [],
       isPublic: state.isPublic !== false,
       allowFriendRequests: state.allowFriendRequests !== false,
@@ -227,6 +228,7 @@ export async function syncUserToFirestore(uid: string, state: UserState): Promis
       vacationMode: state.vacationMode || { active: false, startDate: null, endDate: null },
       semesterBreakMode: state.semesterBreakMode || false,
       lastFocusDate: state.lastFocusDate || null,
+      lastActiveDate: state.lastActiveDate || null,
       focusHistory: state.focusHistory || {},
       subjectDifficulties: state.subjectDifficulties || {}
     };
@@ -296,6 +298,7 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
       ...userData,
       ...settingsData,
       ...statsData,
+      lastActiveDate: userData?.lastActive || userData?.lastActiveDate || statsData?.lastActiveDate || null,
       uid,
       onboarded: true,
       isOffline: false

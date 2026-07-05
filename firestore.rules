@@ -113,5 +113,10 @@ service cloud.firestore {
     match /device_links/{code} {
       allow read, write: if true;
     }
+
+    // 12. auth_sessions/{sessionId} for iframe popup-to-parent communication bypass
+    match /auth_sessions/{sessionId} {
+      allow read, write: if true;
+    }
   }
 }

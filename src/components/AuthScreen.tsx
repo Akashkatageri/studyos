@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { auth, googleProvider, isUsernameUnique, loadUserFromFirestore, db, createDevicePairingCode, listenToDevicePairing } from '../lib/firebase';
 import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { UserState } from '../types';
 
 interface AuthScreenProps {
@@ -258,8 +258,10 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
 
     try {
       if (isIframe) {
+        // Generate a cryptographically strong secure session ID for the firestore-backed auth bridge
+        const sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         // Since we are running inside an iframe, open our own page as a top-level popup to complete Google Sign In safely
-        const popupUrl = `${window.location.origin}${window.location.pathname}?auth_popup=true`;
+        const popupUrl = `${window.location.origin}${window.location.pathname}?auth_popup=true&session_id=${sessionId}`;
         const width = 500;
         const height = 650;
         const left = window.screen.width / 2 - width / 2;
@@ -331,9 +333,39 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
           }
         };
 
-        // Message listener from the popup tab
+        // Real-time Firestore session listener - the ultimate cross-origin iframe bypass!
+        const unsubFirestore = onSnapshot(doc(db, 'auth_sessions', sessionId), async (snapshot) => {
+          try {
+            if (snapshot.exists()) {
+              const data = snapshot.data();
+              if (data && data.status === 'success' && data.payload) {
+                // Instantly unsubscribe and clean up
+                unsubFirestore();
+                window.removeEventListener('message', handleAuthMessage);
+                clearInterval(pollTimer);
+                
+                // Clean up the temporary document for privacy and safety
+                try {
+                  await deleteDoc(doc(db, 'auth_sessions', sessionId));
+                } catch (cleanErr) {
+                  console.warn("Failed to clean up temporary auth session document:", cleanErr);
+                }
+                
+                if (popup && !popup.closed) {
+                  popup.close();
+                }
+                await handleAuthSuccessPayload(data.payload);
+              }
+            }
+          } catch (snapshotErr) {
+            console.warn("Error processing Firestore auth session snapshot:", snapshotErr);
+          }
+        });
+
+        // Message listener from the popup tab (standard opener message channel)
         const handleAuthMessage = async (e: MessageEvent) => {
           if (e.data && e.data.type === 'firebase-auth-success') {
+            unsubFirestore();
             window.removeEventListener('message', handleAuthMessage);
             clearInterval(pollTimer);
             try { localStorage.removeItem('studyos_auth_success'); } catch (_) {}
@@ -349,6 +381,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
             if (stored) {
               const parsed = JSON.parse(stored);
               if (parsed && parsed.type === 'firebase-auth-success' && Date.now() - parsed.timestamp < 120000) {
+                unsubFirestore();
                 window.removeEventListener('message', handleAuthMessage);
                 clearInterval(pollTimer);
                 localStorage.removeItem('studyos_auth_success');
@@ -364,6 +397,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
           }
 
           if (popup && popup.closed) {
+            unsubFirestore();
             clearInterval(pollTimer);
             window.removeEventListener('message', handleAuthMessage);
             setIsLoadingAuth(false);
@@ -606,7 +640,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                       <span>Running in Preview Mode?</span>
                     </div>
                     <p className="text-[11px] text-gray-300 leading-relaxed font-sans">
-                      Google Sign-In might be blocked by iframe cookie restrictions. Open StudyOS in a new tab for a seamless experience!
+                      Modern browsers block iframe storage and cookies for security, which logs you out every time you close this preview pane. <strong>Open StudyOS in a new tab to stay signed in permanently!</strong>
                     </p>
                     <button
                       onClick={() => window.open(window.location.href, '_blank')}

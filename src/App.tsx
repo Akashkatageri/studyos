@@ -62,6 +62,26 @@ function getUserSubjects(state: UserState) {
   return { activeSubjects, backlogSubjects: backlogSubjectsList };
 }
 
+// Timezone-proof UTC date parsing and diffing helpers
+const parseDateUTC = (str: string | null | undefined) => {
+  if (!str || typeof str !== 'string' || !str.includes('-')) {
+    return new Date();
+  }
+  const [year, month, day] = str.split('-').map(Number);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    return new Date();
+  }
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const getDaysDifference = (dateStr1: string | null | undefined, dateStr2: string | null | undefined) => {
+  if (!dateStr1 || !dateStr2) return 0;
+  const d1 = parseDateUTC(dateStr1);
+  const d2 = parseDateUTC(dateStr2);
+  const diffTime = Math.abs(d2.getTime() - d1.getTime());
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+};
+
 export default function App() {
   const [userState, setUserStateInternal] = useState<UserState | null>(null);
 
@@ -239,7 +259,7 @@ export default function App() {
       let completed = 0;
       for (const mod of sub.modules) {
         total += mod.topics.length;
-        completed += mod.topics.filter(t => userState.completedTopics.includes(t.id)).length;
+        completed += mod.topics.filter(t => (userState.completedTopics || []).includes(t.id)).length;
       }
       return total > 0 && completed < total;
     });
@@ -387,8 +407,13 @@ export default function App() {
                 // it means their Firebase session expired/logged out!
                 // In that case, we should NOT automatically sign them in. We should ask them to log in again.
                 if (!parsed.isOffline && parsed.uid) {
-                  setUserState(null);
-                  localStorage.removeItem(LOCAL_STORAGE_KEY);
+                  // Fall back to offline mode for the cached user state.
+                  // Since Firebase is still asynchronously initializing or has no active session,
+                  // we let the user access their offline cache instead of wiping it.
+                  if (!parsed.inProgressTopics) {
+                    parsed.inProgressTopics = [];
+                  }
+                  setUserState({ ...parsed, isOffline: true });
                 } else {
                   if (!parsed.inProgressTopics) {
                     parsed.inProgressTopics = [];
@@ -526,25 +551,21 @@ export default function App() {
       todayFocusXPRewarded: 0
     };
 
-    const lastFocusDate = new Date(lastFocusStr);
-    const todayDate = new Date(todayStr);
+    const lastFocusDate = parseDateUTC(lastFocusStr);
+    const todayDate = parseDateUTC(todayStr);
 
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(todayDate.getDate() - 1);
+    // Calculate the difference in full days
+    const diffDays = getDaysDifference(lastFocusStr, todayStr);
 
-    // If lastFocusDate is before yesterday, then we have potential missed days to process
-    if (lastFocusDate < yesterdayDate) {
+    // If they missed at least one full day between the last focus date and today
+    if (diffDays > 1) {
       const missedDates: string[] = [];
-      let currentIterDate = new Date(lastFocusDate);
-      currentIterDate.setDate(currentIterDate.getDate() + 1);
-
-      while (currentIterDate < todayDate) {
-        // Build YYYY-MM-DD string for missed dates
-        const year = currentIterDate.getFullYear();
-        const month = String(currentIterDate.getMonth() + 1).padStart(2, '0');
-        const day = String(currentIterDate.getDate()).padStart(2, '0');
+      for (let i = 1; i < diffDays; i++) {
+        const missedDate = new Date(lastFocusDate.getTime() + i * 24 * 60 * 60 * 1000);
+        const year = missedDate.getUTCFullYear();
+        const month = String(missedDate.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(missedDate.getUTCDate()).padStart(2, '0');
         missedDates.push(`${year}-${month}-${day}`);
-        currentIterDate.setDate(currentIterDate.getDate() + 1);
       }
 
       if (missedDates.length > 0) {
@@ -585,7 +606,8 @@ export default function App() {
           }
 
           // 4. Check Study Schedule
-          const dayOfWeek = new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long' });
+          const missedDateObj = parseDateUTC(dateStr);
+          const dayOfWeek = missedDateObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
           const isStudyDay = (userState.weeklyStudySchedule || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']).includes(dayOfWeek);
           if (!isStudyDay) {
             continue;
@@ -611,6 +633,14 @@ export default function App() {
         dailyResetUpdates.studyShields = shieldsRemaining;
         dailyResetUpdates.academicStudyStreak = academicStreak;
         dailyResetUpdates.streak = academicStreak;
+
+        if (!streakBroken && academicStreak > 0) {
+          const yesterdayDate = new Date(todayDate.getTime() - 24 * 60 * 60 * 1000);
+          const yesterdayYear = yesterdayDate.getUTCFullYear();
+          const yesterdayMonth = String(yesterdayDate.getUTCMonth() + 1).padStart(2, '0');
+          const yesterdayDay = String(yesterdayDate.getUTCDate()).padStart(2, '0');
+          dailyResetUpdates.lastActiveDate = `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}`;
+        }
 
         if (streakBroken) {
           setToast({
@@ -786,7 +816,7 @@ export default function App() {
   }
 
   // 3. Syllabus Subject Mapping based on active selections
-  const { university, branch, scheme, semester, completedTopics } = userState;
+  const { university, branch, scheme, semester, completedTopics = [] } = userState;
   
   // Fetch active subjects in this semester
   const activeSubjects = getTemplateSubjects(university, branch, scheme, semester);
@@ -813,7 +843,18 @@ export default function App() {
   let activeSubject: Subject | null = null;
   
   if (activeTopicId) {
-    const result = findTopicById(activeTopicId, activeSubjects, backlogSubjects);
+    const allLookupSubjects = [...activeSubjects, ...backlogSubjects];
+    if (sData) {
+      Object.keys(sData).forEach((semKey) => {
+        const semSubjects = sData[Number(semKey)] || [];
+        semSubjects.forEach((sub) => {
+          if (!allLookupSubjects.some((s) => s.id === sub.id)) {
+            allLookupSubjects.push(sub);
+          }
+        });
+      });
+    }
+    const result = findTopicById(activeTopicId, allLookupSubjects, []);
     if (result) {
       activeTopic = result.topic;
       activeSubject = result.subject;
@@ -828,7 +869,7 @@ export default function App() {
 
   const handleStartTopic = (topicId: string) => {
     setActiveTopicId(topicId);
-    if (userState && !userState.completedTopics.includes(topicId)) {
+    if (userState && !(userState.completedTopics || []).includes(topicId)) {
       const inProgress = userState.inProgressTopics || [];
       if (!inProgress.includes(topicId)) {
         handleUpdateState({
@@ -851,31 +892,41 @@ export default function App() {
   const handleMarkTopicCompleted = (topicId: string) => {
     if (!userState) return;
 
-    const result = findTopicById(topicId, activeSubjects, backlogSubjects);
+    const allLookupSubjects = [...activeSubjects, ...backlogSubjects];
+    if (sData) {
+      Object.keys(sData).forEach((semKey) => {
+        const semSubjects = sData[Number(semKey)] || [];
+        semSubjects.forEach((sub) => {
+          if (!allLookupSubjects.some((s) => s.id === sub.id)) {
+            allLookupSubjects.push(sub);
+          }
+        });
+      });
+    }
+
+    const result = findTopicById(topicId, allLookupSubjects, []);
     if (!result) return;
 
     const { topic, module, subject } = result;
 
     // Check if already completed to avoid duplicating arrays
-    const isAlreadyCompleted = completedTopics.includes(topicId);
+    const completedTopicsList = completedTopics || [];
+    const isAlreadyCompleted = completedTopicsList.includes(topicId);
     const updatedCompletedTopics = isAlreadyCompleted 
-      ? completedTopics 
-      : [...completedTopics, topicId];
+      ? completedTopicsList 
+      : [...completedTopicsList, topicId];
 
     // Calendar Streak Tracking Calculations
     const todayStr = getLocalDateString(); // "YYYY-MM-DD"
     const lastActiveStr = userState.lastActiveDate;
     
-    let newStreak = userState.streak;
+    let newStreak = userState.streak || 0;
     
     if (lastActiveStr !== todayStr) {
-      if (lastActiveStr === null) {
+      if (!lastActiveStr) {
         newStreak = 1;
       } else {
-        const lastActiveDate = new Date(lastActiveStr);
-        const todayDate = new Date(todayStr);
-        const diffTime = Math.abs(todayDate.getTime() - lastActiveDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = getDaysDifference(lastActiveStr, todayStr);
         
         if (diffDays === 1) {
           newStreak += 1;
@@ -885,17 +936,18 @@ export default function App() {
       }
     }
 
-    const newLongestStreak = Math.max(userState.longestStreak, newStreak);
+    const newLongestStreak = Math.max(userState.longestStreak || 0, newStreak);
 
     // Track study activity completions counts
-    const currentActivityCount = userState.studyActivity[todayStr] || 0;
+    const studyActivityMap = userState.studyActivity || {};
+    const currentActivityCount = studyActivityMap[todayStr] || 0;
     const updatedStudyActivity = {
-      ...userState.studyActivity,
+      ...studyActivityMap,
       [todayStr]: currentActivityCount + 1,
     };
 
     // Experience Awards & Revisions
-    const updatedRevisions = [...userState.revisions];
+    const updatedRevisions = [...(userState.revisions || [])];
     let addedXp = 0;
 
     const diffConfig = getDifficultyConfig(userState.subjectDifficulties, subject.id);
@@ -919,7 +971,7 @@ export default function App() {
     let newLevel = getLevelAndProgress(newXp).level;
 
     // Revision Scheduler: Automatically schedules revisions
-    const alreadyScheduled = userState.revisions.some((r) => r.topicId === topicId);
+    const alreadyScheduled = (userState.revisions || []).some((r) => r.topicId === topicId);
     if (!alreadyScheduled && !isAlreadyCompleted) {
       const revDate = new Date();
       revDate.setDate(revDate.getDate() + diffConfig.revisionDays);
@@ -940,9 +992,9 @@ export default function App() {
     let triggeredCelebration: 'topic' | 'module' | 'semester' | null = 'topic';
 
     // Check Module Completion
-    const updatedCompletedModules = [...userState.completedModules];
+    const updatedCompletedModules = [...(userState.completedModules || [])];
     const isModFinished = module.topics.every((t: any) => updatedCompletedTopics.includes(t.id));
-    const wasModAlreadyCompleted = userState.completedModules.includes(module.id);
+    const wasModAlreadyCompleted = (userState.completedModules || []).includes(module.id);
 
     if (isModFinished && !wasModAlreadyCompleted) {
       updatedCompletedModules.push(module.id);
@@ -952,13 +1004,13 @@ export default function App() {
     }
 
     // Check Subject Completion
-    const updatedCompletedSubjects = [...userState.completedSubjects];
+    const updatedCompletedSubjects = [...(userState.completedSubjects || [])];
     const isSubFinished = subject.modules.every((m: any) => 
       m.topics.every((t: any) => updatedCompletedTopics.includes(t.id))
     );
-    const wasSubAlreadyCompleted = userState.completedSubjects.includes(subject.id);
+    const wasSubAlreadyCompleted = (userState.completedSubjects || []).includes(subject.id);
 
-    const updatedBacklogSubjects = [...userState.backlogSubjects];
+    const updatedBacklogSubjects = [...(userState.backlogSubjects || [])];
     if (isSubFinished) {
       if (!wasSubAlreadyCompleted) {
         updatedCompletedSubjects.push(subject.id);
@@ -970,7 +1022,7 @@ export default function App() {
     }
 
     // Automatic semester completion has been removed in favor of manual, user-driven progression.
-    const updatedCompletedSemesters = [...userState.completedSemesters];
+    const updatedCompletedSemesters = [...(userState.completedSemesters || [])];
 
     const updatedInProgressTopics = (userState.inProgressTopics || []).filter(id => id !== topicId);
 
@@ -1052,28 +1104,26 @@ export default function App() {
   const handleCompleteRevision = (revisionId: string) => {
     if (!userState) return;
 
-    const revisionIndex = userState.revisions.findIndex((r) => r.id === revisionId);
+    const revisionsList = userState.revisions || [];
+    const revisionIndex = revisionsList.findIndex((r) => r.id === revisionId);
     if (revisionIndex === -1) return;
 
-    const rev = userState.revisions[revisionIndex];
+    const rev = revisionsList[revisionIndex];
     
     // Experience Award: Revision Completion = 15 XP
-    let newXp = userState.xp + 15;
+    let newXp = (userState.xp || 0) + 15;
     let newLevel = getLevelAndProgress(newXp).level;
 
     // Streak tracker updates
     const todayStr = getLocalDateString();
     const lastActiveStr = userState.lastActiveDate;
     
-    let newStreak = userState.streak;
+    let newStreak = userState.streak || 0;
     if (lastActiveStr !== todayStr) {
-      if (lastActiveStr === null) {
+      if (!lastActiveStr) {
         newStreak = 1;
       } else {
-        const lastActiveDate = new Date(lastActiveStr);
-        const todayDate = new Date(todayStr);
-        const diffTime = Math.abs(todayDate.getTime() - lastActiveDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = getDaysDifference(lastActiveStr, todayStr);
         
         if (diffDays === 1) {
           newStreak += 1;
@@ -1082,17 +1132,18 @@ export default function App() {
         }
       }
     }
-    const newLongestStreak = Math.max(userState.longestStreak, newStreak);
+    const newLongestStreak = Math.max(userState.longestStreak || 0, newStreak);
 
     // Track study activity completions counts
-    const currentActivityCount = userState.studyActivity[todayStr] || 0;
+    const studyActivityMap = userState.studyActivity || {};
+    const currentActivityCount = studyActivityMap[todayStr] || 0;
     const updatedStudyActivity = {
-      ...userState.studyActivity,
+      ...studyActivityMap,
       [todayStr]: currentActivityCount + 1,
     };
 
     // Set revision completed flag
-    const updatedRevisions = [...userState.revisions];
+    const updatedRevisions = [...revisionsList];
     updatedRevisions[revisionIndex] = { ...rev, completed: true };
 
     const updatedState: UserState = {
@@ -1111,13 +1162,25 @@ export default function App() {
 
     // Extract module details for celebration screen
     const { activeSubjects, backlogSubjects } = getUserSubjects(userState);
-    const result = findTopicById(rev.topicId, activeSubjects, backlogSubjects);
+    const allLookupSubjects = [...activeSubjects, ...backlogSubjects];
+    if (sData) {
+      Object.keys(sData).forEach((semKey) => {
+        const semSubjects = sData[Number(semKey)] || [];
+        semSubjects.forEach((sub) => {
+          if (!allLookupSubjects.some((s) => s.id === sub.id)) {
+            allLookupSubjects.push(sub);
+          }
+        });
+      });
+    }
+
+    const result = findTopicById(rev.topicId, allLookupSubjects, []);
     let moduleName = '';
     let moduleProgressPercent = 0;
     if (result) {
       const { module } = result;
       moduleName = module.name;
-      const completedTopicsInModule = module.topics.filter((t: any) => userState.completedTopics.includes(t.id)).length;
+      const completedTopicsInModule = module.topics.filter((t: any) => (userState.completedTopics || []).includes(t.id)).length;
       const totalTopicsInModule = module.topics.length;
       moduleProgressPercent = Math.round((completedTopicsInModule / totalTopicsInModule) * 100);
     }
@@ -1272,7 +1335,7 @@ export default function App() {
           subject={activeSubject}
           userState={userState}
           isCompleted={completedTopics.includes(activeTopicId)}
-          isRevisionDue={userState.revisions.some(
+          isRevisionDue={(userState.revisions || []).some(
             (r) =>
               r.topicId === activeTopicId &&
               !r.completed &&
