@@ -6,7 +6,8 @@ import {
   signInWithRedirect, 
   signOut, 
   User as FirebaseUser,
-  onAuthStateChanged
+  onAuthStateChanged,
+  onIdTokenChanged
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -43,6 +44,159 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+// ===================================================================
+// PERSISTENCE AND AUTH EVENT DIAGNOSTICS
+// ===================================================================
+
+function inspectLocalStorage() {
+  console.log("[StudyOS Persistence Test] Inspecting LocalStorage for Firebase-related keys...");
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        keys.push(key);
+        if (key.toLowerCase().includes("firebase") || key.toLowerCase().includes("studyos") || key.toLowerCase().includes("auth")) {
+          const val = localStorage.getItem(key);
+          console.log(`[StudyOS Persistence Test] LocalStorage Key: ${key}, Value:`, val);
+        }
+      }
+    }
+    console.log("[StudyOS Persistence Test] All LocalStorage Keys:", JSON.stringify(keys));
+  } catch (err) {
+    console.error("[StudyOS Persistence Test] Failed to inspect LocalStorage:", err);
+  }
+}
+
+async function inspectIndexedDB() {
+  console.log("[StudyOS Persistence Test] Starting IndexedDB inspection...");
+  
+  if (typeof indexedDB === 'undefined') {
+    console.warn("[StudyOS Persistence Test] indexedDB is NOT available in this environment.");
+    return;
+  }
+
+  // Attempt to list all databases if supported
+  if (indexedDB.databases) {
+    try {
+      const dbs = await indexedDB.databases();
+      console.log("[StudyOS Persistence Test] Available databases:", JSON.stringify(dbs));
+    } catch (e) {
+      console.warn("[StudyOS Persistence Test] Failed to list databases:", e);
+    }
+  }
+
+  const dbName = 'firebaseLocalStorageDb';
+  const storeName = 'firebaseLocalStorage';
+
+  const request = indexedDB.open(dbName);
+
+  request.onerror = (event) => {
+    console.error(`[StudyOS Persistence Test] Failed to open database ${dbName}:`, request.error);
+  };
+
+  request.onsuccess = (event) => {
+    const dbInstance = request.result;
+    console.log(`[StudyOS Persistence Test] Database ${dbName} opened successfully. Version:`, dbInstance.version);
+    
+    const objectStoreNames = Array.from(dbInstance.objectStoreNames);
+    console.log(`[StudyOS Persistence Test] Object stores in ${dbName}:`, JSON.stringify(objectStoreNames));
+
+    const hasStore = objectStoreNames.includes(storeName);
+    console.log(`[StudyOS Persistence Test] Object store '${storeName}' exists:`, hasStore);
+
+    if (hasStore) {
+      try {
+        const transaction = dbInstance.transaction(storeName, 'readonly');
+        const store = transaction.objectStore(storeName);
+        
+        // Count records
+        const countRequest = store.count();
+        countRequest.onsuccess = () => {
+          console.log(`[StudyOS Persistence Test] Count of records in ${storeName}:`, countRequest.result);
+        };
+        countRequest.onerror = () => {
+          console.error(`[StudyOS Persistence Test] Failed to count records in ${storeName}:`, countRequest.error);
+        };
+
+        // Read all records
+        const getAllKeysRequest = store.getAllKeys();
+        getAllKeysRequest.onsuccess = () => {
+          const keys = getAllKeysRequest.result;
+          console.log(`[StudyOS Persistence Test] All keys in ${storeName}:`, JSON.stringify(keys));
+          
+          const getAllRequest = store.getAll();
+          getAllRequest.onsuccess = () => {
+            const records = getAllRequest.result;
+            console.log(`[StudyOS Persistence Test] Retrieved ${records.length} records from ${storeName}.`);
+            records.forEach((record, index) => {
+              const key = keys[index];
+              console.log(`[StudyOS Persistence Test] Record key:`, JSON.stringify(key));
+              const recordStr = JSON.stringify(record);
+              const hasProjectInfo = recordStr.includes("studyos-001");
+              console.log(`[StudyOS Persistence Test] Record contains 'studyos-001' project ID:`, hasProjectInfo);
+              console.log(`[StudyOS Persistence Test] Full record data:`, recordStr);
+            });
+          };
+          getAllRequest.onerror = () => {
+            console.error(`[StudyOS Persistence Test] Failed to retrieve records from ${storeName}:`, getAllRequest.error);
+          };
+        };
+        getAllKeysRequest.onerror = () => {
+          console.error(`[StudyOS Persistence Test] Failed to get keys from ${storeName}:`, getAllKeysRequest.error);
+        };
+
+        transaction.oncomplete = () => {
+          console.log("[StudyOS Persistence Test] Inspection transaction completed.");
+          dbInstance.close();
+        };
+
+      } catch (err) {
+        console.error(`[StudyOS Persistence Test] Error running transaction on ${storeName}:`, err);
+        dbInstance.close();
+      }
+    } else {
+      console.log(`[StudyOS Persistence Test] Since '${storeName}' doesn't exist, closing DB.`);
+      dbInstance.close();
+    }
+  };
+
+  request.onupgradeneeded = (event) => {
+    console.log(`[StudyOS Persistence Test] database ${dbName} open requested but it does not exist (triggering onupgradeneeded). DB was NOT present!`);
+    request.transaction?.abort();
+  };
+}
+
+// Run Diagnostics Immediately on Import
+inspectLocalStorage();
+inspectIndexedDB();
+
+console.log("[StudyOS Persistence Test] Registering global Auth listeners...");
+
+onAuthStateChanged(auth, (user) => {
+  console.log(`[StudyOS Auth Log] onAuthStateChanged fired. User UID: ${user ? user.uid : 'null'}`);
+});
+
+onIdTokenChanged(auth, (user) => {
+  console.log(`[StudyOS Auth Log] onIdTokenChanged fired. User UID: ${user ? user.uid : 'null'}`);
+  if (user) {
+    user.getIdToken().then(token => {
+      console.log(`[StudyOS Auth Log] ID Token fetched successfully for UID: ${user.uid}`);
+    }).catch(err => {
+      console.error(`[StudyOS Auth Log] Failed to fetch ID Token for UID: ${user.uid}:`, err);
+    });
+  }
+});
+
+if (typeof (auth as any).beforeAuthStateChanged === 'function') {
+  console.log("[StudyOS Persistence Test] auth.beforeAuthStateChanged method is available. Registering...");
+  (auth as any).beforeAuthStateChanged((user: any) => {
+    console.log(`[StudyOS Auth Log] beforeAuthStateChanged callback triggered. User UID: ${user ? user.uid : 'null'}`);
+  });
+} else {
+  console.log("[StudyOS Persistence Test] auth.beforeAuthStateChanged is NOT a function on the Auth instance.");
+}
 
 // Initialize Firestore with the named database where all the collections reside.
 // This ensures that downloaded code running on localhost still connects to the correct database.
@@ -1029,12 +1183,20 @@ export async function createDevicePairingCode(deviceId?: string): Promise<string
 /**
  * Link an authenticated Google account user state with a pending pairing code
  */
-export async function linkDeviceWithAccount(code: string, uid: string, userState: any): Promise<void> {
+export async function linkDeviceWithAccount(
+  code: string, 
+  uid: string, 
+  userState: any,
+  encryptedIdToken?: string | null,
+  encryptedAccessToken?: string | null
+): Promise<void> {
   const docRef = doc(db, "device_links", code);
   await setDoc(docRef, {
     status: "paired",
     uid: uid,
     userState: userState,
+    encryptedIdToken: encryptedIdToken || null,
+    encryptedAccessToken: encryptedAccessToken || null,
     pairedAt: new Date().toISOString()
   }, { merge: true });
 }
@@ -1044,7 +1206,7 @@ export async function linkDeviceWithAccount(code: string, uid: string, userState
  */
 export function listenToDevicePairing(
   code: string, 
-  onPair: (uid: string, userState: any) => void, 
+  onPair: (uid: string, userState: any, encryptedIdToken: string | null, encryptedAccessToken: string | null) => void, 
   onError: (err: any) => void
 ): () => void {
   const docRef = doc(db, "device_links", code);
@@ -1052,7 +1214,12 @@ export function listenToDevicePairing(
     if (docSnap.exists()) {
       const data = docSnap.data();
       if (data && data.status === "paired" && data.uid) {
-        onPair(data.uid, data.userState || null);
+        onPair(
+          data.uid, 
+          data.userState || null, 
+          data.encryptedIdToken || null, 
+          data.encryptedAccessToken || null
+        );
       }
     }
   }, (err) => {

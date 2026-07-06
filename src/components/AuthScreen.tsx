@@ -23,6 +23,7 @@ import { auth, googleProvider, isUsernameUnique, loadUserFromFirestore, db, crea
 import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { UserState } from '../types';
+import { decryptData } from '../lib/crypto';
 
 interface AuthScreenProps {
   initialUser?: UserState | null;
@@ -57,6 +58,9 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     setAuthError(null);
     try {
       const code = await createDevicePairingCode();
+      // Generate a cryptographically random symmetric pairing key
+      const key = Math.random().toString(36).substring(2, 18) + Math.random().toString(36).substring(2, 18);
+      localStorage.setItem('pairing_key', key);
       setPairingCode(code);
       setStep('pairing');
     } catch (err: any) {
@@ -75,8 +79,50 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
 
     const unsubscribe = listenToDevicePairing(
       pairingCode,
-      (uid, userState) => {
-        console.log("Device paired successfully! Signed in with UID:", uid);
+      async (uid, userState, encryptedIdToken, encryptedAccessToken) => {
+        console.log("[PAIRING] Device paired successfully on Firestore! UID:", uid);
+        
+        const pairingKey = localStorage.getItem('pairing_key');
+        let localAuthSuccess = false;
+
+        if (encryptedIdToken && pairingKey) {
+          try {
+            console.log("[PAIRING] Decrypting credentials...");
+            const idToken = decryptData(encryptedIdToken, pairingKey);
+            const accessToken = encryptedAccessToken ? decryptData(encryptedAccessToken, pairingKey) : null;
+            
+            if (idToken) {
+              console.log("[PAIRING] Attempting local Firebase auth sign-in via signInWithCredential...");
+              const credential = GoogleAuthProvider.credential(idToken, accessToken || undefined);
+              
+              console.log("[PAIRING] BEFORE signInWithCredential call.");
+              const result = await signInWithCredential(auth, credential);
+              console.log("[PAIRING] AFTER signInWithCredential call. User logged in:", result.user.uid);
+              localAuthSuccess = true;
+            } else {
+              console.error("[PAIRING] Failed to decrypt ID token.");
+            }
+          } catch (authErr: any) {
+            console.error("[PAIRING] Local Firebase authentication failed inside WebView:", authErr);
+          }
+        } else {
+          console.warn("[PAIRING] Missing encrypted tokens or pairing key in WebView. Local Firebase Auth cannot be established.", {
+            hasToken: !!encryptedIdToken,
+            hasKey: !!pairingKey
+          });
+        }
+
+        // Clean up pairing key
+        localStorage.removeItem('pairing_key');
+
+        // Delete the pairing document immediately for security
+        try {
+          console.log("[PAIRING] Deleting pairing bridge document from Firestore...");
+          await deleteDoc(doc(db, "device_links", pairingCode));
+        } catch (delErr) {
+          console.warn("[PAIRING] Failed to delete pairing document:", delErr);
+        }
+
         onAuthCompleteRef.current({
           uid,
           email: userState?.email,
@@ -170,6 +216,14 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
           const email = user.email || undefined;
           const displayName = user.displayName || undefined;
           const uid = user.uid;
+
+          // Capture and store Google credentials
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          if (credential) {
+            console.log("[PAIRING] Storing redirect Google credentials in sessionStorage...");
+            if (credential.idToken) sessionStorage.setItem('google_id_token', credential.idToken);
+            if (credential.accessToken) sessionStorage.setItem('google_access_token', credential.accessToken);
+          }
 
           // Check if profile already exists in Firestore
           let cloudData = null;
@@ -285,12 +339,14 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
       try {
         const code = await createDevicePairingCode();
+        const key = Math.random().toString(36).substring(2, 18) + Math.random().toString(36).substring(2, 18);
+        localStorage.setItem('pairing_key', key);
         setPairingCode(code);
         setIsAutomaticGoogleFlow(true);
         setStep('pairing');
         
         const liveUrl = "https://ais-dev-5qkfwaoj2q5v7zsluse4zi-358182587374.asia-east1.run.app";
-        const realUrl = `${liveUrl}/?pair_code=${code}`;
+        const realUrl = `${liveUrl}/?pair_code=${code}&k=${key}`;
         
         // Launch standard system web browser to complete authentication
         window.open(realUrl, '_blank');
@@ -488,6 +544,14 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
       const email = user.email || undefined;
       const displayName = user.displayName || undefined;
       const uid = user.uid;
+
+      // Capture and store Google credentials
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential) {
+        console.log("[PAIRING] Storing popup Google credentials in sessionStorage...");
+        if (credential.idToken) sessionStorage.setItem('google_id_token', credential.idToken);
+        if (credential.accessToken) sessionStorage.setItem('google_access_token', credential.accessToken);
+      }
 
       // Check if profile exists in Firestore database
       let cloudData = null;
@@ -1028,7 +1092,8 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                         type="button"
                         onClick={() => {
                           const liveUrl = "https://ais-dev-5qkfwaoj2q5v7zsluse4zi-358182587374.asia-east1.run.app";
-                          const realUrl = `${liveUrl}/?pair_code=${pairingCode}`;
+                          const pairingKey = localStorage.getItem('pairing_key') || '';
+                          const realUrl = `${liveUrl}/?pair_code=${pairingCode}${pairingKey ? `&k=${pairingKey}` : ''}`;
                           window.open(realUrl, '_blank');
                         }}
                         className="w-full py-3 bg-blue-600 hover:bg-blue-500 active:scale-98 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-blue-600/20"
@@ -1093,7 +1158,8 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                     <button
                       type="button"
                       onClick={() => {
-                        const realUrl = `https://ais-dev-5qkfwaoj2q5v7zsluse4zi-358182587374.asia-east1.run.app/?pair_code=${pairingCode}`;
+                        const pairingKey = localStorage.getItem('pairing_key') || '';
+                        const realUrl = `https://ais-dev-5qkfwaoj2q5v7zsluse4zi-358182587374.asia-east1.run.app/?pair_code=${pairingCode}${pairingKey ? `&k=${pairingKey}` : ''}`;
                         navigator.clipboard.writeText(realUrl).then(() => {
                           setCopiedPairingLink(true);
                           setTimeout(() => setCopiedPairingLink(false), 2000);

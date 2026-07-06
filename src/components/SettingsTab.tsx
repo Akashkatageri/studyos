@@ -26,7 +26,7 @@ import { COURSE_TEMPLATES } from '../data';
 import { getSubjectsForCycle } from '../utils/cycleSubjects';
 import { SoundManager } from '../utils/soundManager';
 import { auth, googleProvider, db, syncUserToFirestore, loadUserFromFirestore, mergeLocalAndCloudStates, registerUserProfileTransaction, linkDeviceWithAccount } from '../lib/firebase';
-import { signInWithPopup, signOut } from 'firebase/auth';
+import { signInWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
 interface SettingsTabProps {
@@ -446,6 +446,14 @@ export default function SettingsTab({ userState, onImportState, onUpdateState, o
                 try {
                   const result = await signInWithPopup(auth, googleProvider);
                   const user = result.user;
+                  
+                  // Capture and store Google credentials
+                  const credential = GoogleAuthProvider.credentialFromResult(result);
+                  if (credential) {
+                    console.log("[PAIRING] Storing settings Google credentials in sessionStorage...");
+                    if (credential.idToken) sessionStorage.setItem('google_id_token', credential.idToken);
+                    if (credential.accessToken) sessionStorage.setItem('google_access_token', credential.accessToken);
+                  }
                   
                   // 1. Check if a cloud profile already exists for this Firebase UID
                   const cloudData = await loadUserFromFirestore(user.uid);

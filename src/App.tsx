@@ -19,8 +19,9 @@ import TopicViewModal from './components/TopicViewModal';
 import CompletionAnimations from './components/CompletionAnimations';
 import BadgeUnlockModal from './components/BadgeUnlockModal';
 import { getUnlockedAchievementIds, ACHIEVEMENT_DEFS } from './utils/achievements';
-import { auth, db, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount, mergeLocalAndCloudStates } from './lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db, googleProvider, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount, mergeLocalAndCloudStates } from './lib/firebase';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { encryptData } from './lib/crypto';
 import { enableNetwork, disableNetwork } from 'firebase/firestore';
 import { App as CapApp } from '@capacitor/app';
 import { Network } from '@capacitor/network';
@@ -118,13 +119,13 @@ export default function App() {
     if (typeof val === 'function') {
       setAuthInitializedInternal(prev => {
         const next = (val as any)(prev);
-        console.log(`[StudyOS Trace] authInitialized transition: ${prev} -> ${next}`);
+        console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] authInitialized transition: ${prev} -> ${next}`);
         console.log(`[StudyOS Trace] authInitialized transition Stack Trace:\n${errorStack}`);
         return next;
       });
     } else {
       setAuthInitializedInternal(prev => {
-        console.log(`[StudyOS Trace] authInitialized transition: ${prev} -> ${val}`);
+        console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] authInitialized transition: ${prev} -> ${val}`);
         console.log(`[StudyOS Trace] authInitialized transition Stack Trace:\n${errorStack}`);
         return val;
       });
@@ -132,14 +133,26 @@ export default function App() {
   };
 
   useEffect(() => {
-    console.log("[StudyOS Trace] App mounted");
+    console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] App mounted`);
     const mountStack = new Error().stack || 'No stack trace available';
     console.log(`[StudyOS Trace] App mounted Stack Trace:\n${mountStack}`);
     return () => {
-      console.log("[StudyOS Trace] App unmounted");
+      console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] App unmounted`);
       const unmountStack = new Error().stack || 'No stack trace available';
       console.log(`[StudyOS Trace] App unmounted Stack Trace:\n${unmountStack}`);
     };
+  }, []);
+
+  const lastCurrentUserUidRef = useRef<string | null>(undefined as any);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentUid = auth.currentUser?.uid || null;
+      if (currentUid !== lastCurrentUserUidRef.current) {
+        console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] auth.currentUser changed: ${lastCurrentUserUidRef.current} -> ${currentUid}`);
+        lastCurrentUserUidRef.current = currentUid;
+      }
+    }, 100);
+    return () => clearInterval(interval);
   }, []);
 
   const isFirstLoad = useRef(true);
@@ -210,14 +223,20 @@ export default function App() {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const code = params.get('pair_code');
+    const key = params.get('k');
     if (code) {
       // Save it to localStorage as a backup so it automatically prompts them after login/onboarding
       localStorage.setItem('pending_pair_code', code);
+      if (key) {
+        localStorage.setItem('pending_pair_key', key);
+      }
       setPendingPairCode(code);
       setIsPairingModalOpen(true);
       
       // Clean up the URL parameter to maintain a clean address bar
-      const newUrl = window.location.pathname + window.location.search.replace(/[?&]pair_code=[^&]+/, '');
+      let cleanSearch = window.location.search.replace(/[?&]pair_code=[^&]+/, '').replace(/[?&]k=[^&]+/, '');
+      if (cleanSearch === '?' || cleanSearch === '&') cleanSearch = '';
+      const newUrl = window.location.pathname + cleanSearch;
       window.history.replaceState({}, document.title, newUrl);
     }
   }, []);
@@ -227,6 +246,14 @@ export default function App() {
     if (userState && userState.uid && !pairingSuccess && !isPairingLoading) {
       const savedCode = localStorage.getItem('pending_pair_code') || pendingPairCode;
       if (savedCode) {
+        const idToken = sessionStorage.getItem('google_id_token');
+        if (!idToken) {
+          // If we don't have the Google ID token in this browser session yet, 
+          // do NOT silently pair (which would write empty credentials). Let them click the Confirm Pairing modal button instead.
+          console.log("[PAIRING] Delaying automatic silent pairing: Google ID token not yet in sessionStorage.");
+          return;
+        }
+
         setPendingPairCode(savedCode);
         localStorage.removeItem('pending_pair_code');
         
@@ -234,7 +261,26 @@ export default function App() {
         const autoSilentPair = async () => {
           setIsPairingLoading(true);
           try {
-            await linkDeviceWithAccount(savedCode, userState.uid, userState);
+            const pairingKey = localStorage.getItem('pending_pair_key');
+            const accessToken = sessionStorage.getItem('google_access_token') || null;
+
+            // Encrypt if key exists
+            const encryptedIdToken = (idToken && pairingKey) ? encryptData(idToken, pairingKey) : null;
+            const encryptedAccessToken = (accessToken && pairingKey) ? encryptData(accessToken, pairingKey) : null;
+
+            console.log("[PAIRING] Auto silent linking on browser. Key exists:", !!pairingKey, "Tokens encrypted:", !!encryptedIdToken);
+
+            await linkDeviceWithAccount(
+              savedCode, 
+              userState.uid, 
+              userState,
+              encryptedIdToken,
+              encryptedAccessToken
+            );
+
+            // Clean up temporary key
+            localStorage.removeItem('pending_pair_key');
+
             setPairingSuccess(true);
             setToast({
               title: "📱 Google Login Synced!",
@@ -277,7 +323,44 @@ export default function App() {
     if (!pendingPairCode || !userState) return;
     setIsPairingLoading(true);
     try {
-      await linkDeviceWithAccount(pendingPairCode, userState.uid, userState);
+      let idToken = sessionStorage.getItem('google_id_token') || null;
+      let accessToken = sessionStorage.getItem('google_access_token') || null;
+
+      // If we don't have the Google ID token in sessionStorage, run a quick Google Auth popup to retrieve it
+      if (!idToken) {
+        console.log("[PAIRING] Google ID Token not in session. Requesting re-auth via popup...");
+        try {
+          googleProvider.setCustomParameters({ prompt: 'select_account' });
+          const authResult = await signInWithPopup(auth, googleProvider);
+          const credential = GoogleAuthProvider.credentialFromResult(authResult);
+          if (credential) {
+            idToken = credential.idToken || null;
+            accessToken = credential.accessToken || null;
+            if (idToken) sessionStorage.setItem('google_id_token', idToken);
+            if (accessToken) sessionStorage.setItem('google_access_token', accessToken);
+          }
+        } catch (authErr: any) {
+          throw new Error("Google re-authentication failed. We need a secure Google token to link your Android device: " + authErr.message);
+        }
+      }
+
+      const pairingKey = localStorage.getItem('pending_pair_key');
+      const encryptedIdToken = (idToken && pairingKey) ? encryptData(idToken, pairingKey) : null;
+      const encryptedAccessToken = (accessToken && pairingKey) ? encryptData(accessToken, pairingKey) : null;
+
+      console.log("[PAIRING] Manual confirming on browser. Key exists:", !!pairingKey, "Tokens encrypted:", !!encryptedIdToken);
+
+      await linkDeviceWithAccount(
+        pendingPairCode, 
+        userState.uid, 
+        userState,
+        encryptedIdToken,
+        encryptedAccessToken
+      );
+
+      // Clean up stored temporary pair key after use
+      localStorage.removeItem('pending_pair_key');
+
       setPairingSuccess(true);
       setToast({
         title: "📱 Pairing Successful!",
@@ -288,7 +371,7 @@ export default function App() {
         setIsPairingModalOpen(false);
         setPendingPairCode(null);
         setPairingSuccess(false);
-      }, 3000);
+      }, 5000);
     } catch (err: any) {
       console.error("Pairing confirmation failed:", err);
       setToast({
@@ -408,10 +491,10 @@ export default function App() {
       }
 
       if (firebaseUser) {
-        console.log("[StudyOS Trace] onAuthStateChanged(firebaseUser)");
+        console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] onAuthStateChanged(firebaseUser)`);
         console.log(`[StudyOS Trace] auth.currentUser UID: ${firebaseUser.uid}`);
       } else {
-        console.log("[StudyOS Trace] onAuthStateChanged(null)");
+        console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] onAuthStateChanged(null)`);
       }
 
       // Helper function to handle authenticated user state
@@ -529,18 +612,18 @@ export default function App() {
           isFirstCallback = false;
           
           if (firebaseUser) {
-            console.log("[StudyOS Trace] Firebase initialization completed (User authenticated immediately)");
+            console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] Firebase initialization completed (User authenticated immediately)`);
             await handleUserAuthenticated(firebaseUser);
-            console.log("[StudyOS Trace] authInitialized = true");
+            console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] authInitialized = true`);
             setAuthInitialized(true);
             setIsLoading(false);
           } else {
-            console.log("[StudyOS Trace] onAuthStateChanged received initial null callback. Starting 1000ms delay to check for restored session...");
+            console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] onAuthStateChanged received initial null callback. Starting 1000ms delay to check for restored session...`);
             initTimeout = setTimeout(async () => {
               if (authUnsubscribed) return;
-              console.log("[StudyOS Trace] Firebase initialization completed (No restored session detected after 1000ms timeout)");
+              console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] Firebase initialization completed (No restored session detected after 1000ms timeout)`);
               handleUserUnauthenticated();
-              console.log("[StudyOS Trace] authInitialized = true");
+              console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] authInitialized = true`);
               setAuthInitialized(true);
               setIsLoading(false);
             }, 1000);
@@ -552,15 +635,15 @@ export default function App() {
           }
           
           if (firebaseUser) {
-            console.log("[StudyOS Trace] Firebase auth state transitioned to authenticated.");
+            console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] Firebase auth state transitioned to authenticated.`);
             await handleUserAuthenticated(firebaseUser);
-            console.log("[StudyOS Trace] authInitialized = true");
+            console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] authInitialized = true`);
             setAuthInitialized(true);
             setIsLoading(false);
           } else {
-            console.log("[StudyOS Trace] Firebase auth state transitioned to unauthenticated.");
+            console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] Firebase auth state transitioned to unauthenticated.`);
             handleUserUnauthenticated();
-            console.log("[StudyOS Trace] authInitialized = true");
+            console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] authInitialized = true`);
             setAuthInitialized(true);
             setIsLoading(false);
           }
@@ -605,12 +688,20 @@ export default function App() {
   // Main synchronization and reconnect function
   const performSyncOnReconnect = async () => {
     if (syncInProgressRef.current) {
-      console.log("[StudyOS Trace] performSyncOnReconnect: Sync already in progress, skipping concurrent trigger.");
+      console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] performSyncOnReconnect: Sync already in progress, skipping concurrent trigger.`);
       return;
     }
     syncInProgressRef.current = true;
-    console.log("[StudyOS Trace] performSyncOnReconnect started");
-    console.log(`[StudyOS Trace] [performSyncOnReconnect Context] authInitialized (closed state)=${authInitialized}, authInitializedRef (live ref)=${authInitializedRef.current}, auth.currentUser UID=${auth.currentUser?.uid || 'null'}, userStateRef UID=${userStateRef.current?.uid || 'null'}`);
+    console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] performSyncOnReconnect started`);
+
+    const getNavigationDecision = (state: any) => {
+      if (!state || !state.username) return "Show Login (AuthScreen)";
+      if (!state.onboarded) return "Show Onboarding";
+      return "Show Home/Profile (Main Application Tabs)";
+    };
+    console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] [Resume Sync Log] auth.currentUser UID: ${auth.currentUser?.uid || 'null'}, userState UID: ${userStateRef.current?.uid || 'null'}, userState Username: ${userStateRef.current?.username || 'null'}, Onboarding Completed: ${userStateRef.current?.onboarded || 'false'}, Predicted Navigation: ${getNavigationDecision(userStateRef.current)}`);
+
+    console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] [performSyncOnReconnect Context] authInitialized (closed state)=${authInitialized}, authInitializedRef (live ref)=${authInitializedRef.current}, auth.currentUser UID=${auth.currentUser?.uid || 'null'}, userStateRef UID=${userStateRef.current?.uid || 'null'}`);
 
     try {
       if (!authInitializedRef.current) {

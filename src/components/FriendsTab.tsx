@@ -53,7 +53,7 @@ import {
   getDoc
 } from '../lib/firebase';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
-import { signInWithPopup, signOut } from 'firebase/auth';
+import { signInWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
 import FriendProfileModal from './friends/FriendProfileModal';
 import FriendsPrivacyModal from './friends/FriendsPrivacyModal';
 import NotificationCenterModal from './friends/NotificationCenterModal';
@@ -275,6 +275,14 @@ export default function FriendsTab({ userState, onUpdateState, onTriggerToast }:
     try {
       const res = await signInWithPopup(auth, googleProvider);
       const user = res.user;
+
+      // Capture and store Google credentials
+      const credential = GoogleAuthProvider.credentialFromResult(res);
+      if (credential) {
+        console.log("[PAIRING] Storing friends Google credentials in sessionStorage...");
+        if (credential.idToken) sessionStorage.setItem('google_id_token', credential.idToken);
+        if (credential.accessToken) sessionStorage.setItem('google_access_token', credential.accessToken);
+      }
 
       if (user) {
         // Try to load state from Firestore
