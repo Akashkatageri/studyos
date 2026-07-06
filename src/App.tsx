@@ -91,17 +91,28 @@ export default function App() {
 
   const setUserState = (state: UserState | null | ((prev: UserState | null) => UserState | null)) => {
     setUserStateInternal((prev) => {
-      const resolved = typeof state === 'function' ? state(prev) : state;
+      let resolved = typeof state === 'function' ? state(prev) : state;
+      console.log(`[StudyOS Trace] setUserState invoked. Prev state exists: ${!!prev}, Resolved state exists: ${!!resolved}`);
       if (resolved) {
         const validTabs = ['home', 'progression', 'progress', 'friends', 'profile', 'settings'];
         if (!resolved.activeTab || !validTabs.includes(resolved.activeTab)) {
-          return { ...resolved, activeTab: 'home' };
+          resolved = { ...resolved, activeTab: 'home' };
         }
+      }
+      if (prev?.isOffline !== resolved?.isOffline) {
+        console.log(`[StudyOS Trace] !! STATE IS_OFFLINE TRANSITION !! from: ${prev?.isOffline} to: ${resolved?.isOffline}`);
+      }
+      if (prev?.uid !== resolved?.uid) {
+        console.log(`[StudyOS Trace] !! STATE UID TRANSITION !! from: ${prev?.uid || 'null'} to: ${resolved?.uid || 'null'}`);
+      }
+      if (prev?.username !== resolved?.username) {
+        console.log(`[StudyOS Trace] !! STATE USERNAME TRANSITION !! from: ${prev?.username || 'null'} to: ${resolved?.username || 'null'}`);
       }
       return resolved;
     });
   };
   const [isLoading, setIsLoading] = useState(true);
+  const [authInitialized, setAuthInitialized] = useState(false);
   const isFirstLoad = useRef(true);
 
   // Keep a ref of userState to prevent stale closure bugs in persistent handlers like onAuthStateChanged
@@ -109,6 +120,12 @@ export default function App() {
   useEffect(() => {
     userStateRef.current = userState;
   }, [userState]);
+
+  const [isCloudSyncUnavailable, setIsCloudSyncUnavailableInternal] = useState(false);
+  const setIsCloudSyncUnavailable = (val: boolean) => {
+    console.log(`[StudyOS Trace] setIsCloudSyncUnavailable called: value=${val}`);
+    setIsCloudSyncUnavailableInternal(val);
+  };
 
   // Modal topic states
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
@@ -143,7 +160,6 @@ export default function App() {
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
   const [hasUnreadNotifs, setHasUnreadNotifs] = useState(false);
   const [reconnectCount, setReconnectCount] = useState(0);
-  const [isCloudSyncUnavailable, setIsCloudSyncUnavailable] = useState(false);
 
   // Device Pairing State (Option A)
   const [pendingPairCode, setPendingPairCode] = useState<string | null>(null);
@@ -331,129 +347,192 @@ export default function App() {
     SoundManager.vibrate('longSuccess');
   };
 
+  // Log authInitialized changes
+  useEffect(() => {
+    console.log(`[StudyOS Trace] authInitialized changed to: ${authInitialized}`);
+  }, [authInitialized]);
+
   // 1. Unified Initial State Load and Firebase Auth Listener
   useEffect(() => {
+    console.log("[StudyOS Trace] Firebase initialization started");
     let authUnsubscribed = false;
+    let initTimeout: NodeJS.Timeout | null = null;
+    let isFirstCallback = true;
     
+    console.log("[StudyOS Trace] Subscribing to Firebase onAuthStateChanged listener...");
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (authUnsubscribed) return;
-
-      // Access latest userState from ref to safely check logged-in status
-      const currentState = userStateRef.current;
-      const isSameUser = currentState && firebaseUser && currentState.uid === firebaseUser.uid && !currentState.isOffline;
-
-      // If the current state UID already matches the incoming firebaseUser UID, and is online, ignore redundant triggers
-      // to prevent race conditions during onboarding and username selection.
-      if (isSameUser) {
+      if (authUnsubscribed) {
+        console.log("[StudyOS Trace] onAuthStateChanged ignored: listener has been unsubscribed.");
         return;
       }
 
-      // Transition into a clean loading/pending state only during the very first page load/initial boot
-      if (isFirstLoad.current) {
-        setIsLoading(true);
-        isFirstLoad.current = false;
-      }
+      console.log(`[StudyOS Trace] onAuthStateChanged fired. firebaseUser: ${firebaseUser ? `UID=${firebaseUser.uid} (email=${firebaseUser.email})` : 'null'}`);
+
+      // Helper function to handle authenticated user state
+      const handleUserAuthenticated = async (user: any) => {
+        console.log(`[StudyOS Trace] onAuthStateChanged: Firebase user is authenticated (UID: ${user.uid}). Attempting to load from Firestore...`);
+        let cloudData = null;
+        let dbErrorHappened = false;
+
+        const isPhysicallyConnected = navigator.onLine; // Check actual physical connectivity
+        const isOffline = !isPhysicallyConnected; // Authentication state must never control isOffline
+
+        // Enable Firestore network if physically connected before load
+        if (isPhysicallyConnected) {
+          try {
+            console.log("[StudyOS Trace] Calling enableNetwork(db) prior to loading user profile...");
+            await enableNetwork(db);
+            console.log("[StudyOS Trace] Firestore network enabled (pre-load)");
+          } catch (dbErr) {
+            console.warn("[StudyOS Trace] pre-load enableNetwork(db) failed:", dbErr);
+          }
+        }
+
+        try {
+          cloudData = await loadUserFromFirestore(user.uid);
+        } catch (dbErr) {
+          console.error("[StudyOS Trace] onAuthStateChanged: Database connection failed on startup, falling back to local storage:", dbErr);
+          dbErrorHappened = true;
+        }
+
+        if (cloudData && cloudData.onboarded) {
+          console.log("[StudyOS Trace] onAuthStateChanged: Successfully loaded onboarded cloud profile data.");
+          const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+          let local = cached ? JSON.parse(cached) : null;
+          let merged: UserState;
+
+          if (local && local.username && local.uid === user.uid) {
+            console.log("[StudyOS Trace] onAuthStateChanged: Local cache matches authenticated user. Merging local progress with cloud progress...");
+            merged = mergeLocalAndCloudStates(local, cloudData);
+            merged.isOffline = isOffline; // Use actual physical connectivity
+          } else {
+            console.log("[StudyOS Trace] onAuthStateChanged: Local cache is empty or belongs to a different user. Loading cloud profile data directly.");
+            merged = {
+              ...cloudData,
+              uid: user.uid,
+              email: user.email || undefined,
+              displayName: user.displayName || cloudData.displayName || undefined,
+              isOffline: isOffline, // Use actual physical connectivity
+            };
+          }
+          setUserState(merged);
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+        } else {
+          console.log(`[StudyOS Trace] onAuthStateChanged: Cloud data is null, incomplete, or not onboarded. dbErrorHappened=${dbErrorHappened}`);
+          const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+          let local = cached ? JSON.parse(cached) : null;
+
+          if (local && local.username && local.uid === user.uid) {
+            console.log(`[StudyOS Trace] onAuthStateChanged: Cache matches. Restoring cached state. isOffline=${isOffline}, local.isOffline=${local.isOffline}`);
+            const updatedLocal: UserState = {
+              ...local,
+              uid: user.uid,
+              email: user.email || undefined,
+              displayName: user.displayName || local.displayName || undefined,
+              isOffline: isOffline || local.isOffline === true, // Keep offline if already was offline
+            };
+            setUserState(updatedLocal);
+          } else {
+            console.log(`[StudyOS Trace] onAuthStateChanged: No matching cache. Initializing blank user state with isOffline=${isOffline}`);
+            setUserState({
+              uid: user.uid,
+              email: user.email || undefined,
+              displayName: user.displayName || undefined,
+              isOffline: isOffline,
+              onboarded: false,
+            } as UserState);
+          }
+        }
+      };
+
+      // Helper function to handle unauthenticated user state
+      const handleUserUnauthenticated = () => {
+        console.log("[StudyOS Trace] onAuthStateChanged: No authenticated Firebase user is logged in. Checking local storage cache...");
+        const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.isOffline || parsed.onboarded) {
+              console.log(`[StudyOS Trace] onAuthStateChanged: Found cached user profile in local storage (@${parsed.username}).`);
+              
+              const isPhysicallyConnected = navigator.onLine;
+              const isOffline = !isPhysicallyConnected; // Never let auth state control isOffline
+
+              if (!parsed.inProgressTopics) {
+                parsed.inProgressTopics = [];
+              }
+              // Restore and set offline status based strictly on actual physical connectivity and cached status
+              parsed.isOffline = isOffline || parsed.isOffline === true;
+              setUserState(parsed);
+            } else {
+              console.log("[StudyOS Trace] onAuthStateChanged: Cache does not contain an onboarded/offline user. Clearing state.");
+              setUserState(null);
+            }
+          } catch (pErr) {
+            console.error("[StudyOS Trace] onAuthStateChanged: Failed to parse cached local storage user state:", pErr);
+            setUserState(null);
+          }
+        } else {
+          console.log("[StudyOS Trace] onAuthStateChanged: Local storage cache is empty. Setting state to null.");
+          setUserState(null);
+        }
+      };
 
       try {
-        if (firebaseUser) {
-          // Returning authenticated user
-          let cloudData = null;
-          let dbErrorHappened = false;
-          try {
-            cloudData = await loadUserFromFirestore(firebaseUser.uid);
-          } catch (dbErr) {
-            console.error("Database connection failed on startup, falling back to local storage:", dbErr);
-            dbErrorHappened = true;
-          }
-
-          if (cloudData && cloudData.onboarded) {
-            const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-            let local = cached ? JSON.parse(cached) : null;
-            let merged: UserState;
-
-            if (local && local.username && local.uid === firebaseUser.uid) {
-              // Merge local offline progress with cloud data to prevent any data loss!
-              merged = mergeLocalAndCloudStates(local, cloudData);
-              merged.isOffline = false;
-            } else {
-              merged = {
-                ...cloudData,
-                uid: firebaseUser.uid,
-                email: firebaseUser.email || undefined,
-                displayName: firebaseUser.displayName || cloudData.displayName || undefined,
-                isOffline: false,
-              };
-            }
-            setUserState(merged);
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+        if (isFirstCallback) {
+          isFirstCallback = false;
+          
+          if (firebaseUser) {
+            console.log("[StudyOS Trace] Firebase initialization completed (User authenticated immediately)");
+            await handleUserAuthenticated(firebaseUser);
+            setAuthInitialized(true);
+            setIsLoading(false);
           } else {
-            // Authenticated but no cloud profile yet or database is unreachable
             const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-            let local = cached ? JSON.parse(cached) : null;
-            // If we know a cloud profile exists (e.g. from cache) but loading failed, treat it as offline
-            const shouldBeOffline = dbErrorHappened || (local && local.onboarded && cloudData === null);
-
-            // CRITICAL SECURITY & AUTHENTICATION FIX: Only restore local storage state if the cached UID matches the current Google user ID.
-            // This prevents a new account from being hijacked and populated with the previous account's local cache.
-            if (local && local.username && local.uid === firebaseUser.uid) {
-              const updatedLocal: UserState = {
-                ...local,
-                uid: firebaseUser.uid,
-                email: firebaseUser.email || undefined,
-                displayName: firebaseUser.displayName || local.displayName || undefined,
-                isOffline: shouldBeOffline || local.isOffline === true,
-              };
-              setUserState(updatedLocal);
+            if (cached) {
+              console.log("[StudyOS Trace] onAuthStateChanged received initial null callback but local cache exists. Starting 1000ms delay to check for restored session...");
+              initTimeout = setTimeout(async () => {
+                if (authUnsubscribed) return;
+                console.log("[StudyOS Trace] Firebase initialization completed (No restored session detected after 1000ms timeout)");
+                handleUserUnauthenticated();
+                setAuthInitialized(true);
+                setIsLoading(false);
+              }, 1000);
             } else {
-              // Create a clean new state for this newly signed-in user
-              setUserState({
-                uid: firebaseUser.uid,
-                email: firebaseUser.email || undefined,
-                displayName: firebaseUser.displayName || undefined,
-                isOffline: shouldBeOffline,
-                onboarded: false,
-              } as UserState);
+              console.log("[StudyOS Trace] Firebase initialization completed (No cached session, unauthenticated)");
+              handleUserUnauthenticated();
+              setAuthInitialized(true);
+              setIsLoading(false);
             }
           }
         } else {
-          // No active Firebase user
-          const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-          if (cached) {
-            try {
-              const parsed = JSON.parse(cached);
-              if (parsed.isOffline || parsed.onboarded) {
-                // If the profile in cache has a uid and isOffline is false, but firebaseUser is null,
-                // it might mean there is no internet connection or session is restoring offline.
-                // We automatically sign them in using cached data and transition to offline mode, so they aren't kicked out.
-                if (!parsed.isOffline && parsed.uid) {
-                  if (!parsed.inProgressTopics) {
-                    parsed.inProgressTopics = [];
-                  }
-                  setUserState({ ...parsed, isOffline: true });
-                } else {
-                  if (!parsed.inProgressTopics) {
-                    parsed.inProgressTopics = [];
-                  }
-                  setUserState(parsed);
-                }
-              } else {
-                setUserState(null);
-              }
-            } catch (pErr) {
-              setUserState(null);
-            }
+          if (initTimeout) {
+            clearTimeout(initTimeout);
+            initTimeout = null;
+          }
+          
+          if (firebaseUser) {
+            console.log("[StudyOS Trace] Firebase auth state transitioned to authenticated.");
+            await handleUserAuthenticated(firebaseUser);
+            setAuthInitialized(true);
+            setIsLoading(false);
           } else {
-            setUserState(null);
+            console.log("[StudyOS Trace] Firebase auth state transitioned to unauthenticated.");
+            handleUserUnauthenticated();
+            setAuthInitialized(true);
+            setIsLoading(false);
           }
         }
       } catch (err) {
-        console.error("Initialization error:", err);
-      } finally {
-        setIsLoading(false);
+        console.error("[StudyOS Trace] onAuthStateChanged block encountered error:", err);
       }
     });
 
     return () => {
+      console.log("[StudyOS Trace] Cleaning up Firebase onAuthStateChanged subscription...");
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+      }
       authUnsubscribed = true;
       unsubscribe();
     };
@@ -471,27 +550,49 @@ export default function App() {
   // Helper to get network status natively or from browser
   const getIsConnected = async (): Promise<boolean> => {
     try {
+      console.log("[StudyOS Trace] getIsConnected invoking Capacitor Network.getStatus()...");
       const status = await Network.getStatus();
-      console.log(`[StudyOS Network] Native getStatus: connected=${status.connected}`);
+      console.log(`[StudyOS Trace] getIsConnected: Native getStatus response: connected=${status.connected}, connectionType=${status.connectionType}`);
       return status.connected;
     } catch (e) {
-      console.log(`[StudyOS Network] Standard navigator.onLine check: connected=${navigator.onLine}`);
+      console.log(`[StudyOS Trace] getIsConnected: Native getStatus failed. Standard navigator.onLine check: connected=${navigator.onLine}`);
       return navigator.onLine;
     }
   };
 
   // Main synchronization and reconnect function
   const performSyncOnReconnect = async () => {
-    const currentState = userStateRef.current;
-    if (!currentState || !currentState.uid || !currentState.onboarded) {
-      console.log("[StudyOS Network] Sync skipped: user is not authenticated or onboarded yet.");
+    console.log("[StudyOS Trace] performSyncOnReconnect started");
+
+    if (!authInitialized) {
+      console.log("[StudyOS Trace] performSyncOnReconnect skipped because auth not initialized");
       return;
     }
 
+    if (!auth.currentUser) {
+      console.log("[StudyOS Trace] performSyncOnReconnect skipped because auth.currentUser is null");
+      return;
+    }
+
+    const currentState = userStateRef.current;
+    if (!currentState || !currentState.uid) {
+      console.log("[StudyOS Trace] performSyncOnReconnect skipped because userState does not exist or has no UID");
+      return;
+    }
+
+    if (!currentState.onboarded) {
+      console.log("[StudyOS Trace] performSyncOnReconnect skipped because onboarding is not completed");
+      return;
+    }
+
+    console.log("[StudyOS Trace] performSyncOnReconnect executed after authentication");
+
     const hasInternet = await getIsConnected();
+    console.log(`[StudyOS Trace] performSyncOnReconnect connection check outcome: hasInternet=${hasInternet}`);
     if (!hasInternet) {
-      console.log("[StudyOS Network] Sync skipped: network is offline.");
+      console.log("[StudyOS Trace] performSyncOnReconnect skipped: network is offline.");
       if (currentState && !currentState.isOffline) {
+        console.log("[StudyOS Trace] performSyncOnReconnect: Transitioning userState isOffline=true due to detected offline state.");
         const offlineState = {
           ...currentState,
           isOffline: true
@@ -503,34 +604,41 @@ export default function App() {
       return;
     }
 
-    console.log("⚡ [StudyOS Network] Reconnection/Resume detected. Running cloud recovery...");
+    console.log("⚡ [StudyOS Trace] Reconnection/Resume active. Running cloud recovery...");
 
     try {
       // 1. Force enable Firestore network & trigger retries of pending writes/listens
       try {
+        console.log("[StudyOS Trace] Calling enableNetwork(db) to explicitly connect Firestore...");
         await enableNetwork(db);
-        console.log("[StudyOS Network] Firestore network enabled successfully.");
-      } catch (dbErr) {
-        console.warn("[StudyOS Network] Could not explicitly enable Firestore network:", dbErr);
+        console.log("[StudyOS Trace] Firestore network enabled");
+      } catch (dbErr: any) {
+        console.warn(`[StudyOS Trace] enableNetwork(db) FAILED: ${dbErr?.message || dbErr}`);
       }
 
       // 2. Refresh Firebase Auth if needed (forces reconnection & updates auth token)
       if (auth.currentUser) {
         try {
+          console.log("[StudyOS Trace] Calling auth.currentUser.getIdToken(true) to force token refresh...");
           await auth.currentUser.getIdToken(true);
-          console.log("[StudyOS Network] Firebase Auth token refreshed successfully.");
-        } catch (authErr) {
-          console.warn("[StudyOS Network] Could not force refresh Auth token:", authErr);
+          console.log("[StudyOS Trace] auth.currentUser.getIdToken(true) SUCCEEDED.");
+        } catch (authErr: any) {
+          console.warn(`[StudyOS Trace] auth.currentUser.getIdToken(true) FAILED: ${authErr?.message || authErr}`);
         }
+      } else {
+        console.log("[StudyOS Trace] performSyncOnReconnect: auth.currentUser is null. Skipping token refresh.");
       }
 
       // 3. Load user profile and study stats from Firestore
-      console.log("[StudyOS Network] Fetching latest profile from Firestore for UID:", currentState.uid);
+      console.log(`[StudyOS Trace] performSyncOnReconnect: Loading profile from Firestore for UID: ${currentState.uid}`);
       const cloudData = await loadUserFromFirestore(currentState.uid);
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current) {
+        console.log("[StudyOS Trace] performSyncOnReconnect: App unmounted mid-sync. Aborting state update.");
+        return;
+      }
 
       if (cloudData) {
-        console.log("[StudyOS Network] Profile loaded from Firestore. Merging local progress...");
+        console.log("[StudyOS Trace] performSyncOnReconnect: Cloud profile found. Merging local progress...");
         // Merge local offline progress into cloud data to prevent any data loss
         const merged = mergeLocalAndCloudStates(currentState, cloudData);
         const updatedState = {
@@ -542,6 +650,7 @@ export default function App() {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedState));
 
         // Trigger a silent sync to cloud just to make sure Firestore is fully updated with any offline changes
+        console.log("[StudyOS Trace] performSyncOnReconnect: Triggering silent cloud sync write...");
         await syncUserToFirestore(currentState.uid, updatedState);
 
         setToast({
@@ -550,7 +659,7 @@ export default function App() {
           type: "success"
         });
       } else {
-        console.log("[StudyOS Network] No cloud profile found, but connected to internet. Setting isOffline=false.");
+        console.log("[StudyOS Trace] performSyncOnReconnect: No cloud profile found, but online. Setting isOffline=false.");
         if (currentState.isOffline) {
           const updatedState = {
             ...currentState,
@@ -568,11 +677,11 @@ export default function App() {
       setReconnectCount(prev => prev + 1);
 
       // 4. Dispatch a custom global event to refresh friends, notifications, and leaderboard data
-      console.log("[StudyOS Network] Broadcasting app-resume-sync to all active tabs...");
+      console.log("[StudyOS Trace] performSyncOnReconnect complete. Broadcasting app-resume-sync to active tabs.");
       window.dispatchEvent(new CustomEvent('app-resume-sync'));
 
-    } catch (err) {
-      console.warn("[StudyOS Network] Failed to automatically synchronize with cloud database on reconnect:", err);
+    } catch (err: any) {
+      console.warn(`[StudyOS Trace] performSyncOnReconnect FAILED: ${err?.message || err}`);
       
       // Set cloud sync flag to unavailable since the device is online but we can't sync to the cloud
       setIsCloudSyncUnavailable(true);
@@ -580,7 +689,7 @@ export default function App() {
       // Critical Fail-Safe: If we verified we have internet, but the Firestore load itself threw an error (e.g., temporary Firestore network glitch),
       // we should still reset the isOffline banner if the browser says we are online, to avoid locking the UI in a stale "No internet connection detected" state.
       if (currentState.isOffline) {
-        console.log("[StudyOS Network] Internet is active despite Firestore load error. Clearing offline banner and enabling cloud sync error indicator.");
+        console.log("[StudyOS Trace] performSyncOnReconnect fail-safe triggered. Internet active but Firestore load failed. Clearing offline banner.");
         const updatedState = {
           ...currentState,
           isOffline: false,
@@ -594,22 +703,23 @@ export default function App() {
   // Handle network state transitions
   const handleNetworkChange = async (connected: boolean) => {
     if (!isMountedRef.current) return;
-    console.log(`[StudyOS Network] Connection state changed to: ${connected ? 'ONLINE' : 'OFFLINE'}`);
+    console.log(`[StudyOS Trace] handleNetworkChange called. connected=${connected}`);
 
     if (connected) {
       await performSyncOnReconnect();
     } else {
       // We are offline. Transition Firestore to offline and update userState isOffline parameter.
       try {
+        console.log("[StudyOS Trace] handleNetworkChange: Disabling Firestore network...");
         await disableNetwork(db);
-        console.log("[StudyOS Network] Firestore network disabled.");
-      } catch (dbErr) {
-        console.warn("[StudyOS Network] Could not explicitly disable Firestore network:", dbErr);
+        console.log("[StudyOS Trace] disableNetwork(db) SUCCEEDED.");
+      } catch (dbErr: any) {
+        console.warn(`[StudyOS Trace] disableNetwork(db) FAILED: ${dbErr?.message || dbErr}`);
       }
 
       const currentState = userStateRef.current;
       if (currentState && !currentState.isOffline) {
-        console.log("[StudyOS Network] Transitioning state to offline.");
+        console.log("[StudyOS Trace] handleNetworkChange: Transitioning state to offline.");
         const offlineState = {
           ...currentState,
           isOffline: true
@@ -635,6 +745,8 @@ export default function App() {
     let netListener: any = null;
     let browserCleanup: (() => void) | undefined;
 
+    console.log("[StudyOS Trace] Initializing network and lifecycle event monitoring...");
+
     // Setup Capacitor and browser listeners
     const setupListeners = async () => {
       let isNativelySupported = false;
@@ -642,26 +754,26 @@ export default function App() {
         // Test if the App and Network plugins are supported and available
         const appInfo = await CapApp.getInfo();
         const initialStatus = await Network.getStatus();
-        console.log("[StudyOS Network] Capacitor App & Network plugins available natively.", appInfo, initialStatus);
+        console.log("[StudyOS Trace] Capacitor App & Network plugins available natively.", appInfo, initialStatus);
         isNativelySupported = true;
       } catch (e) {
-        console.log("[StudyOS Network] Capacitor plugins not available natively. Falling back to browser standard APIs.");
+        console.log("[StudyOS Trace] Capacitor plugins not available natively. Falling back to browser standard APIs.");
       }
 
       if (isNativelySupported) {
         try {
           // Listen for App Resume (coming from background)
           appListener = await CapApp.addListener('appStateChange', async (state) => {
-            console.log(`[StudyOS Lifecycle] App state changed. isActive=${state.isActive}`);
+            console.log(`[StudyOS Trace] [Capacitor App] appStateChange fired. isActive=${state.isActive}`);
             if (state.isActive && isMountedRef.current) {
-              console.log("[StudyOS Lifecycle] App resumed from background. Triggering network and sync check...");
+              console.log("[StudyOS Trace] [Capacitor App] App resumed. Triggering network and sync check...");
               await performSyncOnReconnect();
             }
           });
 
           // Listen for Network changes
           netListener = await Network.addListener('networkStatusChange', async (status) => {
-            console.log(`[StudyOS Network] Native network status change: connected=${status.connected}`);
+            console.log(`[StudyOS Trace] [Capacitor Network] networkStatusChange fired. connected=${status.connected}, connectionType=${status.connectionType}`);
             if (isMountedRef.current) {
               await handleNetworkChange(status.connected);
             }
@@ -669,38 +781,49 @@ export default function App() {
 
           // Run initial check
           const status = await Network.getStatus();
-          console.log(`[StudyOS Network] Initial Native connection check: connected=${status.connected}`);
+          console.log(`[StudyOS Trace] [Capacitor Network] Initial connection check: connected=${status.connected}`);
           if (status.connected) {
             await performSyncOnReconnect();
           } else {
             await handleNetworkChange(false);
           }
         } catch (err) {
-          console.error("[StudyOS Network] Error setting up native Capacitor listeners:", err);
+          console.error("[StudyOS Trace] Error setting up native Capacitor listeners:", err);
         }
       } else {
         // Browser Fallback listeners
         const handleOnline = () => {
-          console.log("[StudyOS Network] Browser online event fired.");
+          console.log("[StudyOS Trace] [Browser Network] online event fired.");
           if (isMountedRef.current) performSyncOnReconnect();
         };
 
         const handleOffline = () => {
-          console.log("[StudyOS Network] Browser offline event fired.");
+          console.log("[StudyOS Trace] [Browser Network] offline event fired.");
           if (isMountedRef.current) handleNetworkChange(false);
         };
 
         const handleVisibility = () => {
-          console.log(`[StudyOS Network] Browser visibility change: state=${document.visibilityState}`);
+          console.log(`[StudyOS Trace] [Browser Lifecycle] visibilitychange fired. state=${document.visibilityState}`);
           if (document.visibilityState === 'visible' && isMountedRef.current) {
             performSyncOnReconnect();
           }
         };
 
+        const handleFocus = () => {
+          console.log("[StudyOS Trace] [Browser Lifecycle] Window focused.");
+        };
+
+        const handleBlur = () => {
+          console.log("[StudyOS Trace] [Browser Lifecycle] Window blurred.");
+        };
+
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
         document.addEventListener('visibilitychange', handleVisibility);
+        window.addEventListener('focus', handleFocus);
+        window.addEventListener('blur', handleBlur);
 
+        console.log(`[StudyOS Trace] [Browser Network] Initial navigator.onLine check: connected=${navigator.onLine}`);
         // Initial standard check
         if (navigator.onLine) {
           performSyncOnReconnect();
@@ -712,6 +835,8 @@ export default function App() {
           window.removeEventListener('online', handleOnline);
           window.removeEventListener('offline', handleOffline);
           document.removeEventListener('visibilitychange', handleVisibility);
+          window.removeEventListener('focus', handleFocus);
+          window.removeEventListener('blur', handleBlur);
         };
       }
     };
@@ -719,6 +844,7 @@ export default function App() {
     setupListeners();
 
     return () => {
+      console.log("[StudyOS Trace] Cleaning up network and lifecycle event listeners...");
       if (appListener) {
         appListener.remove();
       }

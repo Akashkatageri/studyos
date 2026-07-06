@@ -46,7 +46,9 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // Initialize Firestore with the named database where all the collections reside.
 // This ensures that downloaded code running on localhost still connects to the correct database.
+console.log("[StudyOS Trace] Firestore module loading and initializing db with name 'ai-studio-studyos-dab98d62-f9f3-4125-906a-d48f2df82335'...");
 export const db = getFirestore(app, "ai-studio-studyos-dab98d62-f9f3-4125-906a-d48f2df82335");
+console.log("[StudyOS Trace] Firestore DB object created successfully.");
 
 // -------------------------------------------------------------------
 // USER SYNCHRONIZATION HELPERS
@@ -147,7 +149,20 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 // Sync local user state to Cloud Firestore (Separate Collections: users, settings, studyStats)
 export async function syncUserToFirestore(uid: string, state: UserState): Promise<void> {
-  if (!uid || state.isOffline || !state.onboarded) return;
+  if (!uid) {
+    console.log("[StudyOS Trace] syncUserToFirestore skipped: UID is falsy.");
+    return;
+  }
+  if (state.isOffline) {
+    console.log(`[StudyOS Trace] syncUserToFirestore skipped: state.isOffline is true for UID: ${uid}`);
+    return;
+  }
+  if (!state.onboarded) {
+    console.log(`[StudyOS Trace] syncUserToFirestore skipped: state.onboarded is false for UID: ${uid}`);
+    return;
+  }
+  
+  console.log(`[StudyOS Trace] syncUserToFirestore starting for UID: ${uid} (username: @${state.username}, level: ${state.level}, streak: ${state.streak})`);
   
   try {
     const publicProfile = getProfileFromState(state);
@@ -240,14 +255,21 @@ export async function syncUserToFirestore(uid: string, state: UserState): Promis
       const usernameDocRef = doc(db, "usernames", usernameKey);
       await setDoc(usernameDocRef, { uid, username: state.username.trim() }, { merge: true });
     }
+    console.log(`[StudyOS Trace] syncUserToFirestore SUCCEEDED for UID: ${uid}`);
   } catch (err) {
+    console.error(`[StudyOS Trace] syncUserToFirestore FAILED for UID: ${uid}. Error:`, err);
     handleFirestoreError(err, OperationType.WRITE, `users/${uid}`);
   }
 }
 
 // Load user state from Firestore (Merging from separate collections) with a 10-second timeout fallback
 export async function loadUserFromFirestore(uid: string): Promise<UserState | null> {
-  if (!uid) return null;
+  if (!uid) {
+    console.log("[StudyOS Trace] loadUserFromFirestore called but UID is falsy.");
+    return null;
+  }
+  
+  console.log(`[StudyOS Trace] loadUserFromFirestore starting for UID: ${uid}`);
   
   // Timeout helper to prevent infinite hangs on slower or blocked connections
   const timeoutPromise = new Promise<never>((_, reject) =>
@@ -260,7 +282,7 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
     // Fetch user doc first to check if they exist
     const userSnap = await Promise.race([
       getDoc(userDocRef).catch(err => {
-        console.error(`Error fetching userDocRef (users/${uid}):`, err);
+        console.error(`[StudyOS Trace] loadUserFromFirestore error fetching userDocRef (users/${uid}):`, err);
         handleFirestoreError(err, OperationType.GET, `users/${uid}`);
         throw err;
       }),
@@ -268,8 +290,11 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
     ]);
 
     if (!userSnap.exists()) {
+      console.log(`[StudyOS Trace] loadUserFromFirestore completed: No user profile doc exists in cloud for UID: ${uid}`);
       return null;
     }
+
+    console.log(`[StudyOS Trace] loadUserFromFirestore found user profile doc in cloud for UID: ${uid}`);
 
     const userData = userSnap.data();
 
@@ -294,7 +319,7 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
     const settingsData = (settingsSnap && settingsSnap.exists()) ? settingsSnap.data() : {};
     const statsData = (statsSnap && statsSnap.exists()) ? statsSnap.data() : {};
     
-    return {
+    const loadedState = {
       ...userData,
       ...settingsData,
       ...statsData,
@@ -303,7 +328,11 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
       onboarded: true,
       isOffline: false
     } as UserState;
+
+    console.log(`[StudyOS Trace] loadUserFromFirestore SUCCEEDED. Loaded username: @${loadedState.username}, level: ${loadedState.level}, streak: ${loadedState.streak}`);
+    return loadedState;
   } catch (err) {
+    console.error(`[StudyOS Trace] loadUserFromFirestore FAILED for UID: ${uid}. Error:`, err);
     handleFirestoreError(err, OperationType.GET, `users/${uid}`);
     throw err;
   }
