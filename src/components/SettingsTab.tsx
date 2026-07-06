@@ -406,7 +406,9 @@ export default function SettingsTab({ userState, onImportState, onUpdateState, o
               <button
                 onClick={async () => {
                   try {
+                    console.log("[StudyOS Trace] [SettingsTab] Explicit sign-out triggered by user action");
                     await signOut(auth);
+                    console.log("[StudyOS Trace] [SettingsTab] signOut(auth) completed successfully");
                     if (onLogout) {
                       onLogout();
                     } else {

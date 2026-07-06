@@ -49,7 +49,7 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 // PERSISTENCE AND AUTH EVENT DIAGNOSTICS
 // ===================================================================
 
-function inspectLocalStorage() {
+export function inspectLocalStorage() {
   console.log("[StudyOS Persistence Test] Inspecting LocalStorage for Firebase-related keys...");
   try {
     const keys = [];
@@ -69,7 +69,7 @@ function inspectLocalStorage() {
   }
 }
 
-async function inspectIndexedDB() {
+export async function inspectIndexedDB() {
   console.log("[StudyOS Persistence Test] Starting IndexedDB inspection...");
   
   if (typeof indexedDB === 'undefined') {

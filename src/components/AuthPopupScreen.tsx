@@ -136,8 +136,9 @@ export default function AuthPopupScreen() {
 
         // 2. Clear any stale session in the popup domain if we don't have a redirect result
         if (auth.currentUser && active) {
-          console.log("Signing out stale session to allow clean account selection.");
+          console.log("[StudyOS Trace] [AuthPopupScreen] Signing out stale session to allow clean account selection. Current User UID:", auth.currentUser.uid);
           await signOut(auth);
+          console.log("[StudyOS Trace] [AuthPopupScreen] Stale session signOut(auth) complete.");
         }
 
         // 3. Set status to idle to let the user sign in with popup

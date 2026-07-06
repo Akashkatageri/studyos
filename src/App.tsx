@@ -20,7 +20,7 @@ import CompletionAnimations from './components/CompletionAnimations';
 import BadgeUnlockModal from './components/BadgeUnlockModal';
 import { getUnlockedAchievementIds, ACHIEVEMENT_DEFS } from './utils/achievements';
 import { auth, db, googleProvider, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount, mergeLocalAndCloudStates } from './lib/firebase';
-import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, onIdTokenChanged } from 'firebase/auth';
 import { encryptData } from './lib/crypto';
 import { enableNetwork, disableNetwork } from 'firebase/firestore';
 import { App as CapApp } from '@capacitor/app';
@@ -484,6 +484,19 @@ export default function App() {
     let isFirstCallback = true;
     
     console.log("[StudyOS Trace] Firebase Auth listener registered");
+    
+    const unsubscribeToken = onIdTokenChanged(auth, (firebaseUser) => {
+      if (authUnsubscribed) {
+        console.log("[StudyOS Trace] onIdTokenChanged ignored: listener has been unsubscribed.");
+        return;
+      }
+      if (firebaseUser) {
+        console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] onIdTokenChanged(firebaseUser) - User UID: ${firebaseUser.uid}`);
+      } else {
+        console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] onIdTokenChanged(null)`);
+      }
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (authUnsubscribed) {
         console.log("[StudyOS Trace] onAuthStateChanged ignored: listener has been unsubscribed.");
@@ -654,12 +667,13 @@ export default function App() {
     });
 
     return () => {
-      console.log("[StudyOS Trace] Cleaning up Firebase onAuthStateChanged subscription...");
+      console.log("[StudyOS Trace] Cleaning up Firebase onAuthStateChanged and onIdTokenChanged subscriptions...");
       if (initTimeout) {
         clearTimeout(initTimeout);
       }
       authUnsubscribed = true;
       unsubscribe();
+      unsubscribeToken();
     };
   }, []);
 
@@ -1438,12 +1452,14 @@ export default function App() {
           saveState(newState);
         }} 
         onSignOut={async () => {
+          console.log("[StudyOS Trace] [App.tsx] Explicit sign-out triggered from onboarding screen onSignOut()");
           localStorage.removeItem(LOCAL_STORAGE_KEY);
           setUserState(null);
           try {
             await auth.signOut();
+            console.log("[StudyOS Trace] [App.tsx] Onboarding auth.signOut() completed successfully");
           } catch (err) {
-            console.warn("Error signing out:", err);
+            console.warn("[StudyOS Trace] [App.tsx] Error signing out during onboarding logout:", err);
           }
         }}
       />
@@ -1867,12 +1883,14 @@ export default function App() {
 
   const handleLogout = async () => {
     setIsLoading(true);
+    console.log("[StudyOS Trace] [App.tsx] Explicit sign-out triggered via handleLogout()");
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     setUserState(null);
     try {
       await auth.signOut();
+      console.log("[StudyOS Trace] [App.tsx] Main handleLogout auth.signOut() completed successfully");
     } catch (err) {
-      console.warn("Error signing out:", err);
+      console.warn("[StudyOS Trace] [App.tsx] Error signing out in handleLogout():", err);
     }
     setIsLoading(false);
   };

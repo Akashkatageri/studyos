@@ -19,7 +19,7 @@ import {
   ArrowLeft,
   HardDrive
 } from 'lucide-react';
-import { auth, googleProvider, isUsernameUnique, loadUserFromFirestore, db, createDevicePairingCode, listenToDevicePairing, onSnapshot } from '../lib/firebase';
+import { auth, googleProvider, isUsernameUnique, loadUserFromFirestore, db, createDevicePairingCode, listenToDevicePairing, onSnapshot, inspectIndexedDB, inspectLocalStorage } from '../lib/firebase';
 import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { UserState } from '../types';
@@ -133,6 +133,13 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                 });
                 console.log("[TRACER] [SignIn] auth.currentUser.uid after success:", auth.currentUser?.uid);
                 localAuthSuccess = true;
+
+                // Wait 1 second and inspect firebaseLocalStorageDb to verify if firebase:authUser exists
+                setTimeout(() => {
+                  console.log("[TRACER] [Inspect 1s After Login] Running persistence diagnostics...");
+                  inspectLocalStorage();
+                  inspectIndexedDB();
+                }, 1000);
               } catch (authErr: any) {
                 resolved = true;
                 clearTimeout(hangTimer);
@@ -698,9 +705,11 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     setAuthError(null);
     setUsernameSubmitError(null);
     try {
+      console.log("[StudyOS Trace] [AuthScreen] Explicit sign-out triggered via handleSignOutAndReset()");
       await auth.signOut();
+      console.log("[StudyOS Trace] [AuthScreen] auth.signOut() completed successfully in handleSignOutAndReset()");
     } catch (err) {
-      console.warn("Error signing out:", err);
+      console.warn("[StudyOS Trace] [AuthScreen] Error signing out in handleSignOutAndReset():", err);
     }
     setAuthData({});
     setUsername('');

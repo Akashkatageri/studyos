@@ -322,7 +322,9 @@ export default function FriendsTab({ userState, onUpdateState, onTriggerToast }:
   const handleGoogleSignOut = async () => {
     setIsSyncing(true);
     try {
+      console.log("[StudyOS Trace] [FriendsTab] Explicit sign-out triggered via handleGoogleSignOut()");
       await signOut(auth);
+      console.log("[StudyOS Trace] [FriendsTab] signOut(auth) completed successfully in handleGoogleSignOut()");
       onUpdateState({
         uid: undefined,
         email: undefined
