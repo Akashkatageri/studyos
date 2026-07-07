@@ -24,6 +24,38 @@ import { doc, setDoc, deleteDoc, getDoc, enableNetwork } from 'firebase/firestor
 import { UserState } from '../types';
 import { decryptData } from '../lib/crypto';
 
+// Helper functions to parse Firestore REST API response fields
+function parseFirestoreRestField(field: any): any {
+  if (!field) return null;
+  if ('stringValue' in field) return field.stringValue;
+  if ('booleanValue' in field) return field.booleanValue;
+  if ('integerValue' in field) return parseInt(field.integerValue, 10);
+  if ('doubleValue' in field) return parseFloat(field.doubleValue);
+  if ('mapValue' in field) {
+    const fields = field.mapValue.fields || {};
+    const obj: any = {};
+    for (const key of Object.keys(fields)) {
+      obj[key] = parseFirestoreRestField(fields[key]);
+    }
+    return obj;
+  }
+  if ('arrayValue' in field) {
+    const values = field.arrayValue.values || [];
+    return values.map((val: any) => parseFirestoreRestField(val));
+  }
+  if ('nullValue' in field) return null;
+  return null;
+}
+
+function parseFirestoreRestDoc(fields: any): any {
+  const result: any = {};
+  if (!fields) return result;
+  for (const key of Object.keys(fields)) {
+    result[key] = parseFirestoreRestField(fields[key]);
+  }
+  return result;
+}
+
 interface AuthScreenProps {
   initialUser?: UserState | null;
   onAuthComplete: (authData: { 
@@ -38,7 +70,17 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenProps) {
-  const [step, setStep] = useState<'welcome' | 'username' | 'pairing'>('welcome');
+  const [step, setStep] = useState<'welcome' | 'username' | 'pairing'>(() => {
+    if (typeof window !== 'undefined') {
+      const active = localStorage.getItem('pairing_step_active');
+      const code = localStorage.getItem('pairing_code');
+      if (active === 'true' && code) {
+        console.log(`[TRACER] [State Init] Restoring step 'pairing' because active flow was found in localStorage.`);
+        return 'pairing';
+      }
+    }
+    return 'welcome';
+  });
   const [authData, setAuthData] = useState<{
     uid?: string;
     email?: string;
@@ -46,9 +88,23 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
   }>({});
 
   // Pairing State
-  const [pairingCode, setPairingCode] = useState('');
+  const [pairingCode, setPairingCode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const code = localStorage.getItem('pairing_code');
+      if (code) {
+        console.log(`[TRACER] [State Init] Restoring pairingCode "${code}" from localStorage.`);
+        return code;
+      }
+    }
+    return '';
+  });
   const [copiedPairingLink, setCopiedPairingLink] = useState(false);
-  const [isAutomaticGoogleFlow, setIsAutomaticGoogleFlow] = useState(false);
+  const [isAutomaticGoogleFlow, setIsAutomaticGoogleFlow] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pairing_step_active') === 'true';
+    }
+    return false;
+  });
 
   // Real-time listener for pairing completion
   useEffect(() => {
@@ -147,8 +203,10 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         }
 
         // Clean up pairing key
-        console.log("[TRACER] [Cleanup] Removing pairing_key from localStorage");
+        console.log("[TRACER] [Cleanup] Removing pairing keys and state from localStorage");
         localStorage.removeItem('pairing_key');
+        localStorage.removeItem('pairing_code');
+        localStorage.removeItem('pairing_step_active');
 
         // Delete the pairing document immediately for security
         try {
@@ -233,77 +291,121 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         console.warn("[TRACER] [Focus/Resume] enableNetwork failed:", e);
       }
 
-      const docRef = doc(db, "device_links", pairingCode);
-      const docSnap = await getDoc(docRef);
+      let data: any = null;
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        console.log("[TRACER] [Focus/Resume] Manual getDoc data:", data);
-        if (data && data.status === "paired" && data.uid) {
-          console.log("[TRACER] [Focus/Resume] Pairing document is PAIRED. Processing authentication...");
+      // 1. Resilient Direct HTTP REST Fetch (bypasses any hung websockets/Firestore listeners)
+      try {
+        console.log(`[TRACER] [REST Fallback] Fetching pairing code "${pairingCode}" directly from Firestore REST endpoint...`);
+        const restUrl = `https://firestore.googleapis.com/v1/projects/studyos-001/databases/ai-studio-studyos-dab98d62-f9f3-4125-906a-d48f2df82335/documents/device_links/${pairingCode}`;
+        
+        // Use a short 3-second timeout signal for REST fetch to guarantee non-blocking execution
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-          const pairingKey = localStorage.getItem('pairing_key');
+        const resp = await fetch(restUrl, { 
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
 
-          if (data.encryptedIdToken && pairingKey) {
-            try {
-              console.log("[TRACER] [Focus/Resume] Decrypting tokens...");
-              const idToken = decryptData(data.encryptedIdToken, pairingKey);
-              const accessToken = data.encryptedAccessToken ? decryptData(data.encryptedAccessToken, pairingKey) : null;
-
-              if (idToken) {
-                console.log("[TRACER] [Focus/Resume] Calling signInWithCredential...");
-                const credential = GoogleAuthProvider.credential(idToken, accessToken || undefined);
-                const result = await signInWithCredential(auth, credential);
-                console.log("[TRACER] [Focus/Resume] signInWithCredential resolved successfully! UID:", result.user.uid);
-              }
-            } catch (authErr) {
-              console.error("[TRACER] [Focus/Resume] Local Firebase auth failed:", authErr);
-            }
-          } else {
-            console.warn("[TRACER] [Focus/Resume] Missing tokens or pairing key in localStorage. Key exists:", !!pairingKey);
+        if (resp.ok) {
+          const json = await resp.json();
+          if (json && json.fields) {
+            data = parseFirestoreRestDoc(json.fields);
+            console.log("[TRACER] [REST Fallback] Successfully fetched pairing document via REST:", data);
           }
+        } else if (resp.status === 404) {
+          console.log("[TRACER] [REST Fallback] Document not found (404). Active/completed pairing bridge deleted.");
+        } else {
+          console.warn("[TRACER] [REST Fallback] Fetch returned status:", resp.status);
+        }
+      } catch (restErr: any) {
+        console.warn("[TRACER] [REST Fallback] Fetch request failed or timed out:", restErr?.message || restErr);
+      }
 
-          // Clean up pairing key
-          localStorage.removeItem('pairing_key');
+      // 2. Fallback to standard Firestore SDK getDoc if REST fetch failed/returned empty
+      if (!data) {
+        try {
+          console.log("[TRACER] [Focus/Resume] REST fetch empty. Falling back to standard Firestore SDK getDoc...");
+          const docRef = doc(db, "device_links", pairingCode);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            data = docSnap.data();
+            console.log("[TRACER] [Focus/Resume] Standard getDoc data loaded successfully:", data);
+          }
+        } catch (dbErr: any) {
+          console.warn("[TRACER] [Focus/Resume] Standard SDK getDoc failed or timed out:", dbErr?.message || dbErr);
+        }
+      }
 
-          // Delete the pairing document immediately for security
+      if (data && data.status === "paired" && data.uid) {
+        console.log("[TRACER] [Focus/Resume] Pairing document is PAIRED. Processing authentication...");
+
+        const pairingKey = localStorage.getItem('pairing_key');
+
+        if (data.encryptedIdToken && pairingKey) {
           try {
-            console.log("[TRACER] [Focus/Resume] Deleting pairing document...");
-            await deleteDoc(docRef);
-            console.log("[TRACER] [Focus/Resume] Pairing document deleted successfully.");
-          } catch (delErr) {
-            console.warn("[TRACER] [Focus/Resume] Failed to delete pairing document:", delErr);
-          }
+            console.log("[TRACER] [Focus/Resume] Decrypting tokens...");
+            const idToken = decryptData(data.encryptedIdToken, pairingKey);
+            const accessToken = data.encryptedAccessToken ? decryptData(data.encryptedAccessToken, pairingKey) : null;
 
-          console.log("[TRACER] [Focus/Resume] Completing auth in parent component...");
-          onAuthCompleteRef.current({
-            uid: data.uid,
-            email: data.userState?.email,
-            displayName: data.userState?.displayName,
-            isOffline: false,
-            username: data.userState?.username,
-            onboarded: data.userState?.onboarded || false,
-            fullState: data.userState || undefined
-          });
-
-          if (!data.userState || !data.userState.onboarded || !data.userState.username) {
-            console.log("[TRACER] [Focus/Resume] User is not onboarded or missing username. Transitioning step from 'pairing' to 'username'...");
-            setAuthData({
-              uid: data.uid,
-              email: data.userState?.email || undefined,
-              displayName: data.userState?.displayName || undefined
-            });
-            const base = (data.userState?.displayName || data.userState?.email || "user")
-              .toLowerCase()
-              .replace(/[^a-z0-9_]/g, '');
-            setUsername(base.slice(0, 15));
-            setStep('username');
+            if (idToken) {
+              console.log("[TRACER] [Focus/Resume] Calling signInWithCredential...");
+              const credential = GoogleAuthProvider.credential(idToken, accessToken || undefined);
+              const result = await signInWithCredential(auth, credential);
+              console.log("[TRACER] [Focus/Resume] signInWithCredential resolved successfully! UID:", result.user.uid);
+            }
+          } catch (authErr) {
+            console.error("[TRACER] [Focus/Resume] Local Firebase auth failed:", authErr);
           }
         } else {
-          console.log(`[TRACER] [Focus/Resume] Pairing document is still pending pairing (status: "${data?.status || 'unknown'}", uid: "${data?.uid || 'none'}").`);
+          console.warn("[TRACER] [Focus/Resume] Missing tokens or pairing key in localStorage. Key exists:", !!pairingKey);
+        }
+
+        // Clean up pairing key
+        localStorage.removeItem('pairing_key');
+        localStorage.removeItem('pairing_code');
+        localStorage.removeItem('pairing_step_active');
+
+        // Delete the pairing document immediately for security
+        try {
+          console.log("[TRACER] [Focus/Resume] Deleting pairing document...");
+          await deleteDoc(doc(db, "device_links", pairingCode));
+          console.log("[TRACER] [Focus/Resume] Pairing document deleted successfully.");
+        } catch (delErr) {
+          console.warn("[TRACER] [Focus/Resume] Failed to delete pairing document:", delErr);
+        }
+
+        console.log("[TRACER] [Focus/Resume] Completing auth in parent component...");
+        onAuthCompleteRef.current({
+          uid: data.uid,
+          email: data.userState?.email,
+          displayName: data.userState?.displayName,
+          isOffline: false,
+          username: data.userState?.username,
+          onboarded: data.userState?.onboarded || false,
+          fullState: data.userState || undefined
+        });
+
+        if (!data.userState || !data.userState.onboarded || !data.userState.username) {
+          console.log("[TRACER] [Focus/Resume] User is not onboarded or missing username. Transitioning step from 'pairing' to 'username'...");
+          setAuthData({
+            uid: data.uid,
+            email: data.userState?.email || undefined,
+            displayName: data.userState?.displayName || undefined
+          });
+          const base = (data.userState?.displayName || data.userState?.email || "user")
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, '');
+          setUsername(base.slice(0, 15));
+          setStep('username');
         }
       } else {
-        console.log(`[TRACER] [Focus/Resume] Pairing document does not exist for code: "${pairingCode}"`);
+        if (data) {
+          console.log(`[TRACER] [Focus/Resume] Pairing document is still pending pairing (status: "${data?.status || 'unknown'}", uid: "${data?.uid || 'none'}").`);
+        } else {
+          console.log(`[TRACER] [Focus/Resume] Pairing document does not exist/could not be loaded for code: "${pairingCode}"`);
+        }
       }
     } catch (err) {
       console.error("[TRACER] [Focus/Resume] Exception in focus/resume pairing check:", err);
@@ -350,6 +452,11 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleWindowFocus);
 
+    // 3. Periodic polling fallback interval (2.5s) to guarantee zero-lag pairing resume on foreground return
+    const pollInterval = setInterval(() => {
+      onAppActive();
+    }, 2500);
+
     // Run an initial check immediately on mount/activation
     onAppActive();
 
@@ -359,6 +466,7 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
+      clearInterval(pollInterval);
     };
   }, [step, pairingCode]);
 
@@ -559,6 +667,8 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
         const code = await createDevicePairingCode();
         const key = Math.random().toString(36).substring(2, 18) + Math.random().toString(36).substring(2, 18);
         localStorage.setItem('pairing_key', key);
+        localStorage.setItem('pairing_code', code);
+        localStorage.setItem('pairing_step_active', 'true');
         setPairingCode(code);
         setIsAutomaticGoogleFlow(true);
         setStep('pairing');
@@ -1253,6 +1363,9 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
+                      localStorage.removeItem('pairing_key');
+                      localStorage.removeItem('pairing_code');
+                      localStorage.removeItem('pairing_step_active');
                       setStep('welcome');
                       setIsAutomaticGoogleFlow(false);
                     }}
@@ -1325,6 +1438,9 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
                       <button
                         type="button"
                         onClick={() => {
+                          localStorage.removeItem('pairing_key');
+                          localStorage.removeItem('pairing_code');
+                          localStorage.removeItem('pairing_step_active');
                           setStep('welcome');
                           setIsAutomaticGoogleFlow(false);
                         }}

@@ -20,7 +20,7 @@ import CompletionAnimations from './components/CompletionAnimations';
 import BadgeUnlockModal from './components/BadgeUnlockModal';
 import { getUnlockedAchievementIds, ACHIEVEMENT_DEFS } from './utils/achievements';
 import { auth, db, googleProvider, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount, mergeLocalAndCloudStates } from './lib/firebase';
-import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, onIdTokenChanged } from 'firebase/auth';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onIdTokenChanged } from 'firebase/auth';
 import { encryptData } from './lib/crypto';
 import { enableNetwork, disableNetwork } from 'firebase/firestore';
 import { App as CapApp } from '@capacitor/app';
@@ -327,9 +327,20 @@ export default function App() {
       let idToken = sessionStorage.getItem('google_id_token') || null;
       let accessToken = sessionStorage.getItem('google_access_token') || null;
 
-      // If we don't have the Google ID token in sessionStorage, run a quick Google Auth popup to retrieve it
+      // If we don't have the Google ID token in sessionStorage, run a Google Auth flow to retrieve it
       if (!idToken) {
-        console.log("[PAIRING] Google ID Token not in session. Requesting re-auth via popup...");
+        console.log("[PAIRING] Google ID Token not in session. Requesting re-auth...");
+        
+        const isMobileDevice = typeof navigator !== 'undefined' && 
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        if (isMobileDevice) {
+          console.log("[PAIRING] Mobile device browser detected. Triggering signInWithRedirect to bypass popup blocking...");
+          googleProvider.setCustomParameters({ prompt: 'select_account' });
+          await signInWithRedirect(auth, googleProvider);
+          return; // The browser will redirect to Google and reload/return back
+        }
+
         try {
           googleProvider.setCustomParameters({ prompt: 'select_account' });
           const authResult = await signInWithPopup(auth, googleProvider);
@@ -341,7 +352,14 @@ export default function App() {
             if (accessToken) sessionStorage.setItem('google_access_token', accessToken);
           }
         } catch (authErr: any) {
-          throw new Error("Google re-authentication failed. We need a secure Google token to link your Android device: " + authErr.message);
+          console.warn("[PAIRING] Popup re-auth failed, falling back to redirect:", authErr);
+          try {
+            googleProvider.setCustomParameters({ prompt: 'select_account' });
+            await signInWithRedirect(auth, googleProvider);
+            return;
+          } catch (redirErr: any) {
+            throw new Error("Google re-authentication failed: " + redirErr.message);
+          }
         }
       }
 
