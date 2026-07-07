@@ -203,6 +203,23 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
           onboarded: userState?.onboarded || false,
           fullState: userState
         });
+
+        // CRITICAL FIX: If they are not fully onboarded yet (i.e. no username selected),
+        // we must transition the local step inside AuthScreen from 'pairing' to 'username'
+        // so that they can choose their unique handle and finish registration!
+        if (!userState || !userState.onboarded || !userState.username) {
+          console.log("[TRACER] [onPair Callback] User is not onboarded or missing username. Transitioning step from 'pairing' to 'username'...");
+          setAuthData({
+            uid,
+            email: userState?.email || undefined,
+            displayName: userState?.displayName || undefined
+          });
+          const base = (userState?.displayName || userState?.email || "user")
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, '');
+          setUsername(base.slice(0, 15));
+          setStep('username');
+        }
       },
       (err) => {
         console.error("[TRACER] [Error] Device pairing subscription failed/ended with error:", {

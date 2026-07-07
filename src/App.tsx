@@ -174,9 +174,14 @@ export default function App() {
 
   const [isCloudSyncUnavailable, setIsCloudSyncUnavailableInternal] = useState(false);
   const setIsCloudSyncUnavailable = (val: boolean) => {
-    console.log(`[StudyOS Trace] setIsCloudSyncUnavailable called: value=${val}`);
+    const stack = new Error().stack;
+    console.log(`[StudyOS Trace] [setIsCloudSyncUnavailable] Target: ${val}. Call Stack:\n`, stack);
     setIsCloudSyncUnavailableInternal(val);
   };
+
+  useEffect(() => {
+    console.log(`[StudyOS Trace] [isCloudSyncUnavailable state change detected] React State updated. Value is now: ${isCloudSyncUnavailable}`);
+  }, [isCloudSyncUnavailable]);
 
   // Modal topic states
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
@@ -1920,7 +1925,14 @@ export default function App() {
         </div>
       )}
 
-      {isCloudSyncUnavailable && !userState.isOffline && (
+      {(() => {
+        if (userState) {
+          console.log(`[StudyOS Trace Render] Evaluating cloud sync banner: isCloudSyncUnavailable=${isCloudSyncUnavailable}, userState.isOffline=${userState.isOffline}, showBanner=${isCloudSyncUnavailable && !userState.isOffline}`);
+        }
+        return null;
+      })()}
+
+      {isCloudSyncUnavailable && userState && !userState.isOffline && (
         <div id="sync-warning-banner" className="bg-orange-500/10 border-b border-orange-500/10 px-4 py-2 flex items-center justify-center gap-2 text-xs font-semibold text-orange-400 select-none backdrop-blur-md">
           <AlertCircle className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
           <span>Cloud sync temporarily unavailable. Retrying...</span>
