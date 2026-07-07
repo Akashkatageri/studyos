@@ -742,9 +742,21 @@ export default function App() {
         return;
       }
 
-      if (!auth.currentUser) {
-        console.log("[StudyOS Trace] performSyncOnReconnect skipped because auth.currentUser is null");
+      const isPairing = typeof window !== 'undefined' && localStorage.getItem('pairing_step_active') === 'true';
+
+      if (!auth.currentUser && !isPairing) {
+        console.log("[StudyOS Trace] performSyncOnReconnect skipped because auth.currentUser is null and not in pairing mode");
         return;
+      }
+
+      if (isPairing) {
+        console.log("performSyncOnReconnect: User is null, but pairing is active. Proceeding with bridge check by dispatching studyos-check-pairing event...");
+        window.dispatchEvent(new CustomEvent('studyos-check-pairing'));
+        
+        if (!auth.currentUser) {
+          console.log("performSyncOnReconnect: Still no authenticated user. Skipping state sync.");
+          return;
+        }
       }
 
       const currentState = userStateRef.current;

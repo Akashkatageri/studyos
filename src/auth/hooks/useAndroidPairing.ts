@@ -26,6 +26,90 @@ export function useAndroidPairing({
     onErrorRef.current = onError;
   }, [onPairComplete, onError]);
 
+  const handleSuccessfulPair = useCallback(async (
+    uid: string,
+    userState: any,
+    encryptedIdToken: string | null,
+    encryptedAccessToken: string | null
+  ) => {
+    console.log("[TRACER] [handleSuccessfulPair] Starting pairing and authentication completion...", {
+      uid,
+      hasUserState: !!userState,
+      hasEncryptedIdToken: !!encryptedIdToken,
+      hasEncryptedAccessToken: !!encryptedAccessToken
+    });
+
+    const pairingKey = localStorage.getItem('pairing_key');
+    let localAuthSuccess = false;
+
+    // 1. signInWithCredential() completes successfully.
+    if (encryptedIdToken && pairingKey) {
+      try {
+        console.log("[TRACER] [handleSuccessfulPair] Decrypting tokens...");
+        const idToken = decryptData(encryptedIdToken, pairingKey);
+        const accessToken = encryptedAccessToken ? decryptData(encryptedAccessToken, pairingKey) : null;
+
+        if (idToken) {
+          console.log("[TRACER] [handleSuccessfulPair] Calling signInWithCredential...");
+          const credential = GoogleAuthProvider.credential(idToken, accessToken || undefined);
+          await signInWithCredential(auth, credential);
+          
+          // 2. auth.currentUser is confirmed to be non-null.
+          if (auth.currentUser) {
+            console.log("[TRACER] [handleSuccessfulPair] signInWithCredential resolved successfully! auth.currentUser is non-null UID:", auth.currentUser.uid);
+            localAuthSuccess = true;
+
+            // Run persistence diagnostics after successful sign in
+            setTimeout(() => {
+              console.log("[TRACER] [Inspect 1s After Login] Running persistence diagnostics...");
+              inspectLocalStorage();
+              inspectIndexedDB();
+            }, 1000);
+          } else {
+            console.error("[TRACER] [handleSuccessfulPair] signInWithCredential resolved, but auth.currentUser remains null!");
+          }
+        } else {
+          console.error("[TRACER] [handleSuccessfulPair] Decrypted ID token is empty or null!");
+        }
+      } catch (authErr: any) {
+        console.error("[TRACER] [handleSuccessfulPair] Local Firebase auth failed! DETAILS:", {
+          code: authErr?.code,
+          message: authErr?.message,
+          stack: authErr?.stack,
+          rawError: authErr
+        });
+      }
+    } else {
+      console.warn("[TRACER] [handleSuccessfulPair] Missing tokens or pairing key in localStorage. Key exists:", !!pairingKey);
+    }
+
+    // 3. onAuthComplete() finishes successfully (called via onPairCompleteRef)
+    try {
+      console.log("[TRACER] [handleSuccessfulPair] Triggering onPairComplete...");
+      onPairCompleteRef.current(uid, userState || null, localAuthSuccess);
+      console.log("[TRACER] [handleSuccessfulPair] onPairComplete completed successfully.");
+    } catch (cbErr) {
+      console.error("[TRACER] [handleSuccessfulPair] Exception in onPairComplete callback:", cbErr);
+    }
+
+    // 4. Only then remove pairing states from localStorage
+    console.log("[TRACER] [handleSuccessfulPair] Removing pairing keys and state from localStorage.");
+    localStorage.removeItem('pairing_key');
+    localStorage.removeItem('pairing_code');
+    localStorage.removeItem('pairing_step_active');
+
+    // 5. Only then delete the Firestore pairing document
+    try {
+      console.log(`[TRACER] [handleSuccessfulPair] Deleting pairing document for code: "${pairingCode}"...`);
+      await deletePairingDoc(pairingCode);
+      console.log("[TRACER] [handleSuccessfulPair] Pairing document deleted successfully.");
+    } catch (delErr) {
+      console.error("[TRACER] [handleSuccessfulPair] Failed to delete pairing document:", delErr);
+    }
+
+    console.log("[TRACER] [handleSuccessfulPair] Pairing complete flow finished.");
+  }, [pairingCode]);
+
   const handleResumeOrFocus = useCallback(async () => {
     if (step !== 'pairing' || !pairingCode) {
       console.log(`[TRACER] [Focus/Resume] handleResumeOrFocus skipped because step is "${step}" and pairingCode is "${pairingCode}"`);
@@ -51,41 +135,13 @@ export function useAndroidPairing({
       }
 
       if (data && data.status === "paired" && data.uid) {
-        console.log("[TRACER] [Focus/Resume] Pairing document is PAIRED. Processing authentication...");
-
-        const pairingKey = localStorage.getItem('pairing_key');
-        let localAuthSuccess = false;
-
-        if (data.encryptedIdToken && pairingKey) {
-          try {
-            console.log("[TRACER] [Focus/Resume] Decrypting tokens...");
-            const idToken = decryptData(data.encryptedIdToken, pairingKey);
-            const accessToken = data.encryptedAccessToken ? decryptData(data.encryptedAccessToken, pairingKey) : null;
-
-            if (idToken) {
-              console.log("[TRACER] [Focus/Resume] Calling signInWithCredential...");
-              const credential = GoogleAuthProvider.credential(idToken, accessToken || undefined);
-              const result = await signInWithCredential(auth, credential);
-              console.log("[TRACER] [Focus/Resume] signInWithCredential resolved successfully! UID:", result.user.uid);
-              localAuthSuccess = true;
-            }
-          } catch (authErr) {
-            console.error("[TRACER] [Focus/Resume] Local Firebase auth failed:", authErr);
-          }
-        } else {
-          console.warn("[TRACER] [Focus/Resume] Missing tokens or pairing key in localStorage. Key exists:", !!pairingKey);
-        }
-
-        // Clean up pairing key and states
-        localStorage.removeItem('pairing_key');
-        localStorage.removeItem('pairing_code');
-        localStorage.removeItem('pairing_step_active');
-
-        // Delete the pairing document immediately for security
-        await deletePairingDoc(pairingCode);
-
-        console.log("[TRACER] [Focus/Resume] Completing auth in parent component...");
-        onPairCompleteRef.current(data.uid, data.userState || null, localAuthSuccess);
+        console.log("[TRACER] [Focus/Resume] Pairing document is PAIRED. Processing authentication via handleSuccessfulPair...");
+        await handleSuccessfulPair(
+          data.uid,
+          data.userState || null,
+          data.encryptedIdToken || null,
+          data.encryptedAccessToken || null
+        );
       } else {
         if (data) {
           console.log(`[TRACER] [Focus/Resume] Pairing document is still pending pairing (status: "${data?.status || 'unknown'}", uid: "${data?.uid || 'none'}").`);
@@ -96,7 +152,7 @@ export function useAndroidPairing({
     } catch (err) {
       console.error("[TRACER] [Focus/Resume] Exception in focus/resume pairing check:", err);
     }
-  }, [step, pairingCode]);
+  }, [step, pairingCode, handleSuccessfulPair]);
 
   // Set up Firestore onSnapshot subscription
   useEffect(() => {
@@ -114,104 +170,7 @@ export function useAndroidPairing({
           hasEncryptedAccessToken: !!encryptedAccessToken
         });
         
-        const pairingKey = localStorage.getItem('pairing_key');
-        console.log("[TRACER] [onPair Callback] Local storage check: pairing_key exists =", !!pairingKey);
-
-        let localAuthSuccess = false;
-
-        if (encryptedIdToken && pairingKey) {
-          try {
-            console.log("[TRACER] [Decrypt] Attempting to decrypt ID token and Access token using pairing key...");
-            const idToken = decryptData(encryptedIdToken, pairingKey);
-            const accessToken = encryptedAccessToken ? decryptData(encryptedAccessToken, pairingKey) : null;
-            
-            console.log("[TRACER] [Decrypt] Result:", {
-              idTokenDecrypted: !!idToken,
-              accessTokenDecrypted: !!accessToken
-            });
-
-            if (idToken) {
-              console.log("[TRACER] [Credential] Calling GoogleAuthProvider.credential()...");
-              const credential = GoogleAuthProvider.credential(idToken, accessToken || undefined);
-              console.log("[TRACER] [Credential] GoogleAuthProvider.credential() returned successfully:", !!credential);
-              
-              console.log("[TRACER] [SignIn] Entering signInWithCredential()...");
-
-              // Setup a timeout to detect if signInWithCredential is hanging
-              let resolved = false;
-              const hangTimer = setTimeout(() => {
-                if (!resolved) {
-                  console.warn("[TRACER] [SignIn] signInWithCredential is currently hanging! It has not resolved or rejected after 8 seconds.");
-                }
-              }, 8000);
-
-              try {
-                console.log("[TRACER] [SignIn] BEFORE await signInWithCredential call.");
-                const result = await signInWithCredential(auth, credential);
-                resolved = true;
-                clearTimeout(hangTimer);
-                
-                console.log("[TRACER] [SignIn] signInWithCredential resolved successfully!", {
-                  uid: result.user.uid,
-                  email: result.user.email,
-                  displayName: result.user.displayName
-                });
-                console.log("[TRACER] [SignIn] auth.currentUser.uid after success:", auth.currentUser?.uid);
-                localAuthSuccess = true;
-
-                // Wait 1 second and inspect firebaseLocalStorageDb to verify if firebase:authUser exists
-                setTimeout(() => {
-                  console.log("[TRACER] [Inspect 1s After Login] Running persistence diagnostics...");
-                  inspectLocalStorage();
-                  inspectIndexedDB();
-                }, 1000);
-              } catch (authErr: any) {
-                resolved = true;
-                clearTimeout(hangTimer);
-                console.error("[TRACER] [SignIn] signInWithCredential failed with error! DETAILS:", {
-                  code: authErr?.code,
-                  message: authErr?.message,
-                  stack: authErr?.stack,
-                  rawError: authErr
-                });
-                throw authErr; // rethrow to hit the outer catch block
-              }
-            } else {
-              console.error("[TRACER] [Decrypt] Decrypted ID token is empty or null!");
-            }
-          } catch (authErr: any) {
-            console.error("[TRACER] [Exception] Local Firebase authentication flow failed inside WebView:", {
-              code: authErr?.code,
-              message: authErr?.message,
-              stack: authErr?.stack,
-              rawError: authErr
-            });
-          }
-        } else {
-          console.warn("[TRACER] [Warning] Missing encrypted tokens or pairing key in WebView. Local Firebase Auth cannot be established.", {
-            hasToken: !!encryptedIdToken,
-            hasKey: !!pairingKey
-          });
-        }
-
-        // Clean up pairing key
-        console.log("[TRACER] [Cleanup] Removing pairing keys and state from localStorage");
-        localStorage.removeItem('pairing_key');
-        localStorage.removeItem('pairing_code');
-        localStorage.removeItem('pairing_step_active');
-
-        // Delete the pairing document immediately for security
-        await deletePairingDoc(pairingCode);
-
-        console.log("[TRACER] [onAuthComplete] Invoking onPairComplete with:", {
-          uid,
-          email: userState?.email,
-          displayName: userState?.displayName,
-          username: userState?.username,
-          localAuthSuccess
-        });
-
-        onPairCompleteRef.current(uid, userState || null, localAuthSuccess);
+        await handleSuccessfulPair(uid, userState, encryptedIdToken, encryptedAccessToken);
       },
       (err) => {
         console.error("[TRACER] [Error] Device pairing subscription failed/ended with error:", {
@@ -227,7 +186,7 @@ export function useAndroidPairing({
       console.log(`[TRACER] [useEffect] Cleaning up device pairing listener for code: "${pairingCode}"`);
       unsubscribe();
     };
-  }, [step, pairingCode]);
+  }, [step, pairingCode, handleSuccessfulPair]);
 
   // Listen for App Resume, window focus, or visibility changes to trigger immediate checks (ONE-OFF checks, no setInterval!)
   useEffect(() => {
@@ -266,8 +225,14 @@ export function useAndroidPairing({
       onAppActive();
     };
 
+    const handleCustomPairingCheck = () => {
+      console.log("[TRACER] [Custom Event] studyos-check-pairing received. Triggering check...");
+      onAppActive();
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('studyos-check-pairing', handleCustomPairingCheck);
 
     // Run an initial check immediately on mount/activation
     onAppActive();
@@ -278,6 +243,7 @@ export function useAndroidPairing({
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('studyos-check-pairing', handleCustomPairingCheck);
     };
   }, [step, pairingCode, handleResumeOrFocus]);
 
