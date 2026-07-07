@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserState } from '../types';
-import { Flame, Trophy, Award, User, Settings, Home, ListCollapse, BarChart3, GraduationCap } from 'lucide-react';
+import { Flame, Trophy } from 'lucide-react';
 import { getLevelAndProgress } from '../utils/xpUtils';
 
 interface HeaderProps {
@@ -9,18 +9,10 @@ interface HeaderProps {
 }
 
 export default function Header({ userState, onTabChange }: HeaderProps) {
-  const { xp, level, streak, semester, avatar, activeTab } = userState;
+  const { xp, level, streak, semester, avatar } = userState;
   
   // Calculate level progression with progressive XP
   const { xpInCurrentLevel, xpNeededForNextLevel, xpPercent } = getLevelAndProgress(xp);
-
-  const tabs: { id: UserState['activeTab']; label: string; icon: React.ReactNode }[] = [
-    { id: 'home', label: 'Home', icon: <Home className="w-4 h-4" /> },
-    { id: 'progression', label: 'Journey', icon: <ListCollapse className="w-4 h-4" /> },
-    { id: 'progress', label: 'Stats', icon: <BarChart3 className="w-4 h-4" /> },
-    { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
-    { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
-  ];
 
   return (
     <header className="sticky top-0 z-40 bg-[#09090B]/90 backdrop-blur-xl border-b border-white/5 px-4 md:px-8 py-2.5 md:py-4 font-sans select-none">

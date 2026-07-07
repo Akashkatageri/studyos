@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { UserState, Subject, Module, Topic } from '../types';
-import { ChevronDown, ChevronUp, BookOpen, AlertCircle, Circle, CheckCircle2, Award, Calendar, Sparkles } from 'lucide-react';
+import { UserState, Subject, Module } from '../types';
+import { ChevronDown, ChevronUp, BookOpen, AlertCircle, Award } from 'lucide-react';
 import { getSubjectTheme } from '../utils/subjectThemes';
 import { COURSE_TEMPLATES, COMMON_S1, COMMON_S2 } from '../courses';
 import { getSubjectDifficulty, getTopicEstimatedTime } from '../utils/xpUtils';
@@ -43,13 +43,12 @@ export default function ProgressionTab({
   onTriggerSemesterTransition,
   onChangeSubjectDifficulty,
 }: ProgressionTabProps) {
-  const { completedTopics, completedModules, revisions } = userState;
+  const { completedTopics, revisions } = userState;
 
   // Track expanded subjects & modules
   const [expandedSubjects, setExpandedSubjects] = useState<string[]>([]);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
   const [activeModuleTabs, setActiveModuleTabs] = useState<{[moduleId: string]: 'topics' | 'resources'}>({});
-  const [activeSubCategory, setActiveSubCategory] = useState<'my_subjects' | 'backlog'>('my_subjects');
 
   const toggleSubject = (subjectId: string) => {
     setExpandedSubjects((prev) =>
@@ -776,7 +775,6 @@ export default function ProgressionTab({
                       const isExpanded = expandedSubjects.includes(subj.id);
                       const stats = getSubjectStats(subj);
                       const isCompletedGold = stats.percent === 100;
-                      const theme = getSubjectTheme(subj.id, subj.name);
                       const diff = getSubjectDifficulty(userState.subjectDifficulties, subj.id);
 
                       return (

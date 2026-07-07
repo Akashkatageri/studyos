@@ -4,32 +4,20 @@ import {
   Search as SearchIcon, 
   Bell, 
   Trophy, 
-  Flame, 
-  Award, 
   Clock, 
-  BookOpen, 
-  GraduationCap, 
   Check, 
   X, 
   UserPlus, 
-  UserMinus, 
   ShieldAlert, 
-  Sparkles, 
-  Lock, 
-  Unlock, 
   Compass, 
-  ArrowLeft,
-  Settings as SettingsIcon,
-  CheckCircle2,
-  AlertCircle
+  Settings as SettingsIcon
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { UserState, FriendProfile, FriendRequest, SocialNotification, SocialActivity } from '../types';
 import { SoundManager } from '../utils/soundManager';
 import { 
   auth, 
   googleProvider, 
-  isUsernameUnique, 
   syncUserToFirestore, 
   loadUserFromFirestore, 
   sendFriendRequest, 
@@ -46,14 +34,11 @@ import {
   markAllNotificationsAsRead, 
   getFriendsActivities, 
   getUserActivities,
-  createActivity,
-  createNotification,
   db,
-  getProfileFromState,
-  getDoc
+  getProfileFromState
 } from '../lib/firebase';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
-import { signInWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import FriendProfileModal from './friends/FriendProfileModal';
 import FriendsPrivacyModal from './friends/FriendsPrivacyModal';
 import NotificationCenterModal from './friends/NotificationCenterModal';
@@ -314,24 +299,6 @@ export default function FriendsTab({ userState, onUpdateState, onTriggerToast }:
     } catch (e: any) {
       console.error("Google Sign-In Error:", e);
       onTriggerToast("Authentication Failed", "Please make sure third-party popups are allowed or open the app in a new tab.", "warning");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleGoogleSignOut = async () => {
-    setIsSyncing(true);
-    try {
-      console.log("[StudyOS Trace] [FriendsTab] Explicit sign-out triggered via handleGoogleSignOut()");
-      await signOut(auth);
-      console.log("[StudyOS Trace] [FriendsTab] signOut(auth) completed successfully in handleGoogleSignOut()");
-      onUpdateState({
-        uid: undefined,
-        email: undefined
-      });
-      onTriggerToast("Signed Out", "Switched back to offline storage mode.", "info");
-    } catch (e) {
-      console.error(e);
     } finally {
       setIsSyncing(false);
     }

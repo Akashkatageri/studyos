@@ -1,19 +1,11 @@
 import { Subject } from '../types';
 
-import vtu_2022_cse_s1 from './vtu/2022/cse/semester1.json';
-import vtu_2022_cse_s2 from './vtu/2022/cse/semester2.json';
 import vtu_2022_cse_s3 from './vtu/2022/cse/semester3.json';
 
-import vtu_2022_ise_s1 from './vtu/2022/ise/semester1.json';
-import vtu_2022_ise_s2 from './vtu/2022/ise/semester2.json';
 import vtu_2022_ise_s3 from './vtu/2022/ise/semester3.json';
 
-import vtu_2022_aiml_s1 from './vtu/2022/aiml/semester1.json';
-import vtu_2022_aiml_s2 from './vtu/2022/aiml/semester2.json';
 import vtu_2022_aiml_s3 from './vtu/2022/aiml/semester3.json';
 
-import vtu_2022_ece_s1 from './vtu/2022/ece/semester1.json';
-import vtu_2022_ece_s2 from './vtu/2022/ece/semester2.json';
 import vtu_2022_ece_s3 from './vtu/2022/ece/semester3.json';
 
 import vtu_2025_ise_s1 from './vtu/2025/ise/semester1.json';

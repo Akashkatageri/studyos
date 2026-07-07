@@ -3,7 +3,7 @@ import { UserState, Subject } from '../types';
 import { AVATARS, COURSE_TEMPLATES } from '../data';
 import { getLocalDateString } from '../utils/dateUtils';
 import { getLevelAndProgress } from '../utils/xpUtils';
-import { Award, Shield, BookOpen, Calendar, RefreshCw, Zap, Flame, User, Swords, Palette, Clock, Settings } from 'lucide-react';
+import { Award, BookOpen, Calendar, RefreshCw, Zap, Flame, Swords, Palette, Clock, Settings } from 'lucide-react';
 
 interface ProfileTabProps {
   userState: UserState;
@@ -406,8 +406,6 @@ export default function ProfileTab({ userState, activeSubjects, onUpdateState }:
       {(() => {
         const getFocusHabitStats = () => {
           const history = userState.focusHistory || {};
-          const todayStr = getLocalDateString();
-          const todayMins = userState.todayFocusMinutes || 0;
           
           let weeklyMins = 0;
           const todayDate = new Date();

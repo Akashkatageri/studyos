@@ -22,8 +22,7 @@ import {
   doc, 
   setDoc, 
   deleteDoc, 
-  query, 
-  orderBy 
+  query 
 } from 'firebase/firestore';
 
 interface ModuleResourcesSectionProps {

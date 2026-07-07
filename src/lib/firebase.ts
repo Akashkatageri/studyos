@@ -2,10 +2,6 @@ import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
   GoogleAuthProvider, 
-  signInWithPopup, 
-  signInWithRedirect, 
-  signOut, 
-  User as FirebaseUser,
   onAuthStateChanged,
   onIdTokenChanged
 } from "firebase/auth";
@@ -22,8 +18,7 @@ import {
   where, 
   onSnapshot as originalOnSnapshot,
   writeBatch,
-  runTransaction,
-  getDocFromServer
+  runTransaction
 } from "firebase/firestore";
 import { UserState, FriendProfile, FriendRequest, SocialNotification, SocialActivity } from "../types";
 import { getLocalDateString } from "../utils/dateUtils";
@@ -92,11 +87,11 @@ export async function inspectIndexedDB() {
 
   const request = indexedDB.open(dbName);
 
-  request.onerror = (event) => {
+  request.onerror = () => {
     console.error(`[StudyOS Persistence Test] Failed to open database ${dbName}:`, request.error);
   };
 
-  request.onsuccess = (event) => {
+  request.onsuccess = () => {
     const dbInstance = request.result;
     console.log(`[StudyOS Persistence Test] Database ${dbName} opened successfully. Version:`, dbInstance.version);
     
@@ -162,7 +157,7 @@ export async function inspectIndexedDB() {
     }
   };
 
-  request.onupgradeneeded = (event) => {
+  request.onupgradeneeded = () => {
     console.log(`[StudyOS Persistence Test] database ${dbName} open requested but it does not exist (triggering onupgradeneeded). DB was NOT present!`);
     request.transaction?.abort();
   };
@@ -181,7 +176,7 @@ onAuthStateChanged(auth, (user) => {
 onIdTokenChanged(auth, (user) => {
   console.log(`[StudyOS Auth Log] onIdTokenChanged fired. User UID: ${user ? user.uid : 'null'}`);
   if (user) {
-    user.getIdToken().then(token => {
+    user.getIdToken().then(() => {
       console.log(`[StudyOS Auth Log] ID Token fetched successfully for UID: ${user.uid}`);
     }).catch(err => {
       console.error(`[StudyOS Auth Log] Failed to fetch ID Token for UID: ${user.uid}:`, err);
@@ -673,6 +668,7 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
     revisions: uniqueRevisions,
     studyActivity: mergedStudyActivity,
     unlockedAchievements,
+    inProgressTopics,
     isOffline: false,
     onboarded: true,
     subjectDifficulties: { ...(cloud.subjectDifficulties || {}), ...(local.subjectDifficulties || {}) }

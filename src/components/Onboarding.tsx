@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserState, Subject } from '../types';
-import { COURSE_TEMPLATES, AVATARS, getPriorSemesterSubjects } from '../data';
+import { COURSE_TEMPLATES, AVATARS } from '../data';
 import { 
   BookOpen, 
   Sparkles, 
@@ -18,7 +18,6 @@ import {
   FlaskConical, 
   FolderKanban,
   CheckCircle2,
-  HelpCircle,
   FolderOpen,
   LogOut
 } from 'lucide-react';

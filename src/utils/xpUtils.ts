@@ -126,7 +126,7 @@ export function getTopicEstimatedTime(
   defaultTime: number = 30
 ): number {
   const config = getDifficultyConfig(subjectDifficulties, subjectId);
-  return config.estimatedMinutes;
+  return config.estimatedMinutes || defaultTime;
 }
 
 

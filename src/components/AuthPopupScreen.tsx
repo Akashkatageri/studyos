@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
-import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { signInWithRedirect, getRedirectResult, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import AppLogo from './AppLogo';

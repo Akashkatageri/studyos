@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Award, Sparkles, Star } from 'lucide-react';
+import { Award, Star } from 'lucide-react';
 import { SoundManager } from '../utils/soundManager';
 
 interface BadgeUnlockModalProps {

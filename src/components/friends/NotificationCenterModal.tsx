@@ -15,7 +15,6 @@ interface NotificationCenterModalProps {
 export default function NotificationCenterModal({
   isOpen,
   onClose,
-  userState,
   notifications,
   onMarkNotificationAsRead,
   onMarkAllAsRead,

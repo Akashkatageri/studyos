@@ -1,19 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Play, 
   Pause, 
   Square, 
-  Minus, 
   Maximize2, 
-  Sparkles, 
   Volume2, 
   VolumeX, 
-  ChevronRight, 
-  Flame, 
   Shield, 
   Clock, 
-  ChevronLeft,
   BookOpen,
   Coffee,
   BrainCircuit,
@@ -45,16 +40,6 @@ const TIMER_MODES = [
   { id: 'revision', name: 'Exam Prep', duration: 60, icon: Coffee, color: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10' }
 ];
 
-const MOTIVATIONAL_QUOTES = [
-  "Focus is a muscle, and you are building it right now.",
-  "Deep work produces rare and valuable results.",
-  "The secret of getting ahead is getting started.",
-  "Your future self is thanking you for this session.",
-  "No distractions. Just pure academic progression.",
-  "Suffer the pain of discipline or suffer the pain of regret.",
-  "One focused hour is worth ten distracted hours."
-];
-
 export const FocusTimer: React.FC<FocusTimerProps> = ({ 
   userState, 
   onUpdateState, 
@@ -83,9 +68,6 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   // Audio state
   const [isMuted, setIsMuted] = useState<boolean>(true);
   
-  // Motivational Quotes
-  const [currentQuoteIdx, setCurrentQuoteIdx] = useState<number>(0);
-  
   // Local storage session key
   const STORAGE_KEY = 'studyos_focus_session';
 
@@ -94,6 +76,10 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   const [isFullscreenActive, setIsFullscreenActive] = useState<boolean>(false);
   const [fullscreenFallbackMode, setFullscreenFallbackMode] = useState<boolean>(false);
   const [showPausedExitedScreen, setShowPausedExitedScreen] = useState<boolean>(false);
+
+  useEffect(() => {
+    console.log(`[FocusTimer] Fullscreen mode changed. Active: ${isFullscreenActive}`);
+  }, [isFullscreenActive]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wakeLockRef = useRef<any>(null);
@@ -304,7 +290,6 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
   // Tick reference to check for clock manipulation
   const lastTickRef = useRef<number>(Date.now());
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   const toggleTimer = () => {
     const nextRunning = !isRunning;
@@ -319,17 +304,6 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
       cancelLocalNotification();
     }
   };
-
-  // Load quote rotator
-  useEffect(() => {
-    let interval: any;
-    if (isRunning) {
-      interval = setInterval(() => {
-        setCurrentQuoteIdx((prev) => (prev + 1) % MOTIVATIONAL_QUOTES.length);
-      }, 120000); // 2 minutes
-    }
-    return () => clearInterval(interval);
-  }, [isRunning]);
 
   // Load session from LocalStorage on mount
   useEffect(() => {

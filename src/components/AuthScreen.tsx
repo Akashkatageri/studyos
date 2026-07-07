@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Capacitor } from '@capacitor/core';
 import AppLogo from './AppLogo';
 import { 
-  BookOpen, 
   ChevronRight, 
   User, 
   CircleAlert,
@@ -48,30 +47,8 @@ export default function AuthScreen({ initialUser, onAuthComplete }: AuthScreenPr
 
   // Pairing State
   const [pairingCode, setPairingCode] = useState('');
-  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [copiedPairingLink, setCopiedPairingLink] = useState(false);
   const [isAutomaticGoogleFlow, setIsAutomaticGoogleFlow] = useState(false);
-
-  // Trigger Device Pairing Code Generation (Option A)
-  const handleStartPairingFlow = async () => {
-    setIsGeneratingCode(true);
-    setAuthError(null);
-    try {
-      const code = await createDevicePairingCode();
-      // Generate a cryptographically random symmetric pairing key
-      const key = Math.random().toString(36).substring(2, 18) + Math.random().toString(36).substring(2, 18);
-      localStorage.setItem('pairing_key', key);
-      setPairingCode(code);
-      setStep('pairing');
-    } catch (err: any) {
-      console.error("Failed to generate device pairing code:", err);
-      setAuthError({
-        message: "Failed to generate pairing code. Please make sure your network is connected and Firestore is working."
-      });
-    } finally {
-      setIsGeneratingCode(false);
-    }
-  };
 
   // Real-time listener for pairing completion
   useEffect(() => {

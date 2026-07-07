@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { UserState, Subject, Module, Topic } from '../types';
 import { findTopicById } from '../data';
 import { SoundManager } from '../utils/soundManager';
@@ -13,16 +13,12 @@ import {
   Clock, 
   Search, 
   ArrowRight, 
-  X,
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
+  CheckCircle2, 
   BookOpen,
-  Calendar,
   Bell,
   Users
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import AndroidWidgetSimulator from './AndroidWidgetSimulator';
 import SvgBookIllustration from './home/SvgBookIllustration';
 import BrowseSubjectsModal from './home/BrowseSubjectsModal';
@@ -46,7 +42,6 @@ export default function HomeTab({
   backlogSubjects,
   onStartTopic,
   onOpenFocusTimer,
-  onOpenStudyCalendar,
   onUpdateState,
   hasActiveNotifications = false,
 }: HomeTabProps) {

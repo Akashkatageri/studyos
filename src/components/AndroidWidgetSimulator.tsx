@@ -3,14 +3,11 @@ import { UserState } from '../types';
 import { 
   Flame, 
   Sparkles, 
-  Shield, 
   Play, 
   Heart, 
-  RotateCw,
   Copy,
   Check,
   Smartphone,
-  Eye,
   Info,
   X
 } from 'lucide-react';

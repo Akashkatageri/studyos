@@ -263,8 +263,6 @@ export default function ProgressTab({ userState, activeSubjects, backlogSubjects
       {(() => {
         const getFocusHabitStats = () => {
           const history = userState.focusHistory || {};
-          const todayStr = getLocalDateString();
-          const todayMins = userState.todayFocusMinutes || 0;
           
           let weeklyMins = 0;
           const todayDate = new Date();

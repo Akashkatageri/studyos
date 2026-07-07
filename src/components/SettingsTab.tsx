@@ -9,7 +9,6 @@ import {
   Upload, 
   Info, 
   Check, 
-  HelpCircle, 
   BookOpen,
   LogOut, 
   Link2, 
@@ -25,9 +24,8 @@ import {
 import { COURSE_TEMPLATES } from '../data';
 import { getSubjectsForCycle } from '../utils/cycleSubjects';
 import { SoundManager } from '../utils/soundManager';
-import { auth, googleProvider, db, syncUserToFirestore, loadUserFromFirestore, mergeLocalAndCloudStates, registerUserProfileTransaction, linkDeviceWithAccount } from '../lib/firebase';
+import { auth, googleProvider, loadUserFromFirestore, mergeLocalAndCloudStates, registerUserProfileTransaction, linkDeviceWithAccount } from '../lib/firebase';
 import { signInWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
 
 interface SettingsTabProps {
   userState: UserState;
@@ -38,12 +36,11 @@ interface SettingsTabProps {
 }
 
 export default function SettingsTab({ userState, onImportState, onUpdateState, onLogout, onOpenStudyCalendar }: SettingsTabProps) {
-  const { university, branch, scheme, semester, firstYearCycle, backlogSubjects = [] } = userState;
+  const { university, branch, scheme, semester, firstYearCycle } = userState;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [notifStudy, setNotifStudy] = useState(true);
   const [notifStreak, setNotifStreak] = useState(true);
-  const [googleSync, setGoogleSync] = useState(false);
   const [showImportSuccess, setShowImportSuccess] = useState(false);
 
   // Manual device pairing state (Option A)

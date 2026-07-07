@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Flame, Trophy, Award, GraduationCap, ChevronRight } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Flame, Trophy, GraduationCap, ChevronRight } from 'lucide-react';
 
 interface CompletionAnimationsProps {
   type: 'topic' | 'module' | 'semester' | null;

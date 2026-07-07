@@ -1,6 +1,6 @@
 import React from 'react';
 import { Topic, Subject, UserState } from '../types';
-import { X, Clock, ShieldCheck, Trophy, Sparkles, RefreshCw } from 'lucide-react';
+import { X, Clock, ShieldCheck, Trophy, RefreshCw } from 'lucide-react';
 import { getSubjectDifficulty, getTopicEstimatedTime, getDifficultyConfig } from '../utils/xpUtils';
 
 interface TopicViewModalProps {

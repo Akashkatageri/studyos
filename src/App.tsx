@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserState, Subject, Topic, Revision } from './types';
+import { UserState, Subject, Topic } from './types';
 import { getTemplateSubjects, COURSE_TEMPLATES, findTopicById } from './data';
-import { Home, ListCollapse, BarChart3, Users, User, Settings, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus, Smartphone, Check, Loader2, ExternalLink, WifiOff } from 'lucide-react';
+import { Home, ListCollapse, Users, User, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus, Smartphone, Check, Loader2, ExternalLink, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Components
@@ -25,11 +25,10 @@ import { encryptData } from './lib/crypto';
 import { enableNetwork, disableNetwork } from 'firebase/firestore';
 import { App as CapApp } from '@capacitor/app';
 import { Network } from '@capacitor/network';
-import { getSubjectsForCycle } from './utils/cycleSubjects';
 import { SoundManager } from './utils/soundManager';
 import { getLocalDateString } from './utils/dateUtils';
 import { syncAndroidWidget } from './utils/widgetSync';
-import { getLevelAndProgress, getDifficultyConfig, getSubjectDifficulty } from './utils/xpUtils';
+import { getLevelAndProgress, getDifficultyConfig } from './utils/xpUtils';
 
 // New Study Habit Components
 import { StudyCalendar } from './components/StudyCalendar';
@@ -155,8 +154,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const isFirstLoad = useRef(true);
-
   // Keep a ref of userState to prevent stale closure bugs in persistent handlers like onAuthStateChanged
   const userStateRef = useRef(userState);
   useEffect(() => {
@@ -215,7 +212,6 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; title: string; type: 'success' | 'warning' | 'info' | 'error' } | null>(null);
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
   const [hasUnreadNotifs, setHasUnreadNotifs] = useState(false);
-  const [reconnectCount, setReconnectCount] = useState(0);
 
   // Device Pairing State (Option A)
   const [pendingPairCode, setPendingPairCode] = useState<string | null>(null);
@@ -832,9 +828,6 @@ export default function App() {
 
         // Reset the cloud sync unavailable flag since everything succeeded
         setIsCloudSyncUnavailable(false);
-
-        // Increment reconnectCount to force-rebuild any active subscriptions
-        setReconnectCount(prev => prev + 1);
 
         // 4. Dispatch a custom global event to refresh friends, notifications, and leaderboard data
         console.log("[StudyOS Trace] performSyncOnReconnect complete. Broadcasting app-resume-sync to active tabs.");
@@ -1899,15 +1892,6 @@ export default function App() {
     }
     setIsLoading(false);
   };
-
-  const tabs: { id: UserState['activeTab']; label: string; icon: React.ReactNode }[] = [
-    { id: 'home', label: 'Home', icon: <Home className="w-5 h-5" /> },
-    { id: 'progression', label: 'Journey', icon: <ListCollapse className="w-5 h-5" /> },
-    { id: 'progress', label: 'Stats', icon: <BarChart3 className="w-5 h-5" /> },
-    { id: 'friends', label: 'Friends', icon: <Users className="w-5 h-5" /> },
-    { id: 'profile', label: 'Profile', icon: <User className="w-5 h-5" /> },
-    { id: 'settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
-  ];
 
   return (
     <div className="min-h-screen bg-[#0C0F12] text-white flex flex-col font-sans selection:bg-blue-600/30">
