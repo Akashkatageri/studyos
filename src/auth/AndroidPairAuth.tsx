@@ -17,6 +17,8 @@ interface AndroidPairAuthProps {
   setIsAutomaticGoogleFlow: (val: boolean) => void;
   setStep: (step: 'welcome' | 'username' | 'pairing') => void;
   handleResumeOrFocus: () => Promise<void>;
+  authError?: { message: string; raw?: string } | null;
+  setAuthError?: (err: any) => void;
 }
 
 export default function AndroidPairAuth({
@@ -25,6 +27,8 @@ export default function AndroidPairAuth({
   setIsAutomaticGoogleFlow,
   setStep,
   handleResumeOrFocus,
+  authError,
+  setAuthError,
 }: AndroidPairAuthProps) {
   const [copiedPairingLink, setCopiedPairingLink] = useState(false);
 
@@ -75,6 +79,21 @@ export default function AndroidPairAuth({
 
       {isAutomaticGoogleFlow || Capacitor.isNativePlatform() ? (
         <>
+          {authError && (
+            <div className="p-4 bg-red-950/20 border border-red-900/30 rounded-xl text-left text-xs text-red-400 space-y-1">
+              <p className="font-bold">⚠️ Connection Issue</p>
+              <p>{authError.message}</p>
+              {setAuthError && (
+                <button
+                  onClick={() => setAuthError(null)}
+                  className="mt-1 text-[10px] text-red-300 hover:text-red-200 underline cursor-pointer bg-transparent border-none outline-none p-0"
+                >
+                  Clear Error
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="space-y-4">
             <div className="mx-auto w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 relative">
               <svg className="w-8 h-8 animate-pulse" viewBox="0 0 24 24">

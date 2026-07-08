@@ -22,7 +22,8 @@ import { getUnlockedAchievementIds, ACHIEVEMENT_DEFS } from './utils/achievement
 import { auth, db, googleProvider, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount, mergeLocalAndCloudStates } from './lib/firebase';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onIdTokenChanged } from 'firebase/auth';
 import { encryptData } from './lib/crypto';
-import { enableNetwork, disableNetwork } from 'firebase/firestore';
+import { enableNetwork } from 'firebase/firestore';
+import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { Network } from '@capacitor/network';
 import { SoundManager } from './utils/soundManager';
@@ -84,6 +85,27 @@ const getDaysDifference = (dateStr1: string | null | undefined, dateStr2: string
   const d2 = parseDateUTC(dateStr2);
   const diffTime = Math.abs(d2.getTime() - d1.getTime());
   return Math.round(diffTime / (1000 * 60 * 60 * 24));
+};
+
+// Helper to get network status natively or from browser
+const getIsConnected = async (): Promise<boolean> => {
+  if (typeof window === 'undefined') return true;
+
+  // Prioritise navigator.onLine for web browsers/iframes
+  if (!Capacitor.isNativePlatform()) {
+    console.log(`[StudyOS Trace] getIsConnected: Web platform detected. navigator.onLine check: connected=${navigator.onLine}`);
+    return navigator.onLine;
+  }
+
+  try {
+    console.log("[StudyOS Trace] getIsConnected invoking Capacitor Network.getStatus()...");
+    const status = await Network.getStatus();
+    console.log(`[StudyOS Trace] getIsConnected: Native getStatus response: connected=${status.connected}, connectionType=${status.connectionType}`);
+    return status.connected;
+  } catch (e) {
+    console.log(`[StudyOS Trace] getIsConnected: Native getStatus failed. Standard navigator.onLine check: connected=${navigator.onLine}`);
+    return navigator.onLine;
+  }
 };
 
 export default function App() {
@@ -529,14 +551,14 @@ export default function App() {
         console.log(`[StudyOS Trace Timestamp] [${new Date().toISOString()}] [${performance.now().toFixed(2)}ms] onAuthStateChanged(null)`);
       }
 
+      const isPhysicallyConnected = await getIsConnected();
+      const isOffline = !isPhysicallyConnected;
+
       // Helper function to handle authenticated user state
       const handleUserAuthenticated = async (user: any) => {
-        console.log(`[StudyOS Trace] onAuthStateChanged: Firebase user is authenticated (UID: ${user.uid}). Attempting to load from Firestore...`);
+        console.log(`[StudyOS Trace] onAuthStateChanged: Firebase user is authenticated (UID: ${user.uid}). Attempting to load from Firestore... (isOffline=${isOffline})`);
         let cloudData = null;
         let dbErrorHappened = false;
-
-        const isPhysicallyConnected = navigator.onLine; // Check actual physical connectivity
-        const isOffline = !isPhysicallyConnected; // Authentication state must never control isOffline
 
         // Enable Firestore network if physically connected before load
         if (isPhysicallyConnected) {
@@ -608,7 +630,7 @@ export default function App() {
 
       // Helper function to handle unauthenticated user state
       const handleUserUnauthenticated = () => {
-        console.log("[StudyOS Trace] onAuthStateChanged: No authenticated Firebase user is logged in. Checking local storage cache...");
+        console.log(`[StudyOS Trace] onAuthStateChanged: No authenticated Firebase user is logged in. Checking local storage cache... (isOffline=${isOffline})`);
         const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (cached) {
           try {
@@ -616,9 +638,6 @@ export default function App() {
             if (parsed.isOffline || parsed.onboarded) {
               console.log(`[StudyOS Trace] onAuthStateChanged: Found cached user profile in local storage (@${parsed.username}).`);
               
-              const isPhysicallyConnected = navigator.onLine;
-              const isOffline = !isPhysicallyConnected; // Never let auth state control isOffline
-
               if (!parsed.inProgressTopics) {
                 parsed.inProgressTopics = [];
               }
@@ -704,19 +723,6 @@ export default function App() {
       isMountedRef.current = false;
     };
   }, []);
-
-  // Helper to get network status natively or from browser
-  const getIsConnected = async (): Promise<boolean> => {
-    try {
-      console.log("[StudyOS Trace] getIsConnected invoking Capacitor Network.getStatus()...");
-      const status = await Network.getStatus();
-      console.log(`[StudyOS Trace] getIsConnected: Native getStatus response: connected=${status.connected}, connectionType=${status.connectionType}`);
-      return status.connected;
-    } catch (e) {
-      console.log(`[StudyOS Trace] getIsConnected: Native getStatus failed. Standard navigator.onLine check: connected=${navigator.onLine}`);
-      return navigator.onLine;
-    }
-  };
 
   // Main synchronization and reconnect function
   const performSyncOnReconnect = async () => {
@@ -914,15 +920,7 @@ export default function App() {
     if (connected) {
       await performSyncOnReconnect();
     } else {
-      // We are offline. Transition Firestore to offline and update userState isOffline parameter.
-      try {
-        console.log("[StudyOS Trace] handleNetworkChange: Disabling Firestore network...");
-        await disableNetwork(db);
-        console.log("[StudyOS Trace] disableNetwork(db) SUCCEEDED.");
-      } catch (dbErr: any) {
-        console.warn(`[StudyOS Trace] disableNetwork(db) FAILED: ${dbErr?.message || dbErr}`);
-      }
-
+      // We are offline. Update userState isOffline parameter.
       const currentState = userStateRef.current;
       if (currentState && !currentState.isOffline) {
         console.log("[StudyOS Trace] handleNetworkChange: Transitioning state to offline.");
@@ -961,7 +959,7 @@ export default function App() {
         const appInfo = await CapApp.getInfo();
         const initialStatus = await Network.getStatus();
         console.log("[StudyOS Trace] Capacitor App & Network plugins available natively.", appInfo, initialStatus);
-        isNativelySupported = true;
+        isNativelySupported = Capacitor.isNativePlatform();
       } catch (e) {
         console.log("[StudyOS Trace] Capacitor plugins not available natively. Falling back to browser standard APIs.");
       }
@@ -1082,23 +1080,29 @@ export default function App() {
       // Sync with the Android native widget immediately when state changes
       syncAndroidWidget(userState);
 
-      const timer = setTimeout(() => {
-        syncUserToFirestore(userState.uid!, userState)
-          .then(() => {
-            setIsCloudSyncUnavailable(false);
-          })
-          .catch(err => {
-            console.error("Real-time cloud synchronization error:", err);
-            getIsConnected().then(hasInternet => {
-              if (hasInternet) {
-                setIsCloudSyncUnavailable(true);
-              }
+      // Only attempt Firestore cloud write if authenticated and UID matches
+      if (auth.currentUser && auth.currentUser.uid === userState.uid) {
+        const timer = setTimeout(() => {
+          syncUserToFirestore(userState.uid!, userState)
+            .then(() => {
+              setIsCloudSyncUnavailable(false);
+            })
+            .catch(err => {
+              console.error("Real-time cloud synchronization error:", err);
+              getIsConnected().then(hasInternet => {
+                if (hasInternet) {
+                  setIsCloudSyncUnavailable(true);
+                }
+              });
             });
-          });
-      }, 800);
-      return () => clearTimeout(timer);
+        }, 800);
+        return () => clearTimeout(timer);
+      } else {
+        // If the user has internet and we are just waiting for Auth, keep sync warning off
+        setIsCloudSyncUnavailable(false);
+      }
     }
-  }, [userState]);
+  }, [userState, authInitialized]);
 
   // 1cc. Synchronize SoundManager settings with the userState configurations
   useEffect(() => {

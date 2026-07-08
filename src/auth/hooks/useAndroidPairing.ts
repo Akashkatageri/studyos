@@ -10,6 +10,7 @@ interface UseAndroidPairingProps {
   step: 'welcome' | 'username' | 'pairing';
   onPairComplete: (uid: string, userState: any, localAuthSuccess: boolean) => void;
   onError: (err: any) => void;
+  onLocalAuthFailed?: (err: any) => void;
 }
 
 export function useAndroidPairing({
@@ -17,14 +18,17 @@ export function useAndroidPairing({
   step,
   onPairComplete,
   onError,
+  onLocalAuthFailed,
 }: UseAndroidPairingProps) {
   const onPairCompleteRef = useRef(onPairComplete);
   const onErrorRef = useRef(onError);
+  const onLocalAuthFailedRef = useRef(onLocalAuthFailed);
 
   useEffect(() => {
     onPairCompleteRef.current = onPairComplete;
     onErrorRef.current = onError;
-  }, [onPairComplete, onError]);
+    onLocalAuthFailedRef.current = onLocalAuthFailed;
+  }, [onPairComplete, onError, onLocalAuthFailed]);
 
   const handleSuccessfulPair = useCallback(async (
     uid: string,
@@ -66,10 +70,10 @@ export function useAndroidPairing({
               inspectIndexedDB();
             }, 1000);
           } else {
-            console.error("[TRACER] [handleSuccessfulPair] signInWithCredential resolved, but auth.currentUser remains null!");
+            throw new Error("signInWithCredential completed, but auth.currentUser remains null.");
           }
         } else {
-          console.error("[TRACER] [handleSuccessfulPair] Decrypted ID token is empty or null!");
+          throw new Error("Decrypted ID token is empty or invalid.");
         }
       } catch (authErr: any) {
         console.error("[TRACER] [handleSuccessfulPair] Local Firebase auth failed! DETAILS:", {
@@ -78,9 +82,18 @@ export function useAndroidPairing({
           stack: authErr?.stack,
           rawError: authErr
         });
+        if (onLocalAuthFailedRef.current) {
+          onLocalAuthFailedRef.current(authErr);
+        }
+        return; // Abort cleanup and deletion! Keep the pairing state and document.
       }
     } else {
+      const missingErr = new Error("Missing encrypted pairing tokens or decryption key in storage.");
       console.warn("[TRACER] [handleSuccessfulPair] Missing tokens or pairing key in localStorage. Key exists:", !!pairingKey);
+      if (onLocalAuthFailedRef.current) {
+        onLocalAuthFailedRef.current(missingErr);
+      }
+      return; // Abort cleanup and deletion!
     }
 
     // 3. onAuthComplete() finishes successfully (called via onPairCompleteRef)
@@ -90,6 +103,10 @@ export function useAndroidPairing({
       console.log("[TRACER] [handleSuccessfulPair] onPairComplete completed successfully.");
     } catch (cbErr) {
       console.error("[TRACER] [handleSuccessfulPair] Exception in onPairComplete callback:", cbErr);
+      if (onLocalAuthFailedRef.current) {
+        onLocalAuthFailedRef.current(cbErr);
+      }
+      return; // Abort cleanup and deletion!
     }
 
     // 4. Only then remove pairing states from localStorage

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { signInWithRedirect, getRedirectResult, signInWithPopup, signOut } from 'firebase/auth';
+import { signInWithRedirect, getRedirectResult, signInWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import AppLogo from './AppLogo';
@@ -14,20 +14,32 @@ export default function AuthPopupScreen() {
   const queryParams = new URLSearchParams(window.location.search);
   const sessionId = queryParams.get('session_id');
 
-  const handleAuthSuccess = async (user: any) => {
+  const handleAuthSuccess = async (user: any, credential?: any) => {
     setStatus('success');
     
     let idToken = null;
-    try {
-      idToken = await user.getIdToken();
-    } catch (e) {
-      console.warn("Failed to retrieve user ID token:", e);
+    let accessToken = null;
+
+    if (credential) {
+      idToken = credential.idToken || null;
+      accessToken = credential.accessToken || null;
+      console.log("[AuthPopupScreen] Retrieved Google ID Token from credential.");
+    }
+
+    if (!idToken) {
+      try {
+        idToken = await user.getIdToken();
+        console.log("[AuthPopupScreen] Fallback: Using Firebase ID Token.");
+      } catch (e) {
+        console.warn("Failed to retrieve user ID token:", e);
+      }
     }
 
     const authPayload = {
       type: 'firebase-auth-success',
       idToken,
-      accessToken: null,
+      accessToken,
+      isGoogleToken: !!(credential && credential.idToken),
       user: {
         uid: user.uid,
         email: user.email,
@@ -90,7 +102,8 @@ export default function AuthPopupScreen() {
       googleProvider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(auth, googleProvider);
       if (result && result.user) {
-        await handleAuthSuccess(result.user);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        await handleAuthSuccess(result.user, credential);
       }
     } catch (err: any) {
       console.error("Popup Sign-In Error:", err);
@@ -130,7 +143,8 @@ export default function AuthPopupScreen() {
         // 1. Check if we have a redirect result (returning from Google redirect)
         const result = await getRedirectResult(auth);
         if (result && result.user && active) {
-          await handleAuthSuccess(result.user);
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          await handleAuthSuccess(result.user, credential);
           return;
         }
 
@@ -192,7 +206,7 @@ export default function AuthPopupScreen() {
               </p>
             </div>
 
-            <button
+             <button
               onClick={startPopupSignIn}
               className="w-full py-2.5 bg-white hover:bg-gray-100 active:scale-98 text-gray-900 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
             >

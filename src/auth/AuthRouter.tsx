@@ -46,9 +46,23 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
       const code = localStorage.getItem('pairing_code');
       if (active === 'true' && code) {
         console.log(`[TRACER] [State Init] Restoring step 'pairing' because active flow was found in localStorage.`);
+        console.log("[PAIRING RESTORE - step]", {
+          pairingStep: localStorage.getItem("pairing_step_active"),
+          pairingCode: localStorage.getItem("pairing_code"),
+          pairingKey: !!localStorage.getItem("pairing_key"),
+          restoredStep: 'pairing',
+          restoredPairingCode: code
+        });
         return 'pairing';
       }
     }
+    console.log("[PAIRING RESTORE - step]", {
+      pairingStep: typeof window !== 'undefined' ? localStorage.getItem("pairing_step_active") : null,
+      pairingCode: typeof window !== 'undefined' ? localStorage.getItem("pairing_code") : null,
+      pairingKey: typeof window !== 'undefined' ? !!localStorage.getItem("pairing_key") : false,
+      restoredStep: 'welcome',
+      restoredPairingCode: null
+    });
     return 'welcome';
   });
 
@@ -64,16 +78,47 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
       const code = localStorage.getItem('pairing_code');
       if (code) {
         console.log(`[TRACER] [State Init] Restoring pairingCode "${code}" from localStorage.`);
+        console.log("[PAIRING RESTORE - pairingCode]", {
+          pairingStep: localStorage.getItem("pairing_step_active"),
+          pairingCode: localStorage.getItem("pairing_code"),
+          pairingKey: !!localStorage.getItem("pairing_key"),
+          restoredStep: null,
+          restoredPairingCode: code
+        });
         return code;
       }
     }
+    console.log("[PAIRING RESTORE - pairingCode]", {
+      pairingStep: typeof window !== 'undefined' ? localStorage.getItem("pairing_step_active") : null,
+      pairingCode: typeof window !== 'undefined' ? localStorage.getItem("pairing_code") : null,
+      pairingKey: typeof window !== 'undefined' ? !!localStorage.getItem("pairing_key") : false,
+      restoredStep: null,
+      restoredPairingCode: ''
+    });
     return '';
   });
 
   const [isAutomaticGoogleFlow, setIsAutomaticGoogleFlow] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('pairing_step_active') === 'true';
+      const activeVal = localStorage.getItem('pairing_step_active') === 'true';
+      console.log("[PAIRING RESTORE - isAutomaticGoogleFlow]", {
+        pairingStep: localStorage.getItem("pairing_step_active"),
+        pairingCode: localStorage.getItem("pairing_code"),
+        pairingKey: !!localStorage.getItem("pairing_key"),
+        restoredStep: null,
+        restoredPairingCode: null,
+        isAutomaticGoogleFlow: activeVal
+      });
+      return activeVal;
     }
+    console.log("[PAIRING RESTORE - isAutomaticGoogleFlow]", {
+      pairingStep: null,
+      pairingCode: null,
+      pairingKey: false,
+      restoredStep: null,
+      restoredPairingCode: null,
+      isAutomaticGoogleFlow: false
+    });
     return false;
   });
 
@@ -167,6 +212,11 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
         message: "Pairing session lost. Please try generating a new code: " + err.message
       });
       setStep('welcome');
+    }, []),
+    onLocalAuthFailed: useCallback((err: any) => {
+      setAuthError({
+        message: err.message || "Android pairing authentication failed. Please try again."
+      });
     }, []),
   });
 
@@ -467,6 +517,16 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
       }
 
       // Standard browser Google login popup
+      const isMobileDevice = typeof navigator !== 'undefined' && 
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+      if (isMobileDevice) {
+        console.log("[AuthRouter] Mobile device browser detected. Triggering signInWithRedirect directly...");
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+
       let result;
       try {
         googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -610,6 +670,8 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
                 setIsAutomaticGoogleFlow={setIsAutomaticGoogleFlow}
                 setStep={setStep}
                 handleResumeOrFocus={handleResumeOrFocus}
+                authError={authError}
+                setAuthError={setAuthError}
               />
             )}
           </AnimatePresence>

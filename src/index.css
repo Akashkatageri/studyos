@@ -1,49 +1,69 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: "Plus Jakarta Sans", sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* Premium Redesigned Colors matching Material 3 + Android Reference */
-  --color-bg-base: #0B0D14;
-  --color-surface-base: #121420;
-  --color-elevated-base: #1A1D2E;
-  --color-primary-premium: #7C5CFF;
-  --color-primary-glow: #A78BFA;
-  --color-accent-premium: #A78BFA;
-  --color-success-premium: #2BD97F;
-  --color-warning-premium: #FFB547;
-  --color-error-premium: #FF5D73;
+  /* Midnight Indigo (Deep Focus) Palette */
+  --color-bg-base: oklch(0.16 0.02 260); /* #0B0F17 */
+  --color-surface-base: oklch(0.22 0.025 260); /* #131A26 */
+  --color-elevated-base: oklch(0.27 0.03 260); /* #1B2434 */
+  --color-foreground: oklch(0.97 0.01 250); /* #F5F7FB */
+  --color-muted-foreground: oklch(0.72 0.03 258); /* #93A0B8 */
 
-  /* Redefined colors to override default Tailwind colors across the app */
-  --color-blue-400: #A78BFA;
-  --color-blue-500: #7C5CFF;
-  --color-blue-600: #6D28D9;
-  --color-blue-900: #1A1D2E;
-  --color-blue-950: #121420;
+  /* Premium Accents using OKLCH */
+  --color-primary-premium: oklch(0.74 0.14 268); /* #7C9CFF */
+  --color-primary-glow: oklch(0.82 0.11 270); /* #A9BEFF */
+  --color-accent-premium: oklch(0.74 0.14 268); /* #7C9CFF */
+  --color-success-premium: oklch(0.82 0.16 165);
+  --color-warning-premium: oklch(0.85 0.13 82);
+  --color-error-premium: oklch(0.70 0.20 22);
 
-  --color-amber-400: #FFB547;
-  --color-amber-500: #FFB547;
+  --color-destructive: oklch(0.70 0.20 22);
+  --color-flame: oklch(0.78 0.17 55);
+  --color-xp: oklch(0.74 0.14 268);
+
+  /* Overriding default Tailwind colors to match Midnight Indigo theme automatically */
+  --color-blue-400: oklch(0.82 0.11 270);
+  --color-blue-500: oklch(0.74 0.14 268);
+  --color-blue-600: oklch(0.65 0.15 265);
+  --color-blue-900: oklch(0.27 0.03 260);
+  --color-blue-950: oklch(0.22 0.025 260);
+
+  --color-amber-400: oklch(0.85 0.13 82);
+  --color-amber-500: oklch(0.85 0.13 82);
   
-  --color-emerald-400: #2BD97F;
-  --color-emerald-500: #2BD97F;
+  --color-emerald-400: oklch(0.82 0.16 165);
+  --color-emerald-500: oklch(0.82 0.16 165);
 
-  --color-sky-400: #00D4FF;
-  --color-sky-500: #00D4FF;
-
-  --color-orange-500: #FFB547;
-  --color-red-500: #FF5D73;
+  --color-orange-500: oklch(0.78 0.17 55);
+  --color-red-500: oklch(0.70 0.20 22);
 }
 
 /* Global resets and body overrides */
 body {
   font-family: var(--font-sans);
-  background-color: #0B0D14 !important;
-  color: #F4F4F5;
+  background-color: oklch(0.16 0.02 260) !important;
+  color: oklch(0.97 0.01 250);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Fixed viewport soft radial gradients for premium depth */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  background: 
+    radial-gradient(circle at 15% 15%, rgba(124, 156, 255, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(169, 190, 255, 0.04) 0%, transparent 45%);
+  z-index: -1;
 }
 
 .min-h-screen, 
@@ -52,8 +72,8 @@ div[class*="bg-[#0C0F12]"],
 div[class*="bg-[#0A0D10]"],
 .bg-\[\#0A0D10\],
 .bg-black {
-  background-color: #0B0D14 !important;
-  background-image: radial-gradient(rgba(124, 92, 255, 0.035) 1px, transparent 1px) !important;
+  background-color: oklch(0.16 0.02 260) !important;
+  background-image: radial-gradient(rgba(124, 156, 255, 0.04) 1px, transparent 1px) !important;
   background-size: 24px 24px !important;
 }
 
@@ -66,8 +86,8 @@ div[class*="bg-[#111114]"],
 .bg-\[\#111114\],
 main div[class*="bg-[#141A1F]"],
 header div[class*="bg-[#141A1F]"] {
-  background-color: #121420 !important;
-  border-color: rgba(124, 92, 255, 0.08) !important;
+  background-color: oklch(0.22 0.025 260) !important;
+  border-color: rgba(124, 156, 255, 0.08) !important;
 }
 
 /* Elevated containers mapping */
@@ -77,8 +97,8 @@ div[class*="bg-[#080B0E]"],
 div[class*="bg-gray-900"],
 .bg-gray-900,
 .bg-gray-950\/60 {
-  background-color: #1A1D2E !important;
-  border-color: rgba(124, 92, 255, 0.08) !important;
+  background-color: oklch(0.27 0.03 260) !important;
+  border-color: rgba(124, 156, 255, 0.08) !important;
 }
 
 /* Fine-tune borders & dividers to be ultra-clean (Nothing OS detail) */
@@ -87,16 +107,42 @@ hr,
 .border-gray-850,
 .border-gray-900,
 div[class*="border-gray-800"] {
-  border-color: rgba(124, 92, 255, 0.08) !important;
+  border-color: rgba(124, 156, 255, 0.08) !important;
 }
 
 /* Active primary gradient */
 .bg-primary-gradient {
-  background: linear-gradient(135deg, #7C5CFF 0%, #A78BFA 100%);
+  background: linear-gradient(135deg, oklch(0.74 0.14 268) 0%, oklch(0.82 0.11 270) 100%);
 }
 
 .bg-accent-gradient {
-  background: linear-gradient(135deg, #7C5CFF 0%, #00D4FF 100%);
+  background: linear-gradient(135deg, oklch(0.74 0.14 268) 0%, oklch(0.82 0.11 270) 100%);
+}
+
+/* Key theme utilities */
+.glass {
+  background: rgba(19, 26, 38, 0.7) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(124, 156, 255, 0.1);
+}
+
+.card-elevated {
+  background-color: oklch(0.22 0.025 260);
+  border-radius: 1rem;
+  border: 1px solid rgba(124, 156, 255, 0.08);
+  box-shadow: 0 10px 30px -10px rgba(124, 156, 255, 0.08);
+}
+
+.gradient-primary {
+  background: linear-gradient(135deg, oklch(0.74 0.14 268) 0%, oklch(0.82 0.11 270) 100%) !important;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, oklch(0.74 0.14 268) 0%, oklch(0.82 0.11 270) 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
 }
 
 /* Android style press ripple indicator */
@@ -109,7 +155,12 @@ div[class*="border-gray-800"] {
 
 /* Premium micro-interactions and animations */
 .shadow-premium {
-  box-shadow: 0 10px 30px -10px rgba(124, 92, 255, 0.15) !important;
+  box-shadow: 0 10px 30px -10px rgba(124, 156, 255, 0.15) !important;
+}
+
+/* Numbers/Tabular nums utility */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Smooth custom scrollbars */
@@ -118,14 +169,14 @@ div[class*="border-gray-800"] {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0B0D14;
+  background: oklch(0.16 0.02 260);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1A1D2E;
+  background: oklch(0.27 0.03 260);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #7C5CFF;
+  background: oklch(0.74 0.14 268);
 }
 
 
