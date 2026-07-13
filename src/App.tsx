@@ -242,6 +242,7 @@ export default function App() {
   const [isPairingModalOpen, setIsPairingModalOpen] = useState(false);
   const [isPairingLoading, setIsPairingLoading] = useState(false);
   const [pairingSuccess, setPairingSuccess] = useState(false);
+  const [isRedirectChecking, setIsRedirectChecking] = useState(true);
 
   const [googleIdToken, setGoogleIdToken] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
@@ -273,6 +274,8 @@ export default function App() {
         }
       } catch (err: any) {
         console.error("[PAIRING] Error checking Google Redirect Result at top level:", err);
+      } finally {
+        setIsRedirectChecking(false);
       }
     };
     checkRedirectResult();
@@ -281,6 +284,8 @@ export default function App() {
   // Read pair_code from URL parameters on initialization
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (isRedirectChecking) return; // Wait until redirect result check is complete!
+
     const params = new URLSearchParams(window.location.search);
     const code = params.get('pair_code');
     const key = params.get('k');
@@ -299,7 +304,7 @@ export default function App() {
       const newUrl = window.location.pathname + cleanSearch;
       window.history.replaceState({}, document.title, newUrl);
     }
-  }, []);
+  }, [isRedirectChecking]);
 
   // Monitor user state transitions to automatically trigger pending pairing codes
   useEffect(() => {

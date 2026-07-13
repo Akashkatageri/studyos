@@ -4,7 +4,6 @@ import { Capacitor } from '@capacitor/core';
 import { 
   signInWithPopup, 
   signInWithRedirect, 
-  getRedirectResult, 
   GoogleAuthProvider, 
   signInWithCredential 
 } from 'firebase/auth';
@@ -220,101 +219,7 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
     }, []),
   });
 
-  // Restore authentication result using getRedirectResult() on mount (handles mobile redirect returns)
-  useEffect(() => {
-    const handleRedirectResultFlow = async () => {
-      setIsLoadingAuth(true);
-      setAuthError(null);
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          const user = result.user;
-          const email = user.email || undefined;
-          const displayName = user.displayName || undefined;
-          const uid = user.uid;
 
-          // Capture and store Google credentials
-          const credential = GoogleAuthProvider.credentialFromResult(result);
-          if (credential) {
-            console.log("[PAIRING] Storing redirect Google credentials in sessionStorage...");
-            if (credential.idToken) sessionStorage.setItem('google_id_token', credential.idToken);
-            if (credential.accessToken) sessionStorage.setItem('google_access_token', credential.accessToken);
-          }
-
-          // Check if profile already exists in Firestore
-          let cloudData = null;
-          try {
-            cloudData = await loadUserFromFirestore(uid);
-          } catch (dbErr: any) {
-            console.error("Database check failed during Google Redirect Sign-In:", dbErr);
-            throw new Error(
-              "Failed to connect to the cloud database. Please check your network connection and verify Firestore Database is enabled."
-            );
-          }
-
-          if (cloudData && cloudData.onboarded) {
-            onAuthCompleteRef.current({
-              uid,
-              email,
-              displayName,
-              isOffline: false,
-              username: cloudData.username,
-              onboarded: true,
-              fullState: cloudData
-            });
-            return;
-          }
-
-          // CRITICAL CAPACITOR ANDROID FIX: If we are in pairing mode on Chrome browser,
-          // immediately complete auth with onboarded: false to return control to the Capacitor app.
-          const hasPairCode = typeof window !== 'undefined' && !!localStorage.getItem('pending_pair_code');
-          if (hasPairCode) {
-            onAuthCompleteRef.current({
-              uid,
-              email,
-              displayName,
-              isOffline: false,
-              onboarded: false
-            });
-            return;
-          }
-
-          setAuthData({ uid, email, displayName });
-          setStep('username');
-        }
-      } catch (err: any) {
-        console.error("Google Redirect Authentication error:", err);
-        const rawMsg = err.message || String(err);
-        const errCode = err.code || "";
-
-        // Check if the error is due to missing initial state (common in storage-partitioned browsers like Safari, Brave, Chrome Incognito on localhost)
-        const isMissingState = 
-          errCode === "auth/missing-initial-state" || 
-          rawMsg.toLowerCase().includes("missing-initial-state") || 
-          rawMsg.toLowerCase().includes("missing initial state") ||
-          rawMsg.toLowerCase().includes("sessionstorage");
-
-        if (isMissingState) {
-          console.warn("Ignoring benign redirect/storage partition error on mount:", rawMsg);
-          setIsLoadingAuth(false);
-          return;
-        }
-
-        let errorObj = { message: "" };
-        if (rawMsg.includes("auth/unauthorized-domain") || errCode === "auth/unauthorized-domain") {
-          errorObj.message = `This domain (${window.location.hostname}) is not authorized for OAuth in Firebase. Please add "${window.location.hostname}" to your Authorized Domains in the Firebase Console (Authentication > Settings > Authorized Domains).`;
-        } else {
-          errorObj.message = "Google Redirect Authentication failed: " + rawMsg;
-        }
-
-        setAuthError(errorObj);
-      } finally {
-        setIsLoadingAuth(false);
-      }
-    };
-
-    handleRedirectResultFlow();
-  }, []);
 
   // Monitor initial parent state sync
   useEffect(() => {
