@@ -989,6 +989,7 @@ export default function App() {
   useEffect(() => {
     let appListener: any = null;
     let netListener: any = null;
+    let urlListener: any = null;
     let browserCleanup: (() => void) | undefined;
 
     console.log("[StudyOS Trace] Initializing network and lifecycle event monitoring...");
@@ -1008,6 +1009,34 @@ export default function App() {
 
       if (isNativelySupported) {
         try {
+          // Listen for Deep Links / App URL Opens for Firebase Auth redirects
+          urlListener = await CapApp.addListener('appUrlOpen', async (data: any) => {
+            console.log(`[StudyOS Trace] [Capacitor App] appUrlOpen fired. URL: ${data?.url}`);
+            if (data?.url) {
+              try {
+                const parsedUrl = new URL(data.url);
+                // Check if the URL has auth code or redirect tokens
+                if (data.url.includes('studyos-001.firebaseapp.com') || data.url.includes('__/auth/handler') || parsedUrl.search || parsedUrl.hash) {
+                  console.log("[StudyOS Trace] Deep link is a Google/Firebase Auth redirect! Routing parameters into webview...");
+                  
+                  const searchParams = parsedUrl.search;
+                  const hashParams = parsedUrl.hash;
+                  
+                  if (searchParams) window.location.search = searchParams;
+                  if (hashParams) window.location.hash = hashParams;
+                  
+                  console.log("[StudyOS Trace] Webview URL updated with auth parameters. Checking redirect result...");
+                  const result = await getRedirectResult(auth);
+                  if (result) {
+                    console.log("[StudyOS Trace] getRedirectResult successfully authenticated user:", result.user.uid);
+                  }
+                }
+              } catch (urlErr) {
+                console.error("[StudyOS Trace] Error processing deep link URL:", urlErr);
+              }
+            }
+          });
+
           // Listen for App Resume (coming from background)
           appListener = await CapApp.addListener('appStateChange', async (state) => {
             console.log(`[StudyOS Trace] [Capacitor App] appStateChange fired. isActive=${state.isActive}`);
@@ -1101,6 +1130,9 @@ export default function App() {
       }
       if (netListener) {
         netListener.remove();
+      }
+      if (urlListener) {
+        urlListener.remove();
       }
       if (browserCleanup) {
         browserCleanup();

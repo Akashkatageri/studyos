@@ -14,7 +14,6 @@ import {
   googleProvider, 
   loadUserFromFirestore, 
   db, 
-  createDevicePairingCode, 
   onSnapshot 
 } from '../lib/firebase';
 import { UserState } from '../types';
@@ -72,7 +71,7 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
   }>({});
 
   // Pairing state
-  const [pairingCode, setPairingCode] = useState(() => {
+  const [pairingCode] = useState(() => {
     if (typeof window !== 'undefined') {
       const code = localStorage.getItem('pairing_code');
       if (code) {
@@ -243,25 +242,14 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
     setAuthError(null);
     setRedirectWarning(null);
 
-    // If running inside a native environment (Android app), route Google login via browser-sync bridge
+    // If running inside a native environment (Android app), trigger standard Google Sign-In via redirect directly
     if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
       try {
-        const code = await createDevicePairingCode();
-        const key = Math.random().toString(36).substring(2, 18) + Math.random().toString(36).substring(2, 18);
-        localStorage.setItem('pairing_key', key);
-        localStorage.setItem('pairing_code', code);
-        localStorage.setItem('pairing_step_active', 'true');
-        setPairingCode(code);
-        setIsAutomaticGoogleFlow(true);
-        setStep('pairing');
-        
-        const liveUrl = "https://ais-dev-5qkfwaoj2q5v7zsluse4zi-358182587374.asia-east1.run.app";
-        const realUrl = `${liveUrl}/?pair_code=${code}&k=${key}`;
-        
-        // Launch standard system web browser to complete authentication
-        window.open(realUrl, '_blank');
+        console.log("[AuthRouter] Native platform detected. Triggering standard direct Google signInWithRedirect...");
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
+        await signInWithRedirect(auth, googleProvider);
       } catch (err: any) {
-        console.error("Failed to initialize Google pairing bridge:", err);
+        console.error("Failed to initialize direct native Google Sign-In:", err);
         setAuthError({
           message: "Failed to initialize Google Sign-In. Please check your internet connection: " + (err.message || String(err))
         });
