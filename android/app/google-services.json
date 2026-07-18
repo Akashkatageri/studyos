@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "993152230783",
+    "project_id": "studyos-001",
+    "storage_bucket": "studyos-001.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993152230783:android:999b091bd9bb200e9be64a",
+        "android_client_info": {
+          "package_name": "com.studyos.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "993152230783-u5imf54djkbksrdbaj6f5vpmmgvvkl0b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3H_ICjPfGhmiynEPpnerx9TwO1wslnOE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "993152230783-u5imf54djkbksrdbaj6f5vpmmgvvkl0b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
