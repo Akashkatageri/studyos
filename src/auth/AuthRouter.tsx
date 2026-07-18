@@ -247,7 +247,9 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
       try {
         console.log("[AuthRouter] Native platform detected. Triggering native Google Sign-In via Capawesome...");
         const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
-        const result = await FirebaseAuthentication.signInWithGoogle({});
+        const result = await FirebaseAuthentication.signInWithGoogle({
+          useCredentialManager: false
+        });
         
         const idToken = result.credential?.idToken;
         if (!idToken) {
