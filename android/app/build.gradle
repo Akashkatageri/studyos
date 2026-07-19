@@ -20,15 +20,9 @@ android {
         debug {
             if (file('debug.keystore').exists()) {
                 storeFile file('debug.keystore')
-                
-                def envStorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
-                storePassword = (envStorePassword != null && !envStorePassword.trim().isEmpty()) ? envStorePassword : 'android'
-                
-                def envKeyAlias = System.getenv('ANDROID_KEY_ALIAS')
-                keyAlias = (envKeyAlias != null && !envKeyAlias.trim().isEmpty()) ? envKeyAlias : 'androiddebugkey'
-                
-                def envKeyPassword = System.getenv('ANDROID_KEY_PASSWORD')
-                keyPassword = (envKeyPassword != null && !envKeyPassword.trim().isEmpty()) ? envKeyPassword : 'android'
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
             } else {
                 storeFile file("${System.properties['user.home']}/.android/debug.keystore")
                 storePassword 'android'
