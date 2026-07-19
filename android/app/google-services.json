@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "993152230783-h7j3hriod9d9cm9lk3k9sba9rea5u53q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.studyos.app",
+            "certificate_hash": "1ff8b592ff0470cbe048b3a41dc37e66be0a028b"
+          }
+        },
+        {
           "client_id": "993152230783-jtjkab5idog3p6v70l7psgnvtppthapa.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
