@@ -200,7 +200,7 @@ export default function AuthPopupScreen() {
       
       <div className="w-full max-w-sm bg-[#141A1F] rounded-3xl border border-gray-800 p-8 space-y-6 shadow-2xl relative z-10">
         {/* Brand */}
-        <div className="mx-auto w-16 h-16 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:scale-105 transition-transform duration-300 flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 border border-blue-400/20 p-2">
+        <div className="mx-auto w-16 h-16 rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(56,189,248,0.25)] hover:scale-105 transition-transform duration-300 flex items-center justify-center bg-[#090D14] border border-cyan-500/30 p-1.5">
           <AppLogo className="w-full h-full" transparent={true} />
         </div>
 

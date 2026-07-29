@@ -27,6 +27,24 @@ export interface CourseTemplate {
   };
 }
 
+export type TodoPriority = 'high' | 'medium' | 'low';
+export type TodoCategory = 'study' | 'personal' | 'project' | 'assignment' | string;
+export type TodoRepeat = 'none' | 'daily' | 'mon-wed-fri' | 'weekly';
+
+export interface TodoItem {
+  id: string;
+  title: string;
+  completed: boolean;
+  priority: TodoPriority;
+  category: TodoCategory;
+  dueDate?: string; // "YYYY-MM-DD"
+  dueTime?: string; // "HH:MM"
+  repeat?: TodoRepeat;
+  dateCreated: string; // "YYYY-MM-DD"
+  order: number;
+  completedAt?: string; // ISO date or "YYYY-MM-DD"
+}
+
 export interface Revision {
   id: string;
   topicId: string;
@@ -76,13 +94,18 @@ export interface UserState {
   backlogSubjects: string[]; // subjectIds chosen as backlog
   firstYearCycle?: 'Physics' | 'Chemistry';
   revisions: Revision[];
-  activeTab: 'home' | 'progression' | 'progress' | 'profile' | 'settings' | 'friends';
+  activeTab: 'home' | 'todos' | 'progression' | 'progress' | 'profile' | 'settings' | 'friends';
   inProgressTopics: string[]; // topicIds currently in progress
+  todos?: TodoItem[];
+  autoMoveUncompletedTodos?: boolean;
+  // Appearance Settings
+  themeMode?: 'dark' | 'light' | 'oled';
   // Heatmap tracking
   studyActivity: { [date: string]: number }; // "YYYY-MM-DD" -> count of completed tasks
   // Notification configuration
   dailyReminderEnabled?: boolean;
   dailyReminderTime?: string; // "HH:MM" format
+  streakAlertsEnabled?: boolean;
   // Sound & Haptic Settings
   soundEffectsEnabled?: boolean;
   hapticFeedbackEnabled?: boolean;
@@ -100,10 +123,12 @@ export interface UserState {
   hideXP?: boolean;
   hideStreak?: boolean;
   hideAchievements?: boolean;
+  usernameViolation?: boolean;
+  bioViolation?: boolean;
   isOffline?: boolean;
   unlockedAchievements?: string[];
   showNotificationsModal?: boolean;
-  previousTabBeforeNotification?: 'home' | 'progression' | 'progress' | 'profile' | 'settings' | 'friends' | null;
+  previousTabBeforeNotification?: 'home' | 'todos' | 'progression' | 'progress' | 'profile' | 'settings' | 'friends' | null;
   // Study Habit System
   dailyFocusGoal?: number; // in minutes
   academicStudyStreak?: number;
@@ -130,7 +155,17 @@ export interface UserState {
   lastReviewDate?: string | null;
   examModeActive?: boolean;
   examDate?: string; // YYYY-MM-DD
+  includedReviewSemesters?: number[]; // Selected semesters to include in revision/spaced repetition (archived semesters)
   examModeConfigDays?: number; // default: 14 days
+  todayFocusSessionsCount?: number;
+  nightSessionsCount?: number;
+  earlyMorningSessionsCount?: number;
+  hasRestoredStreak?: boolean;
+  friendsCount?: number;
+  friends?: string[];
+  weeklyLeaderboardRank?: number;
+  isFirstPlace?: boolean;
+  vtuSchemeCompleted?: boolean;
 }
 
 export interface FriendProfile {

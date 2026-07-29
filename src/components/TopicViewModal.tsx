@@ -1,6 +1,6 @@
 import React from 'react';
 import { Topic, Subject, UserState } from '../types';
-import { X, Clock, ShieldCheck, Trophy, RefreshCw, Calendar, Star } from 'lucide-react';
+import { X, Clock, ShieldCheck, Trophy, RefreshCw, Calendar, Star, RotateCcw } from 'lucide-react';
 import { getSubjectDifficulty, getTopicEstimatedTime, getDifficultyConfig } from '../utils/xpUtils';
 import { SoundManager } from '../utils/soundManager';
 import { motion } from 'motion/react';
@@ -13,6 +13,7 @@ interface TopicViewModalProps {
   isRevisionDue?: boolean;
   onClose: () => void;
   onMarkCompleted: (topicId: string, difficulty?: 'easy' | 'medium' | 'hard') => void;
+  onResetTopic?: (topicId: string) => void;
   onCompleteRevision?: (topicId: string, rating: 'forgot' | 'hard' | 'good' | 'easy') => void;
   onStartFocusTimer?: (topicName: string) => void;
   onToggleExamImportant?: (topicId: string, examImportant: boolean) => void;
@@ -26,6 +27,7 @@ export default function TopicViewModal({
   isRevisionDue = false,
   onClose,
   onMarkCompleted,
+  onResetTopic,
   onCompleteRevision,
   onStartFocusTimer,
   onToggleExamImportant,
@@ -352,6 +354,31 @@ export default function TopicViewModal({
                         />
                         <div className="w-9 h-5 bg-gray-800 rounded-full peer peer-focus:ring-1 peer-focus:ring-blue-500/20 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-500 after:border-gray-400 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500 peer-checked:after:bg-[#141A1F] peer-checked:after:border-amber-400"></div>
                       </label>
+                    </div>
+                  )}
+
+                  {/* Reset Topic Option */}
+                  {onResetTopic && (
+                    <div className="flex items-center justify-between border-t border-gray-800/60 pt-3">
+                      <div>
+                        <p className="text-[9px] font-mono text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1 text-red-400/90">
+                          <RotateCcw className="w-3 h-3 text-red-400" />
+                          Reset Topic
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">Reset topic progress and revoke earned XP</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Reset "${topic.name}"? Progress and XP will be reverted.`)) {
+                            onResetTopic(topic.id);
+                            onClose();
+                          }
+                        }}
+                        className="px-2.5 py-1 text-[10px] font-mono font-bold bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Reset
+                      </button>
                     </div>
                   )}
                 </div>

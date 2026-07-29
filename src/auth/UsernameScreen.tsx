@@ -11,12 +11,14 @@ import {
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { db, isUsernameUnique } from '../lib/firebase';
+import { containsProfanity } from '../utils/moderation';
 
 interface UsernameScreenProps {
   authData: {
     uid?: string;
     email?: string;
     displayName?: string;
+    usernameViolation?: boolean;
   };
   onAuthComplete: (authData: {
     uid?: string;
@@ -68,6 +70,13 @@ export default function UsernameScreen({
 
     if (username.length < 3) {
       setUsernameError("Username is too short (min 3 characters).");
+      setIsAvailable(null);
+      setSuggestions([]);
+      return;
+    }
+
+    if (containsProfanity(username)) {
+      setUsernameError("Usernames cannot contain vulgar or inappropriate words.");
       setIsAvailable(null);
       setSuggestions([]);
       return;
@@ -158,6 +167,18 @@ export default function UsernameScreen({
           Set up your unique handle inside the StudyOS network directory.
         </p>
       </div>
+
+      {authData.usernameViolation && (
+        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-red-200">Action Required</p>
+            <p className="text-[11px] text-red-300/80 mt-0.5">
+              This username violates our community guidelines. Please choose a new handle to continue.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">

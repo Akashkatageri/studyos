@@ -16,13 +16,9 @@ public class StudyOSWidgetPlugin extends Plugin {
         try {
             JSObject data = call.getData();
             
-            // 1. Username
             String username = data.optString("username", "Student");
+            String streak = data.optString("streak", "12");
             
-            // 2. Streak - optString converts numbers (like 5) to strings (like "5") automatically!
-            String streak = data.optString("streak", "0");
-            
-            // 3. Today Focus (string or minutes number)
             String todayFocus = "0 min";
             if (data.has("todayFocus")) {
                 todayFocus = data.optString("todayFocus", "0 min");
@@ -30,32 +26,15 @@ public class StudyOSWidgetPlugin extends Plugin {
                 todayFocus = data.optString("todayFocusMinutes", "0") + " min";
             }
             
-            // 4. Pet Status
-            String petStatus = "Mochi is keeping you company!";
+            String petStatus = "Ready to study! ☀️";
             if (data.has("petStatus")) {
-                petStatus = data.optString("petStatus", "Mochi is keeping you company!");
-            } else if (data.has("mochiMessage")) {
-                petStatus = data.optString("mochiMessage", "Mochi is keeping you company!");
+                petStatus = data.optString("petStatus", "Ready to study! ☀️");
+            } else if (data.has("statusMessage")) {
+                petStatus = data.optString("statusMessage", "Ready to study! ☀️");
             }
             
-            // 5. Avatar Icon
-            String avatarIcon = "🐱";
-            if (data.has("avatarIcon")) {
-                avatarIcon = data.optString("avatarIcon", "🐱");
-            } else if (data.has("mochiState")) {
-                String mochiState = data.optString("mochiState", "idle");
-                if ("sleeping".equals(mochiState)) {
-                    avatarIcon = "😴";
-                } else if ("studying".equals(mochiState)) {
-                    avatarIcon = "📚";
-                } else if ("happy".equals(mochiState)) {
-                    avatarIcon = "🥰";
-                } else if ("active".equals(mochiState)) {
-                    avatarIcon = "⚡";
-                } else {
-                    avatarIcon = "🐱";
-                }
-            }
+            String emotion = data.optString("emotion", "ready");
+            String avatarIcon = data.optString("avatarIcon", "🐼");
 
             Context context = getContext();
             SharedPreferences prefs = context.getSharedPreferences("StudyOSWidgetPrefs", Context.MODE_PRIVATE);
@@ -64,6 +43,7 @@ public class StudyOSWidgetPlugin extends Plugin {
             editor.putString("username", username);
             editor.putString("todayFocus", todayFocus);
             editor.putString("petStatus", petStatus);
+            editor.putString("emotion", emotion);
             editor.putString("avatarIcon", avatarIcon);
             editor.apply();
 

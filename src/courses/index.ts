@@ -248,8 +248,8 @@ export function loadSemesterSubjects(
   if (semester === 2) {
     return COMMON_S2;
   }
-  const u = COURSE_TEMPLATES[univ] || COURSE_TEMPLATES['VTU'];
-  const b = u[branch] || u['CSE'];
-  const s = b[scheme] || b['2022 Scheme'];
+  const u = COURSE_TEMPLATES[univ] || COURSE_TEMPLATES['VTU'] || {};
+  const b = u[branch] || u['CSE'] || (Object.keys(u).length > 0 ? u[Object.keys(u)[0]] : {});
+  const s = b[scheme] || b['2022 Scheme'] || (Object.keys(b).length > 0 ? b[Object.keys(b)[0]] : {});
   return s[semester] || [];
 }

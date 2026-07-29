@@ -179,4 +179,1245 @@ div[class*="border-gray-800"] {
   background: oklch(0.74 0.14 268);
 }
 
+/* ==========================================================================
+   THEME MODES OVERRIDES (LIGHT MODE & OLED BLACK)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   LIGHT MODE (Refined, Premium & High-Contrast Light Theme)
+   -------------------------------------------------------------------------- */
+html.light-mode,
+html[data-theme="light"],
+html.light-mode body {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+html.light-mode body::before {
+  background: 
+    radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.04) 0%, transparent 45%) !important;
+}
+
+/* Background canvas */
+html.light-mode .min-h-screen,
+html.light-mode div[class*="bg-[#0C0F12]"],
+html.light-mode .bg-\[\#0C0F12\],
+html.light-mode div[class*="bg-[#0A0D10]"],
+html.light-mode .bg-\[\#0A0D10\],
+html.light-mode div[class*="bg-[#09090B]"],
+html.light-mode .bg-\[\#09090B\] {
+  background-color: #F8FAFC !important;
+  background-image: radial-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px) !important;
+  background-size: 24px 24px !important;
+}
+
+/* Card Containers & Panels (General) */
+html.light-mode div[class*="bg-[#141A1F]"],
+html.light-mode .bg-\[\#141A1F\],
+html.light-mode div[class*="bg-[#111422]"],
+html.light-mode .bg-\[\#111422\],
+html.light-mode div[class*="bg-[#111114]"],
+html.light-mode .bg-\[\#111114\],
+html.light-mode div[class*="bg-[#141418]"],
+html.light-mode .bg-\[\#141418\],
+html.light-mode div[class*="bg-[#18181C]"],
+html.light-mode .bg-\[\#18181C\],
+html.light-mode div[class*="bg-[#19191E]"],
+html.light-mode div[class*="bg-[#0D0D11]"],
+html.light-mode div[class*="bg-[#10131E]"],
+html.light-mode div[class*="bg-[#131522]"],
+html.light-mode div[class*="bg-[#111322]"],
+html.light-mode div[class*="bg-[#141822]"],
+html.light-mode div[class*="bg-[#12141F]"],
+html.light-mode div[class*="bg-[#14122C]"],
+html.light-mode div[class*="bg-[#111421]"],
+html.light-mode div[class*="bg-[#121522]"],
+html.light-mode div[class*="bg-[#1D2030]"],
+html.light-mode div[class*="bg-gray-950"],
+html.light-mode div[class*="bg-gray-900"],
+html.light-mode div[class*="bg-gray-850"] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.03) !important;
+}
+
+/* Hover States for Cards */
+html.light-mode div[class*="hover:bg-[#1A1A20]"]:hover,
+html.light-mode div[class*="hover:bg-[#1A1A22]"]:hover,
+html.light-mode button[class*="hover:bg-[#1A1A20]"]:hover,
+html.light-mode button[class*="hover:bg-[#1A1A22]"]:hover,
+html.light-mode button[class*="hover:bg-[#18181C]"]:hover,
+html.light-mode .hover\:bg-gray-800:hover,
+html.light-mode .hover\:bg-gray-900:hover {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+}
+
+/* Semi-transparent chips, badges, and status pills */
+html.light-mode .bg-white\/5,
+html.light-mode .bg-white\/10,
+html.light-mode .bg-black\/30 {
+  background-color: #F1F5F9 !important;
+  color: #1E293B !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* ==========================================================================
+   HOME TAB LIGHT MODE OPTIMIZATIONS
+   ========================================================================== */
+
+/* Quick Stat Pill Cards */
+html.light-mode #home-streak-stat-card,
+html.light-mode #home-shields-stat-card,
+html.light-mode #home-xp-stat-card,
+html.light-mode #home-goal-stat-card {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light-mode #home-streak-stat-card .text-\[\#FFB547\],
+html.light-mode #home-streak-stat-card span.text-amber-400 {
+  color: #D97706 !important;
+}
+
+html.light-mode #home-shields-stat-card .text-\[\#00D4FF\],
+html.light-mode #home-shields-stat-card span.text-cyan-400 {
+  color: #0284C7 !important;
+}
+
+html.light-mode #home-xp-stat-card .text-\[\#7C5CFF\],
+html.light-mode #home-xp-stat-card span.text-\[\#A78BFA\] {
+  color: #6D28D9 !important;
+}
+
+html.light-mode #home-goal-stat-card .text-\[\#2BD97F\],
+html.light-mode #home-goal-stat-card span.text-emerald-400 {
+  color: #059669 !important;
+}
+
+/* Hero "Continue Learning" Main Card */
+html.light-mode #continue-learning-main-card {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%) !important;
+  border-color: #6366F1 !important;
+  box-shadow: 0 12px 28px rgba(79, 70, 229, 0.25) !important;
+}
+
+html.light-mode #continue-learning-main-card h3,
+html.light-mode #continue-learning-main-card .text-white {
+  color: #FFFFFF !important;
+}
+
+html.light-mode #continue-learning-main-card .text-\[\#A78BFA\] {
+  color: #E0E7FF !important;
+}
+
+html.light-mode #continue-learning-main-card .bg-\[\#0D0A22\] {
+  background-color: rgba(15, 23, 42, 0.3) !important;
+}
+
+html.light-mode #continue-learning-main-card #continue-learning-card-btn {
+  background-color: #FFFFFF !important;
+  color: #4F46E5 !important;
+  border-color: #FFFFFF !important;
+}
+
+html.light-mode #continue-learning-main-card #continue-learning-card-btn * {
+  color: #4F46E5 !important;
+  fill: #4F46E5 !important;
+}
+
+html.light-mode #change-topic-btn {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+html.light-mode #change-topic-btn * {
+  color: #FFFFFF !important;
+}
+
+/* Circular Progress Goal ring */
+html.light-mode #todays-goal-container {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light-mode #goal-circular-progress circle.stroke-\[\#18181C\] {
+  stroke: #E2E8F0 !important;
+}
+
+html.light-mode #goal-circular-progress circle.stroke-\[\#2BD97F\] {
+  stroke: #10B981 !important;
+}
+
+html.light-mode #goal-circular-progress .text-white {
+  color: #0F172A !important;
+}
+
+/* Segmented Progress Bar */
+html.light-mode .bg-\[\#18181C\] {
+  background-color: #E2E8F0 !important;
+}
+
+html.light-mode .bg-\[\#2BD97F\] {
+  background-color: #10B981 !important;
+}
+
+/* Up Next Card */
+html.light-mode #up-next-card {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light-mode #up-next-card .bg-\[\#123326\] {
+  background-color: #ECFDF5 !important;
+  border-color: #A7F3D0 !important;
+  color: #047857 !important;
+}
+
+html.light-mode #up-next-card .text-white {
+  color: #0F172A !important;
+}
+
+/* Spaced Repetition Review Card */
+html.light-mode #spaced-repetition-reviews-card {
+  background: linear-gradient(135deg, #EEF2FF 0%, #F3E8FF 100%) !important;
+  border-color: #C7D2FE !important;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.08) !important;
+}
+
+html.light-mode #spaced-repetition-reviews-card h3 {
+  color: #1E1B4B !important;
+}
+
+html.light-mode #spaced-repetition-reviews-card .text-\[\#A78BFA\] {
+  color: #4C1D95 !important;
+}
+
+html.light-mode #spaced-repetition-reviews-card .text-gray-400 {
+  color: #4338CA !important;
+}
+
+html.light-mode #start-review-session-btn {
+  background-color: #4F46E5 !important;
+  color: #FFFFFF !important;
+  border-color: #4338CA !important;
+}
+
+html.light-mode #start-review-session-btn * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* Daily Tasks Light Mode Overrides */
+html.light-mode #home-daily-tasks-section span.text-\[\#A78BFA\],
+html[data-theme="light"] #home-daily-tasks-section span.text-\[\#A78BFA\] {
+  color: #6D28D9 !important;
+}
+
+html.light-mode #home-daily-tasks-section span.bg-purple-500\/20,
+html[data-theme="light"] #home-daily-tasks-section span.bg-purple-500\/20 {
+  background-color: #EDE9FE !important;
+  border-color: #C4B5FD !important;
+  color: #5B21B6 !important;
+}
+
+html.light-mode #home-daily-tasks-card,
+html[data-theme="light"] #home-daily-tasks-card {
+  background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 50%, #E0E7FF 100%) !important;
+  border-color: #C4B5FD !important;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.08) !important;
+}
+
+html.light-mode #home-daily-tasks-card .bg-\[\#0E0A21\],
+html[data-theme="light"] #home-daily-tasks-card .bg-\[\#0E0A21\] {
+  background-color: #DDD6FE !important;
+  border-color: #C4B5FD !important;
+}
+
+html.light-mode #home-daily-tasks-card input,
+html[data-theme="light"] #home-daily-tasks-card input {
+  background-color: #FFFFFF !important;
+  border-color: #C4B5FD !important;
+  color: #0F172A !important;
+}
+
+html.light-mode #home-daily-tasks-card input::placeholder,
+html[data-theme="light"] #home-daily-tasks-card input::placeholder {
+  color: #7C3AED !important;
+  opacity: 0.6 !important;
+}
+
+html.light-mode #home-daily-tasks-card button[type="submit"],
+html[data-theme="light"] #home-daily-tasks-card button[type="submit"] {
+  background: linear-gradient(to right, #7C3AED, #4F46E5) !important;
+  color: #FFFFFF !important;
+}
+
+html.light-mode #home-daily-tasks-card .bg-\[\#181233\]\/90,
+html[data-theme="light"] #home-daily-tasks-card .bg-\[\#181233\]\/90 {
+  background-color: #FFFFFF !important;
+  border-color: #DDD6FE !important;
+  color: #0F172A !important;
+  box-shadow: 0 2px 6px rgba(109, 40, 217, 0.05) !important;
+}
+
+html.light-mode #home-daily-tasks-card .bg-\[\#181233\]\/90:hover,
+html[data-theme="light"] #home-daily-tasks-card .bg-\[\#181233\]\/90:hover {
+  background-color: #FAF5FF !important;
+  border-color: #C4B5FD !important;
+}
+
+html.light-mode #home-daily-tasks-card .bg-gradient-to-r.from-\[\#2B1432\],
+html[data-theme="light"] #home-daily-tasks-card .bg-gradient-to-r.from-\[\#2B1432\] {
+  background: linear-gradient(to right, #FFF1F2, #FAF5FF) !important;
+  border-color: #F472B6 !important;
+  color: #831843 !important;
+}
+
+html.light-mode #home-daily-tasks-card .bg-emerald-950\/20,
+html[data-theme="light"] #home-daily-tasks-card .bg-emerald-950\/20 {
+  background-color: #ECFDF5 !important;
+  border-color: #A7F3D0 !important;
+  color: #047857 !important;
+}
+
+html.light-mode #home-daily-tasks-card .text-purple-200\/90,
+html[data-theme="light"] #home-daily-tasks-card .text-purple-200\/90 {
+  color: #4C1D95 !important;
+}
+
+html.light-mode #home-daily-tasks-card .text-purple-300\/60,
+html[data-theme="light"] #home-daily-tasks-card .text-purple-300\/60 {
+  color: #6D28D9 !important;
+}
+
+html.light-mode #home-daily-tasks-card span.bg-purple-500\/15,
+html[data-theme="light"] #home-daily-tasks-card span.bg-purple-500\/15 {
+  background-color: #F3E8FF !important;
+  color: #6D28D9 !important;
+  border-color: #D8B4FE !important;
+}
+
+html.light-mode #home-daily-tasks-card span.bg-pink-500\/20,
+html[data-theme="light"] #home-daily-tasks-card span.bg-pink-500\/20 {
+  background-color: #FFE4E6 !important;
+  color: #BE123C !important;
+  border-color: #FDA4AF !important;
+}
+
+html.light-mode #home-daily-tasks-card span.bg-amber-500\/15,
+html[data-theme="light"] #home-daily-tasks-card span.bg-amber-500\/15 {
+  background-color: #FEF3C7 !important;
+  color: #B45309 !important;
+  border-color: #FDE68A !important;
+}
+
+/* ==========================================================================
+   FRIENDS TAB LIGHT MODE OPTIMIZATIONS
+   ========================================================================== */
+
+/* Sub-tabs line & text */
+html.light-mode .border-gray-850 {
+  border-color: #E2E8F0 !important;
+}
+
+html.light-mode .divide-gray-850\/50 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #F1F5F9 !important;
+}
+
+html.light-mode button.text-blue-400.border-blue-400 {
+  color: #2563EB !important;
+  border-color: #2563EB !important;
+}
+
+html.light-mode button.text-gray-500.border-transparent:hover {
+  color: #1E293B !important;
+}
+
+/* Status badging in friend cards */
+html.light-mode .text-emerald-400 {
+  color: #059669 !important;
+}
+
+html.light-mode .bg-emerald-500 {
+  background-color: #10B981 !important;
+}
+
+html.light-mode .text-amber-400,
+html.light-mode .text-amber-500 {
+  color: #D97706 !important;
+}
+
+html.light-mode .text-blue-400 {
+  color: #2563EB !important;
+}
+
+/* Offline Notice Banner */
+html.light-mode .from-blue-900\/15 {
+  background: linear-gradient(to right, #EFF6FF, #EEF2FF) !important;
+  border-left-color: #2563EB !important;
+}
+
+html.light-mode .from-blue-900\/15 h4 {
+  color: #1E3A8A !important;
+}
+
+html.light-mode .from-blue-900\/15 p {
+  color: #1E40AF !important;
+}
+
+/* Search Input Shadow & Background */
+html.light-mode input[placeholder*="Search"] {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+/* Leaderboard Rows */
+html.light-mode div[class*="bg-[#121522]"],
+html.light-mode div[class*="bg-[#131522]"],
+html.light-mode div[class*="bg-[#12141F]"] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Avatar backgrounds in friends & directory */
+html.light-mode .bg-\[\#1D2030\] {
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* ==========================================================================
+   PROFILE TAB LIGHT MODE OPTIMIZATIONS
+   ========================================================================== */
+
+/* Player Hero Card & Profile Cards */
+html.light-mode #profile-hero-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.light-mode .bg-\[\#10141C\],
+html.light-mode .bg-\[\#161B26\],
+html.light-mode .bg-\[\#181D28\] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light-mode .bg-\[\#181D2A\] {
+  background-color: #F3E8FF !important;
+  border-color: #D8B4FE !important;
+  color: #6D28D9 !important;
+}
+
+html.light-mode .bg-\[\#181D2A\]:hover {
+  background-color: #EDE9FE !important;
+  border-color: #C4B5FD !important;
+}
+
+/* Avatar container in profile */
+html.light-mode #profile-avatar-container {
+  background-color: #F1F5F9 !important;
+  border-color: #A855F7 !important;
+}
+
+/* Character class info boxes (University, Branch, Sem, Scheme) */
+html.light-mode #profile-hero-card .bg-\[\#0C0F12\],
+html.light-mode #profile-hero-card .bg-\[\#0C0F12\]\/90 {
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Respec form select boxes */
+html.light-mode #profile-hero-card select {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+/* Profile & Header Settings Buttons in Light Mode */
+html.light-mode #profile-settings-btn,
+html.light-mode #header-profile-settings-btn,
+html.light-mode #header-search-btn,
+html.light-mode #header-notification-btn,
+html.light-mode .bg-\[\#141418\],
+html.light-mode .bg-\[\#141820\],
+html.light-mode .bg-\[\#181D28\],
+html.light-mode .bg-\[\#181D2A\],
+html.light-mode .bg-\[\#10141C\] {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  color: #1E293B !important;
+  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light-mode #profile-settings-btn:hover,
+html.light-mode #header-profile-settings-btn:hover,
+html.light-mode #header-search-btn:hover,
+html.light-mode #header-notification-btn:hover,
+html.light-mode .bg-\[\#141418\]:hover,
+html.light-mode .hover\:bg-\[\#1A1A20\]:hover,
+html.light-mode .hover\:bg-\[\#202738\]:hover {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+/* Header & Glass Navigation */
+html.light-mode header,
+html.light-mode nav,
+html.light-mode .glass {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Base text color overrides for card content & body */
+html.light-mode,
+html.light-mode body,
+html.light-mode .min-h-screen {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+html.light-mode h1,
+html.light-mode h2,
+html.light-mode h3,
+html.light-mode h4,
+html.light-mode h5,
+html.light-mode h6,
+html.light-mode p.text-white,
+html.light-mode span.text-white,
+html.light-mode div.text-white,
+html.light-mode .text-gray-100,
+html.light-mode .text-gray-200 {
+  color: #0F172A !important;
+}
+
+html.light-mode .text-gray-300 {
+  color: #1E293B !important;
+}
+
+html.light-mode .text-gray-400 {
+  color: #475569 !important;
+}
+
+html.light-mode .text-gray-500 {
+  color: #64748B !important;
+}
+
+/* Light Mode Contrast for Pale Accents */
+html.light-mode .text-purple-200,
+html.light-mode .text-purple-300 {
+  color: #6D28D9 !important;
+}
+
+html.light-mode .text-blue-300 {
+  color: #1D4ED8 !important;
+}
+
+html.light-mode .text-indigo-300 {
+  color: #4338CA !important;
+}
+
+html.light-mode .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.light-mode .text-amber-300 {
+  color: #B45309 !important;
+}
+
+/* Universal Light Theme Card & Container Overrides */
+html.light-mode [class*="bg-[#0C0F12]"],
+html.light-mode [class*="bg-[#141A1F]"],
+html.light-mode [class*="bg-[#10141C]"],
+html.light-mode [class*="bg-[#161B26]"],
+html.light-mode [class*="bg-[#141824]"],
+html.light-mode [class*="bg-[#1C242C]"],
+html.light-mode [class*="bg-[#0C0F16]"],
+html.light-mode [class*="bg-[#181D28]"],
+html.light-mode [class*="bg-[#181D2A]"],
+html.light-mode [class*="bg-[#141820]"],
+html.light-mode [class*="bg-[#101418]"],
+html.light-mode [class*="bg-[#0B0E14]"],
+html.light-mode [class*="bg-[#0E1118]"],
+html.light-mode [class*="bg-[#121622]"],
+html.light-mode [class*="bg-[#090C15]"],
+html.light-mode [class*="bg-[#121824]"],
+html.light-mode [class*="bg-[#0D0A22]"],
+html.light-mode [class*="bg-[#0E0A21]"],
+html.light-mode [class*="bg-[#0F0A22]"],
+html.light-mode [class*="bg-[#130F30]"],
+html.light-mode [class*="bg-[#15102A]"],
+html.light-mode [class*="bg-[#181233]"],
+html.light-mode [class*="bg-[#1A1A22]"],
+html.light-mode [class*="bg-[#1C1635]"],
+html.light-mode [class*="bg-[#1E1740]"],
+html.light-mode [class*="bg-[#251E45]"],
+html.light-mode [class*="bg-[#111422]"],
+html.light-mode [class*="bg-[#151829]"],
+html.light-mode [class*="bg-[#1C1630]"],
+html.light-mode [class*="bg-[#1E2135]"],
+html.light-mode [class*="bg-[#10121C]"],
+html.light-mode [class*="bg-[#10131E]"],
+html.light-mode [class*="bg-[#111421]"],
+html.light-mode [class*="bg-[#12141F]"],
+html.light-mode [class*="bg-[#121522]"],
+html.light-mode [class*="bg-[#131522]"],
+html.light-mode [class*="bg-[#14122C]"],
+html.light-mode [class*="bg-[#141822]"],
+html.light-mode [class*="bg-[#1D2030]"],
+html.light-mode [class*="bg-[#0F1318]"],
+html.light-mode [class*="bg-[#101419]"],
+html.light-mode [class*="bg-[#0d0d10]"],
+html.light-mode [class*="bg-[#111114]"],
+html.light-mode [class*="bg-[#18181C]"],
+html.light-mode [class*="bg-[#19191E]"],
+html.light-mode [class*="bg-[#1A1A20]"],
+html.light-mode [class*="bg-[#0A0D10]"],
+html.light-mode [class*="bg-[#131920]"],
+html.light-mode [class*="bg-[#070A0D]"],
+html.light-mode [class*="bg-[#090C0F]"],
+html.light-mode [class*="bg-[#11161B]"],
+html.light-mode [class*="bg-[#060809]"],
+html.light-mode [class*="bg-[#090D14]"],
+html.light-mode [class*="bg-[#0D1115]"],
+html.light-mode [class*="bg-[#0E1317]"],
+html.light-mode [class*="bg-[#121021]"],
+html.light-mode [class*="bg-[#141225]"],
+html.light-mode [class*="bg-[#1C1022]"],
+html.light-mode [class*="bg-[#161426]"],
+html.light-mode [class*="bg-[#141224]"],
+html.light-mode [class*="bg-[#0E1624]"],
+html.light-mode [class*="bg-[#0B091B]"],
+html.light-mode [class*="bg-[#181512]"] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.03) !important;
+}
+
+/* Sub-panels and expanded section boxes in light mode */
+html.light-mode [class*="bg-[#0C0F12]/"].border-t,
+html.light-mode [class*="bg-[#0C0F12]/"].border,
+html.light-mode [class*="bg-[#141A1F]/"].border-t,
+html.light-mode [class*="bg-[#141A1F]/"].border {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Inner elements and list items inside cards in light mode */
+html.light-mode .bg-gray-900\/50,
+html.light-mode .bg-gray-900\/80,
+html.light-mode .bg-gray-900,
+html.light-mode .bg-gray-950\/40,
+html.light-mode .bg-gray-950\/50,
+html.light-mode .bg-gray-950\/80,
+html.light-mode .bg-gray-950,
+html.light-mode .bg-black\/10,
+html.light-mode .bg-black\/20,
+html.light-mode .bg-black\/30 {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+/* Achievement Modal / Trophy Hall Light Mode Overrides */
+html.light-mode #achievement-modal-container {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.12) !important;
+  color: #0F172A !important;
+}
+
+html.light-mode #achievement-modal-container .bg-gradient-to-r {
+  background: linear-gradient(to right, #F8FAFC, #F1F5F9, #EEF2FF) !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light-mode #achievement-modal-container h2 span,
+html.light-mode #achievement-modal-container h3,
+html.light-mode #achievement-modal-container h4 {
+  color: #0F172A !important;
+}
+
+html.light-mode #achievement-modal-container p {
+  color: #475569 !important;
+}
+
+html.light-mode #achievement-modal-container .bg-gray-950 {
+  background-color: #E2E8F0 !important;
+  border-color: #CBD5E1 !important;
+}
+
+html.light-mode #achievement-modal-container .bg-\[\#161224\] {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light-mode #achievement-modal-container input {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+html.light-mode #achievement-modal-container input::placeholder {
+  color: #94A3B8 !important;
+}
+
+html.light-mode #achievement-modal-container button.bg-white\/5 {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #334155 !important;
+}
+
+html.light-mode #achievement-modal-container button.bg-white\/5:hover {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+html.light-mode #achievement-modal-container button.bg-purple-600\/30 {
+  background-color: #F3E8FF !important;
+  border-color: #C084FC !important;
+  color: #6B21A8 !important;
+}
+
+html.light-mode #achievement-modal-container [class*="bg-gradient-to-br"] {
+  background: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light-mode #achievement-modal-container [class*="bg-gradient-to-br"]:hover {
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.1) !important;
+  border-color: #C084FC !important;
+}
+
+html.light-mode #achievement-modal-container .bg-\[\#151222\] {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light-mode #achievement-modal-container .bg-\[\#151222\] h4 {
+  color: #64748B !important;
+}
+
+html.light-mode #achievement-modal-container .bg-gray-950\/80,
+html.light-mode #achievement-modal-container .bg-gray-900 {
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light-mode div.bg-\[\#181328\] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.2) !important;
+}
+
+html.light-mode div.bg-\[\#181328\] h3,
+html.light-mode div.bg-\[\#181328\] label {
+  color: #0F172A !important;
+}
+
+html.light-mode div.bg-\[\#181328\] button.bg-white\/5 {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  color: #334155 !important;
+}
+
+html.light-mode div.bg-\[\#181328\] button.bg-white\/5:hover {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+html.light-mode div.bg-\[\#181328\] button.bg-purple-600 {
+  background-color: #7C3AED !important;
+  color: #FFFFFF !important;
+  border-color: #6D28D9 !important;
+}
+
+html.light-mode div.bg-\[\#181328\] button.bg-amber-500\/20 {
+  background-color: #FEF3C7 !important;
+  border-color: #FDE68A !important;
+  color: #B45309 !important;
+}
+
+html.light-mode div.bg-\[\#181328\] button.bg-purple-500\/25 {
+  background-color: #F3E8FF !important;
+  border-color: #E9D5FF !important;
+  color: #6B21A8 !important;
+}
+
+html.light-mode div.bg-\[\#181328\] button.bg-white\/10 {
+  background-color: #F1F5F9 !important;
+  color: #334155 !important;
+}
+
+html.light-mode div.bg-\[\#181328\] button.bg-white\/10:hover {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+/* Hover effects on cards in Light Mode */
+html.light-mode .group:hover .group-hover\:text-white {
+  color: #0F172A !important;
+}
+html.light-mode .group:hover .group-hover\:text-gray-300 {
+  color: #1E293B !important;
+}
+html.light-mode [class*="hover:bg-[#"]:hover,
+html.light-mode .hover\:bg-white\/\[0\.02\]:hover,
+html.light-mode .hover\:bg-gray-800\/20:hover {
+  background-color: #F1F5F9 !important;
+}
+
+/* Options in dropdowns */
+html.light-mode option {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+}
+
+/* Preserve solid button white text on colored CTA buttons */
+html.light-mode button.bg-blue-600,
+html.light-mode button.bg-blue-500,
+html.light-mode button.bg-purple-600,
+html.light-mode button.bg-purple-500,
+html.light-mode button.bg-indigo-600,
+html.light-mode button.bg-emerald-600,
+html.light-mode button.bg-amber-500,
+html.light-mode button.bg-rose-600,
+html.light-mode button.bg-red-600,
+html.light-mode .bg-blue-600 *,
+html.light-mode .bg-blue-500 *,
+html.light-mode .bg-purple-600 *,
+html.light-mode .bg-indigo-600 *,
+html.light-mode .bg-emerald-600 *,
+html.light-mode .bg-amber-500 *,
+html.light-mode .bg-rose-600 *,
+html.light-mode .bg-red-600 * {
+  color: #FFFFFF !important;
+}
+
+/* Borders in Light Mode */
+html.light-mode .border-white\/5,
+html.light-mode .border-white\/10,
+html.light-mode .border-white\/15,
+html.light-mode .border-white\/20,
+html.light-mode .border-gray-800,
+html.light-mode .border-gray-850,
+html.light-mode .border-gray-900,
+html.light-mode .border-gray-700 {
+  border-color: #E2E8F0 !important;
+}
+
+/* Form Inputs, Textareas, Selects */
+html.light-mode input,
+html.light-mode textarea,
+html.light-mode select {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light-mode input::placeholder,
+html.light-mode textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Modal Backdrops in Light Mode */
+html.light-mode .fixed.inset-0.bg-black\/80,
+html.light-mode .fixed.inset-0.bg-black\/90,
+html.light-mode .fixed.inset-0.bg-black\/70,
+html.light-mode .fixed.inset-0.bg-black\/50,
+html.light-mode .fixed.inset-0.bg-black\/60 {
+  background-color: rgba(15, 23, 42, 0.5) !important;
+}
+
+/* ==========================================================================
+   SETTINGS TAB & INTEGRATIONS LIGHT MODE OPTIMIZATIONS
+   ========================================================================== */
+
+/* Settings Section Cards, Drawers & Simulator Panels */
+html.light-mode div[class*="bg-[#121622]"],
+html.light-mode .bg-\[\#121622\],
+html.light-mode div[class*="bg-[#090C15]"],
+html.light-mode .bg-\[\#090C15\],
+html.light-mode div[class*="bg-[#0E1118]"],
+html.light-mode .bg-\[\#0E1118\],
+html.light-mode div[class*="bg-[#0B0E14]"],
+html.light-mode .bg-\[\#0B0E14\],
+html.light-mode div[class*="bg-[#121824]"],
+html.light-mode .bg-\[\#121824\],
+html.light-mode div[class*="bg-[#0D0A22]"],
+html.light-mode .bg-\[\#0D0A22\] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.03) !important;
+}
+
+/* Category Icon Badges in Settings */
+html.light-mode .bg-indigo-950\/80 { background-color: #EEF2FF !important; border-color: #C7D2FE !important; color: #4F46E5 !important; }
+html.light-mode .bg-amber-950\/80 { background-color: #FEF3C7 !important; border-color: #FDE68A !important; color: #D97706 !important; }
+html.light-mode .bg-cyan-950\/80 { background-color: #ECFEFF !important; border-color: #A5F3FC !important; color: #0891B2 !important; }
+html.light-mode .bg-purple-950\/80 { background-color: #F3E8FF !important; border-color: #DDD6FE !important; color: #7C3AED !important; }
+html.light-mode .bg-orange-950\/80 { background-color: #FFEDD5 !important; border-color: #FED7AA !important; color: #EA580C !important; }
+html.light-mode .bg-emerald-950\/80 { background-color: #D1FAE5 !important; border-color: #A7F3D0 !important; color: #059669 !important; }
+html.light-mode .bg-pink-950\/80 { background-color: #FCE7F3 !important; border-color: #FBCFE8 !important; color: #DB2777 !important; }
+html.light-mode .bg-teal-950\/80 { background-color: #CCFBF1 !important; border-color: #99F6E4 !important; color: #0D9488 !important; }
+html.light-mode .bg-blue-950\/80 { background-color: #DBEAFE !important; border-color: #BFDBFE !important; color: #2563EB !important; }
+html.light-mode .bg-gray-800\/80 { background-color: #F1F5F9 !important; border-color: #CBD5E1 !important; color: #475569 !important; }
+
+html.light-mode .bg-indigo-950\/80 *,
+html.light-mode .bg-amber-950\/80 *,
+html.light-mode .bg-cyan-950\/80 *,
+html.light-mode .bg-purple-950\/80 *,
+html.light-mode .bg-orange-950\/80 *,
+html.light-mode .bg-emerald-950\/80 *,
+html.light-mode .bg-pink-950\/80 *,
+html.light-mode .bg-teal-950\/80 *,
+html.light-mode .bg-blue-950\/80 *,
+html.light-mode .bg-gray-800\/80 * {
+  color: inherit !important;
+}
+
+/* Light Theme Active Card in Appearance Section */
+html.light-mode .bg-amber-950\/40 {
+  background-color: #FEF3C7 !important;
+  border-color: #F59E0B !important;
+  color: #78350F !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2) !important;
+}
+html.light-mode .bg-amber-950\/40 * {
+  color: #78350F !important;
+}
+
+/* Unselected Theme & Option Buttons in Settings */
+html.light-mode button.bg-\[\#0E1118\] {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  color: #334155 !important;
+}
+html.light-mode button.bg-\[\#0E1118\]:hover {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+html.light-mode button.bg-\[\#0E1118\] p.text-white {
+  color: #0F172A !important;
+}
+
+/* Unselected Option Buttons inside Drawers (Focus goal mins, Archived semesters, Backlog) */
+html.light-mode .bg-white\/5 {
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0 !important;
+  color: #1E293B !important;
+}
+html.light-mode .bg-white\/5:hover {
+  background-color: #E2E8F0 !important;
+}
+
+/* Active Selected Pills & Buttons inside Drawers */
+html.light-mode .bg-purple-950\/40 {
+  background-color: #F3E8FF !important;
+  border-color: #C4B5FD !important;
+  color: #6D28D9 !important;
+}
+html.light-mode .bg-purple-950\/40 * {
+  color: #6D28D9 !important;
+}
+
+html.light-mode .bg-amber-950\/30 {
+  background-color: #FEF3C7 !important;
+  border-color: #FDE68A !important;
+  color: #78350F !important;
+}
+html.light-mode .bg-amber-950\/30 * {
+  color: #78350F !important;
+}
+
+/* Inactive Toggle Switches in Settings */
+html.light-mode button.bg-gray-800 {
+  background-color: #CBD5E1 !important;
+}
+
+/* Range input volume slider track */
+html.light-mode input[type="range"].bg-gray-800 {
+  background-color: #E2E8F0 !important;
+}
+
+/* Badges / Pill tags */
+html.light-mode .bg-purple-500\/15 {
+  background-color: #F3E8FF !important;
+  border-color: #DDD6FE !important;
+  color: #6D28D9 !important;
+}
+html.light-mode .bg-amber-500\/15 {
+  background-color: #FEF3C7 !important;
+  border-color: #FDE68A !important;
+  color: #B45309 !important;
+}
+html.light-mode .bg-emerald-500\/15 {
+  background-color: #D1FAE5 !important;
+  border-color: #A7F3D0 !important;
+  color: #047857 !important;
+}
+
+/* Modals & Overlays in Settings (About modal, setup guide modal) */
+html.light-mode div.fixed .bg-\[\#121622\],
+html.light-mode div.fixed .bg-\[\#121824\] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+}
+
+html.light-mode div.fixed .bg-black\/80,
+html.light-mode div.fixed .bg-black\/70 {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+}
+
+/* Android Widget Simulator in Light Mode */
+html.light-mode button.bg-\[\#121824\] {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  color: #1E293B !important;
+}
+html.light-mode button.bg-\[\#121824\]:hover {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+}
+html.light-mode button.bg-\[\#121824\] p.text-white {
+  color: #0F172A !important;
+}
+html.light-mode button.bg-\[\#121824\] p.text-gray-400 {
+  color: #64748B !important;
+}
+
+html.light-mode button.bg-amber-500\/10.border-amber-500 {
+  background-color: #FEF3C7 !important;
+  border-color: #F59E0B !important;
+  color: #78350F !important;
+}
+html.light-mode button.bg-amber-500\/10.border-amber-500 p.text-white,
+html.light-mode button.bg-amber-500\/10.border-amber-500 p.text-gray-400 {
+  color: #78350F !important;
+}
+
+html.light-mode button.bg-white.text-black {
+  background-color: #0F172A !important;
+  color: #FFFFFF !important;
+  border-color: #0F172A !important;
+}
+html.light-mode button.bg-white.text-black * {
+  color: #FFFFFF !important;
+}
+
+/* Achievement Modal Light Mode Overrides */
+html.light-mode #achievement-modal-container {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+}
+html.light-mode #achievement-modal-container .bg-\[\#121622\] {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+html.light-mode #achievement-modal-container .bg-\[\#0E1118\] {
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0 !important;
+}
+html.light-mode #achievement-modal-container .bg-\[\#10141C\] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+html.light-mode #achievement-modal-container .text-white {
+  color: #0F172A !important;
+}
+html.light-mode #achievement-modal-container .text-gray-400 {
+  color: #64748B !important;
+}
+html.light-mode #achievement-modal-container .text-gray-500 {
+  color: #94A3B8 !important;
+}
+
+/* --------------------------------------------------------------------------
+   FOCUS TIMER LIGHT MODE OPTIMIZATIONS
+   -------------------------------------------------------------------------- */
+html.light-mode #focus-timer-screen {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+/* Ambient glow blobs in light mode */
+html.light-mode #focus-timer-screen .bg-blue-500\/10,
+html.light-mode #focus-timer-screen .bg-emerald-500\/5 {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+}
+
+/* Cards & Modals */
+html.light-mode #focus-timer-screen .bg-\[\#141A1F\],
+html.light-mode #focus-timer-screen .bg-\[\#141A1F\]\/80,
+html.light-mode #focus-timer-screen .bg-\[\#141A1F\]\/60 {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 20px 45px -15px rgba(15, 23, 42, 0.1) !important;
+}
+
+/* Typography in Light Mode */
+html.light-mode #focus-timer-screen h1,
+html.light-mode #focus-timer-screen h2,
+html.light-mode #focus-timer-screen h3,
+html.light-mode #focus-timer-screen .text-white {
+  color: #0F172A !important;
+}
+
+html.light-mode #focus-timer-screen .text-gray-200,
+html.light-mode #focus-timer-screen .text-gray-300 {
+  color: #334155 !important;
+}
+
+html.light-mode #focus-timer-screen .text-gray-400,
+html.light-mode #focus-timer-screen .text-gray-500 {
+  color: #64748B !important;
+}
+
+/* Header Buttons (Mute, Minimize, Close) */
+html.light-mode #focus-timer-screen button.bg-gray-950\/90,
+html.light-mode #focus-timer-screen button.bg-gray-800\/90,
+html.light-mode #focus-timer-screen button.bg-gray-900 {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #334155 !important;
+}
+html.light-mode #focus-timer-screen button.bg-gray-950\/90:hover,
+html.light-mode #focus-timer-screen button.bg-gray-800\/90:hover,
+html.light-mode #focus-timer-screen button.bg-gray-900:hover {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+/* Input Fields & Placeholders */
+html.light-mode #focus-timer-screen input[type="text"] {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+html.light-mode #focus-timer-screen input[type="text"]::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Timer Mode Selection Cards */
+html.light-mode #focus-timer-screen button.bg-gray-950 {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  color: #334155 !important;
+}
+html.light-mode #focus-timer-screen button.bg-blue-600\/15 {
+  background-color: #EFF6FF !important;
+  border-color: #3B82F6 !important;
+  color: #1D4ED8 !important;
+}
+
+/* Presets Pills */
+html.light-mode #focus-timer-screen button.bg-gray-950.border-gray-850 {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+/* Daily Target Consistency Box */
+html.light-mode #focus-timer-screen .bg-gray-950\/70 {
+  background-color: #F0FDF4 !important;
+  border-color: #BBF7D0 !important;
+}
+html.light-mode #focus-timer-screen .bg-gray-950\/70 p {
+  color: #166534 !important;
+}
+
+/* Pause/Exit Modal Overlay */
+html.light-mode #focus-timer-screen .bg-black\/90 {
+  background-color: rgba(15, 23, 42, 0.5) !important;
+}
+
+/* Radial Timer Progress Circle Track */
+html.light-mode #focus-timer-screen circle[stroke="rgba(255,255,255,0.03)"],
+html.light-mode #focus-timer-minimized circle[stroke="rgba(255,255,255,0.08)"] {
+  stroke: #E2E8F0 !important;
+}
+
+/* Exit / Control Buttons */
+html.light-mode #focus-timer-screen button.bg-gray-950.border-gray-800 {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+/* Minimized Floating Bar */
+html.light-mode #focus-timer-minimized {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #93C5FD !important;
+  box-shadow: 0 20px 30px -10px rgba(15, 23, 42, 0.15) !important;
+}
+html.light-mode #focus-timer-minimized p.text-white {
+  color: #0F172A !important;
+}
+html.light-mode #focus-timer-minimized button.bg-gray-900 {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #334155 !important;
+}
+
+/* --------------------------------------------------------------------------
+   OLED MODE (Pure Pitch Black #000000)
+   -------------------------------------------------------------------------- */
+html.oled-mode,
+html[data-theme="oled"],
+html.oled-mode body {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+html.oled-mode body::before {
+  display: none !important;
+}
+
+html.oled-mode .min-h-screen,
+html.oled-mode div[class*="bg-[#0C0F12]"],
+html.oled-mode .bg-\[\#0C0F12\],
+html.oled-mode div[class*="bg-[#0A0D10]"],
+html.oled-mode .bg-\[\#0A0D10\],
+html.oled-mode div[class*="bg-[#09090B]"],
+html.oled-mode .bg-\[\#09090B\],
+html.oled-mode .bg-black {
+  background-color: #000000 !important;
+  background-image: none !important;
+}
+
+html.oled-mode div[class*="bg-[#141A1F]"],
+html.oled-mode .bg-\[\#141A1F\],
+html.oled-mode div[class*="bg-[#111422]"],
+html.oled-mode .bg-\[\#111422\],
+html.oled-mode div[class*="bg-[#111114]"],
+html.oled-mode .bg-\[\#111114\],
+html.oled-mode div[class*="bg-[#141418]"],
+html.oled-mode .bg-\[\#141418\],
+html.oled-mode div[class*="bg-[#18181C]"],
+html.oled-mode .bg-\[\#18181C\] {
+  background-color: #0A0A0E !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.oled-mode header,
+html.oled-mode .glass {
+  background-color: rgba(0, 0, 0, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
 

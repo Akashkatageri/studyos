@@ -1,96 +1,305 @@
 [
   {
-    "id": "vtu-cse-s1-math",
-    "name": "Mathematics-1 for CSE",
+    "id": "1BMATS101",
+    "name": "Calculus and Linear Algebra",
+    "code": "1BMATS101",
+    "type": "Theory",
+    "credits": 4,
+    "color": "#9B59B6",
+    "icon": "calculate",
     "semester": 1,
     "modules": [
       {
-        "id": "vtu-cse-s1-math-m1",
-        "name": "Module 1: Calculus & Mean Value",
+        "id": "1BMATS101_M1",
+        "name": "Calculus",
+        "estimatedMinutes": 260,
         "topics": [
           {
-            "id": "vtu-cse-s1-math-m1-t1",
-            "name": "Polar Curves & Angle of Intersection",
-            "difficulty": "Medium",
-            "estimatedTime": 25
+            "id": "1BMATS101_M1_T1",
+            "order": 1,
+            "title": "Partial differentiation",
+            "estimatedMinutes": 35,
+            "difficulty": "Easy"
           },
           {
-            "id": "vtu-cse-s1-math-m1-t2",
-            "name": "Pedal Equations of Polar Curves",
-            "difficulty": "Hard",
-            "estimatedTime": 35
+            "id": "1BMATS101_M1_T2",
+            "order": 2,
+            "title": "Total derivative",
+            "estimatedMinutes": 30,
+            "difficulty": "Medium"
           },
           {
-            "id": "vtu-cse-s1-math-m1-t3",
-            "name": "Taylor's and Maclaurin's Series",
-            "difficulty": "Medium",
-            "estimatedTime": 45
+            "id": "1BMATS101_M1_T3",
+            "order": 3,
+            "title": "Differentiation of composite functions",
+            "estimatedMinutes": 35,
+            "difficulty": "Medium"
           },
           {
-            "id": "vtu-cse-s1-math-m1-t4",
-            "name": "Rolle's Theorem & Lagrange Mean Value",
-            "difficulty": "Easy",
-            "estimatedTime": 55
+            "id": "1BMATS101_M1_T4",
+            "order": 4,
+            "title": "Jacobian",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          },
+          {
+            "id": "1BMATS101_M1_T5",
+            "order": 5,
+            "title": "Statement of Taylor's and Maclaurin's series expansion for two variables",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          },
+          {
+            "id": "1BMATS101_M1_T6",
+            "order": 6,
+            "title": "Maxima and minima for the function of two variables",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
           }
         ]
       },
       {
-        "id": "vtu-cse-s1-math-m2",
-        "name": "Module 2: Multivariable Calculus",
+        "id": "1BMATS101_M2",
+        "name": "Vector Calculus",
+        "estimatedMinutes": 310,
         "topics": [
           {
-            "id": "vtu-cse-s1-math-m2-t1",
-            "name": "Partial Derivatives & Total Derivative",
-            "difficulty": "Medium",
-            "estimatedTime": 25
+            "id": "1BMATS101_M2_T1",
+            "order": 1,
+            "title": "Scalar and vector fields",
+            "estimatedMinutes": 20,
+            "difficulty": "Easy"
           },
           {
-            "id": "vtu-cse-s1-math-m2-t2",
-            "name": "Jacobians & Applications",
-            "difficulty": "Hard",
-            "estimatedTime": 35
+            "id": "1BMATS101_M2_T2",
+            "order": 2,
+            "title": "Gradient and directional derivatives",
+            "estimatedMinutes": 35,
+            "difficulty": "Medium"
           },
           {
-            "id": "vtu-cse-s1-math-m2-t3",
-            "name": "Taylor's Expansion for Two Variables",
-            "difficulty": "Easy",
-            "estimatedTime": 45
+            "id": "1BMATS101_M2_T3",
+            "order": 3,
+            "title": "Divergence and curl-physical interpretation",
+            "estimatedMinutes": 35,
+            "difficulty": "Medium"
           },
           {
-            "id": "vtu-cse-s1-math-m2-t4",
-            "name": "Maxima and Minima of Two Variables",
-            "difficulty": "Hard",
-            "estimatedTime": 55
+            "id": "1BMATS101_M2_T4",
+            "order": 4,
+            "title": "Solenoidal vector fields, irrotational vector fields and scalar potential",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          },
+          {
+            "id": "1BMATS101_M2_T5",
+            "order": 5,
+            "title": "Introduction to polar coordinates and polar curves",
+            "estimatedMinutes": 30,
+            "difficulty": "Easy"
+          },
+          {
+            "id": "1BMATS101_M2_T6",
+            "order": 6,
+            "title": "Curvilinear coordinates: Scale factors and base vectors",
+            "estimatedMinutes": 35,
+            "difficulty": "Medium"
+          },
+          {
+            "id": "1BMATS101_M2_T7",
+            "order": 7,
+            "title": "Cylindrical polar coordinates",
+            "estimatedMinutes": 35,
+            "difficulty": "Medium"
+          },
+          {
+            "id": "1BMATS101_M2_T8",
+            "order": 8,
+            "title": "Spherical polar coordinates",
+            "estimatedMinutes": 35,
+            "difficulty": "Medium"
+          },
+          {
+            "id": "1BMATS101_M2_T9",
+            "order": 9,
+            "title": "Transformation between cartesian and curvilinear systems, orthogonality",
+            "estimatedMinutes": 45,
+            "difficulty": "Hard"
           }
         ]
       },
       {
-        "id": "vtu-cse-s1-math-m3",
-        "name": "Module 3: Ordinary Differential Equations",
+        "id": "1BMATS101_M3",
+        "name": "System of Linear Equations, Eigenvalues and Eigenvectors",
+        "estimatedMinutes": 290,
         "topics": [
           {
-            "id": "vtu-cse-s1-math-m3-t1",
-            "name": "First Order ODEs Exact Equations",
-            "difficulty": "Easy",
-            "estimatedTime": 25
+            "id": "1BMATS101_M3_T1",
+            "order": 1,
+            "title": "Elementary row transformation of a matrix and Echelon form",
+            "estimatedMinutes": 35,
+            "difficulty": "Easy"
           },
           {
-            "id": "vtu-cse-s1-math-m3-t2",
-            "name": "Linear Differential Equations",
-            "difficulty": "Medium",
-            "estimatedTime": 35
+            "id": "1BMATS101_M3_T2",
+            "order": 2,
+            "title": "Rank of a matrix",
+            "estimatedMinutes": 30,
+            "difficulty": "Medium"
           },
           {
-            "id": "vtu-cse-s1-math-m3-t3",
-            "name": "Orthogonal Trajectories",
-            "difficulty": "Easy",
-            "estimatedTime": 45
+            "id": "1BMATS101_M3_T3",
+            "order": 3,
+            "title": "Consistency and solution of system of linear equations",
+            "estimatedMinutes": 35,
+            "difficulty": "Medium"
           },
           {
-            "id": "vtu-cse-s1-math-m3-t4",
-            "name": "Newton's Law of Cooling Problems",
-            "difficulty": "Medium",
-            "estimatedTime": 55
+            "id": "1BMATS101_M3_T4",
+            "order": 4,
+            "title": "Gauss elimination method",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          },
+          {
+            "id": "1BMATS101_M3_T5",
+            "order": 5,
+            "title": "Gauss Jordan method",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          },
+          {
+            "id": "1BMATS101_M3_T6",
+            "order": 6,
+            "title": "Applications: Traffic flow",
+            "estimatedMinutes": 30,
+            "difficulty": "Medium"
+          },
+          {
+            "id": "1BMATS101_M3_T7",
+            "order": 7,
+            "title": "Eigenvalues and Eigenvectors",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          },
+          {
+            "id": "1BMATS101_M3_T8",
+            "order": 8,
+            "title": "Diagonalization of the matrix and modal matrix",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          }
+        ]
+      },
+      {
+        "id": "1BMATS101_M4",
+        "name": "Vector Space",
+        "estimatedMinutes": 285,
+        "topics": [
+          {
+            "id": "1BMATS101_M4_T1",
+            "order": 1,
+            "title": "Vector spaces: definition and examples",
+            "estimatedMinutes": 30,
+            "difficulty": "Easy"
+          },
+          {
+            "id": "1BMATS101_M4_T2",
+            "order": 2,
+            "title": "Subspace: definition and examples",
+            "estimatedMinutes": 30,
+            "difficulty": "Medium"
+          },
+          {
+            "id": "1BMATS101_M4_T3",
+            "order": 3,
+            "title": "Linear Combinations and linear span",
+            "estimatedMinutes": 40,
+            "difficulty": "Medium"
+          },
+          {
+            "id": "1BMATS101_M4_T4",
+            "order": 4,
+            "title": "Linearly independent and dependent sets",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          },
+          {
+            "id": "1BMATS101_M4_T5",
+            "order": 5,
+            "title": "Basis and dimension",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          },
+          {
+            "id": "1BMATS101_M4_T6",
+            "order": 6,
+            "title": "Row space and column space of a matrix",
+            "estimatedMinutes": 35,
+            "difficulty": "Medium"
+          },
+          {
+            "id": "1BMATS101_M4_T7",
+            "order": 7,
+            "title": "Coordinates vector",
+            "estimatedMinutes": 30,
+            "difficulty": "Medium"
+          },
+          {
+            "id": "1BMATS101_M4_T8",
+            "order": 8,
+            "title": "Inner products and orthogonality",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          }
+        ]
+      },
+      {
+        "id": "1BMATS101_M5",
+        "name": "Linear Transformation",
+        "estimatedMinutes": 260,
+        "topics": [
+          {
+            "id": "1BMATS101_M5_T1",
+            "order": 1,
+            "title": "Definition and examples of linear transformations",
+            "estimatedMinutes": 35,
+            "difficulty": "Easy"
+          },
+          {
+            "id": "1BMATS101_M5_T2",
+            "order": 2,
+            "title": "Algebra of linear transformations",
+            "estimatedMinutes": 35,
+            "difficulty": "Medium"
+          },
+          {
+            "id": "1BMATS101_M5_T3",
+            "order": 3,
+            "title": "Matrix of a linear transformation",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
+          },
+          {
+            "id": "1BMATS101_M5_T4",
+            "order": 4,
+            "title": "Singular, non-singular linear transformations and invertible linear transformations",
+            "estimatedMinutes": 35,
+            "difficulty": "Medium"
+          },
+          {
+            "id": "1BMATS101_M5_T5",
+            "order": 5,
+            "title": "Rank and nullity of linear transformations",
+            "estimatedMinutes": 35,
+            "difficulty": "Hard"
+          },
+          {
+            "id": "1BMATS101_M5_T6",
+            "order": 6,
+            "title": "Rank-Nullity theorem",
+            "estimatedMinutes": 40,
+            "difficulty": "Hard"
           }
         ]
       }

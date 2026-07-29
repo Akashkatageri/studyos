@@ -3,17 +3,17 @@ import React from 'react';
 // Premium 3D Book Illustration with Floating Crystals and Neon Glow
 export default function SvgBookIllustration() {
   return (
-    <div className="relative w-28 h-28 flex items-center justify-center select-none pointer-events-none shrink-0" id="3d-book-illustration">
+    <div className="relative w-24 h-24 flex items-center justify-center select-none pointer-events-none shrink-0" id="3d-book-illustration">
       {/* Ambient Glow */}
-      <div className="absolute inset-0 bg-[#7C5CFF]/20 blur-xl rounded-full scale-75 animate-pulse" />
+      <div className="absolute inset-0 bg-[#7C5CFF]/25 blur-xl rounded-full scale-90 animate-pulse" />
       
       {/* Floating Elements (Crystals & Stars) */}
-      <div className="absolute top-2 left-2 text-[#A78BFA] animate-bounce duration-[2.5s] text-[10px]">✦</div>
+      <div className="absolute top-1 left-1 text-[#A78BFA] animate-bounce duration-[2.5s] text-[10px]">✦</div>
       <div className="absolute top-1/2 -right-1 text-[#00D4FF] animate-bounce duration-[3s] text-[10px]">✦</div>
-      <div className="absolute -bottom-1 left-6 text-[#7C5CFF] animate-bounce duration-[2s] text-xs">✦</div>
+      <div className="absolute -bottom-1 left-4 text-[#7C5CFF] animate-bounce duration-[2s] text-xs">✦</div>
 
       {/* The 3D Book Cover SVG */}
-      <svg className="w-24 h-24 drop-shadow-[0_16px_32px_rgba(124,92,255,0.45)] transform -rotate-[15deg] transition-transform hover:rotate-0 duration-300" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg className="w-20 h-20 drop-shadow-[0_16px_32px_rgba(124,92,255,0.45)] transform -rotate-[12deg] transition-transform hover:rotate-0 duration-300" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* Book Back Cover Depth */}
         <path d="M25 82 L75 82 L80 18 L30 18 Z" fill="#4C2CD9" opacity="0.6" />
         {/* Book Pages Side Thickness */}
@@ -48,3 +48,5 @@ export default function SvgBookIllustration() {
     </div>
   );
 }
+
+

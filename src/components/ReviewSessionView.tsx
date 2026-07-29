@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Revision, UserState, Subject } from '../types';
-import { findTopicById } from '../data';
+import { findTopicById, COURSE_TEMPLATES } from '../data';
 import { SoundManager } from '../utils/soundManager';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Brain, Clock, AlertTriangle, Play, Award, Sparkles, Trophy, Settings2 } from 'lucide-react';
+import { X, Brain, Clock, AlertTriangle, Play, Award, Sparkles, Trophy, Settings2, Archive } from 'lucide-react';
 import TopicViewModal from './TopicViewModal';
 import { getEstimatedReviewTimeMinutes } from '../lib/spacedRepetition';
 
@@ -13,6 +13,7 @@ interface ReviewSessionViewProps {
   activeSubjects: Subject[];
   backlogSubjects: Subject[];
   onCompleteReview: (revision: Revision, rating: 'forgot' | 'hard' | 'good' | 'easy') => void;
+  onUpdateState?: (newState: Partial<UserState>) => void;
   onClose: () => void;
 }
 
@@ -22,6 +23,7 @@ export default function ReviewSessionView({
   activeSubjects,
   backlogSubjects,
   onCompleteReview,
+  onUpdateState,
   onClose,
 }: ReviewSessionViewProps) {
   const [activeReviewTopicId, setActiveReviewTopicId] = useState<string | null>(null);
@@ -30,12 +32,32 @@ export default function ReviewSessionView({
   const [showSingleCelebration, setShowSingleCelebration] = useState(false);
   const [lastRating, setLastRating] = useState<'forgot' | 'hard' | 'good' | 'easy' | null>(null);
   const [lastXpAwarded, setLastXpAwarded] = useState(15);
+  const [isPracticeMode, setIsPracticeMode] = useState(false);
 
   const [batchLimit, setBatchLimit] = useState(() => {
     return parseInt(localStorage.getItem('studyos_review_batch_size') || '25', 10);
   });
 
-  const allSubjects = [...activeSubjects, ...backlogSubjects];
+  // Construct comprehensive list of all subjects across all semesters for lookup
+  const uData = COURSE_TEMPLATES[userState.university] || COURSE_TEMPLATES['VTU'];
+  const bData = uData?.[userState.branch] || (uData ? uData[Object.keys(uData)[0]] : undefined);
+  const sData = bData?.[userState.scheme] || (bData ? bData[Object.keys(bData)[0]] : undefined);
+
+  const allSubjectsMap = new Map<string, Subject>();
+  [...activeSubjects, ...backlogSubjects].forEach((s) => allSubjectsMap.set(s.id, s));
+
+  if (sData) {
+    Object.keys(sData).forEach((semKey) => {
+      const semSubjects = sData[Number(semKey)] || [];
+      semSubjects.forEach((sub) => {
+        if (!allSubjectsMap.has(sub.id)) {
+          allSubjectsMap.set(sub.id, sub);
+        }
+      });
+    });
+  }
+
+  const allLookupSubjects = Array.from(allSubjectsMap.values());
   const todayStr = new Date().toISOString().split('T')[0];
 
   const handleBatchLimitChange = (limit: number) => {
@@ -45,22 +67,75 @@ export default function ReviewSessionView({
     SoundManager.vibrate('light');
   };
 
-  // Sliced revisions based on the user's batch selection
-  const activeBatchRevisions = dueRevisions.slice(0, batchLimit);
+  // Helper to get practice revisions from existing revisions or completedTopics
+  const getPracticeRevisions = (): Revision[] => {
+    const revsMap = new Map<string, Revision>();
 
-  // Resolve due revisions to include original Topic and Subject data
-  const resolvedDueQueue = activeBatchRevisions
-    .map((rev) => {
-      const result = findTopicById(rev.topicId, allSubjects, []);
-      if (!result) return null;
-      return {
-        revision: rev,
-        topic: result.topic,
-        subject: result.subject,
-        isOverdue: rev.nextReview < todayStr,
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null);
+    // 1. Existing revisions in userState
+    const existingRevs = userState.revisions || [];
+    for (const rev of existingRevs) {
+      revsMap.set(rev.topicId, rev);
+    }
+
+    // 2. Completed topics in userState that don't have a revision record yet
+    const completedIds = userState.completedTopics || [];
+    for (const topId of completedIds) {
+      if (!revsMap.has(topId)) {
+        const res = findTopicById(topId, allLookupSubjects, []);
+        revsMap.set(topId, {
+          id: `practice-${topId}`,
+          topicId: topId,
+          subjectId: res?.subject.id || 'subject',
+          subjectName: res?.subject.name || 'Subject',
+          topicName: res?.topic.name || 'Topic',
+          completed: true,
+          learningDifficulty: 'medium',
+          repetitions: 1,
+          interval: 1,
+          lastReviewed: todayStr,
+          nextReview: todayStr,
+          status: 'due',
+          completedAt: todayStr,
+          dueDate: todayStr,
+        });
+      }
+    }
+
+    return Array.from(revsMap.values());
+  };
+
+  const practiceRevisions = getPracticeRevisions();
+  const availablePracticeCount = practiceRevisions.length;
+
+  const revisionsToUse = isPracticeMode
+    ? practiceRevisions
+    : dueRevisions;
+
+  // Sliced revisions based on the user's batch selection
+  const activeBatchRevisions = revisionsToUse.slice(0, batchLimit);
+
+  // Resolve due revisions to include original Topic and Subject data with fallbacks
+  const resolvedDueQueue = activeBatchRevisions.map((rev) => {
+    const result = findTopicById(rev.topicId, allLookupSubjects, []);
+    const topic = result?.topic || {
+      id: rev.topicId,
+      name: rev.topicName || 'Study Topic',
+      difficulty: (rev.learningDifficulty === 'easy' ? 'Easy' : rev.learningDifficulty === 'hard' ? 'Hard' : 'Medium') as 'Easy' | 'Medium' | 'Hard',
+      estimatedTime: 15,
+    };
+    const subject = result?.subject || {
+      id: rev.subjectId || 'subject',
+      name: rev.subjectName || 'Subject',
+      semester: 1,
+      modules: [],
+    };
+    return {
+      revision: rev,
+      topic,
+      subject,
+      isOverdue: rev.nextReview < todayStr,
+    };
+  });
 
   const handleStartTopicRevision = (topicId: string) => {
     setActiveReviewTopicId(topicId);
@@ -233,6 +308,40 @@ export default function ReviewSessionView({
                   <span>•</span>
                   <span><strong>{resolvedDueQueue.length}</strong> tasks remaining today</span>
                 </div>
+
+                {userState.semester > 1 && onUpdateState && (
+                  <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <span className="text-[11px] text-gray-400 font-semibold flex items-center gap-1">
+                      <Archive className="w-3.5 h-3.5 text-purple-400" />
+                      Archived Semesters:
+                    </span>
+                    {Array.from({ length: userState.semester - 1 }, (_, i) => i + 1).map((semNum) => {
+                      const isIncluded = (userState.includedReviewSemesters || []).includes(semNum);
+                      return (
+                        <button
+                          key={`rev-sem-${semNum}`}
+                          type="button"
+                          onClick={() => {
+                            const current = userState.includedReviewSemesters || [];
+                            const updated = isIncluded
+                              ? current.filter((s) => s !== semNum)
+                              : [...current, semNum];
+                            onUpdateState({ includedReviewSemesters: updated });
+                            SoundManager.play('click');
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono transition-all cursor-pointer flex items-center gap-1.5 ${
+                            isIncluded
+                              ? 'bg-purple-600/30 border border-purple-500/60 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
+                              : 'bg-gray-900 border border-gray-800 text-gray-500 hover:text-gray-300'
+                          }`}
+                        >
+                          <span>Sem {semNum}</span>
+                          <span className="text-[9px] opacity-75">{isIncluded ? '✓' : 'Archived'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Next Target Focus Card */}
@@ -347,7 +456,7 @@ export default function ReviewSessionView({
               )}
             </motion.div>
           ) : (
-            /* All Revisions Complete Screen */
+            /* All Revisions Complete / All Caught Up Screen */
             <motion.div
               key="complete"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -365,10 +474,12 @@ export default function ReviewSessionView({
 
                 <div className="space-y-1.5">
                   <h1 className="text-2xl sm:text-3xl font-black font-display text-white tracking-tight leading-none uppercase">
-                    🎉 Mission Cleared!
+                    {sessionCompletedCount > 0 ? '🎉 Mission Cleared!' : '✨ All Caught Up!'}
                   </h1>
                   <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">
-                    Excellent Work! Come back tomorrow for your next review session. You completed your scheduled revision queue and secured your daily recall boost!
+                    {sessionCompletedCount > 0 
+                      ? 'Excellent Work! Come back tomorrow for your next review session. You completed your scheduled revision queue and secured your daily recall boost!'
+                      : 'You have no pending revisions due today! All your completed study topics are up to date.'}
                   </p>
                 </div>
               </div>
@@ -386,12 +497,67 @@ export default function ReviewSessionView({
               </div>
 
               <div className="space-y-3 pt-2">
+                {userState.semester > 1 && onUpdateState && (
+                  <div className="p-4 bg-[#0C0F12] border border-purple-500/30 rounded-2xl space-y-3 text-left shadow-lg">
+                    <div className="flex items-center gap-2 text-purple-400">
+                      <Archive className="w-4 h-4" />
+                      <span className="text-xs font-black uppercase tracking-wider">Review Previous Semesters (GATE / Placements)</span>
+                    </div>
+                    <p className="text-xs text-gray-400 leading-snug">
+                      Your past semester study history is safely archived! Select past semesters to include them in revision or practice mode:
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {Array.from({ length: userState.semester - 1 }, (_, i) => i + 1).map((semNum) => {
+                        const isIncluded = (userState.includedReviewSemesters || []).includes(semNum);
+                        return (
+                          <button
+                            key={`empty-sem-${semNum}`}
+                            type="button"
+                            onClick={() => {
+                              const current = userState.includedReviewSemesters || [];
+                              const updated = isIncluded
+                                ? current.filter((s) => s !== semNum)
+                                : [...current, semNum];
+                              onUpdateState({ includedReviewSemesters: updated });
+                              setIsPracticeMode(true);
+                              SoundManager.play('click');
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer flex items-center gap-2 ${
+                              isIncluded
+                                ? 'bg-purple-600 text-white shadow-md'
+                                : 'bg-gray-900 border border-gray-800 text-gray-400 hover:border-gray-700 hover:text-white'
+                            }`}
+                          >
+                            <span>Semester {semNum}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/30 font-semibold">
+                              {isIncluded ? 'Included ✓' : 'Archived'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {sessionCompletedCount === 0 && !isPracticeMode && availablePracticeCount > 0 && (
+                  <button
+                    onClick={() => {
+                      setIsPracticeMode(true);
+                      SoundManager.play('click');
+                    }}
+                    className="w-full py-3.5 px-6 bg-[#1C1635] hover:bg-[#251E45] border border-[#7C5CFF]/40 text-white text-xs font-black tracking-widest uppercase rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Brain className="w-4 h-4 text-[#A78BFA]" />
+                    <span>Practice {availablePracticeCount} Topics Anyway</span>
+                  </button>
+                )}
+
                 <button
                   onClick={onClose}
                   className="w-full py-4 px-6 bg-gradient-to-r from-[#7C5CFF] to-pink-500 text-white text-sm font-black tracking-widest uppercase rounded-2xl hover:from-purple-500 hover:to-pink-400 cursor-pointer shadow-lg shadow-purple-500/25 transition-all duration-200"
                   style={{ minHeight: '48px' }}
                 >
-                  Continue Learning
+                  {sessionCompletedCount > 0 ? 'Continue Learning' : 'Return to Dashboard'}
                 </button>
               </div>
             </motion.div>

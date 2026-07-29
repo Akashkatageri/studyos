@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserState, Subject, Topic, Revision } from './types';
-import { getTemplateSubjects, COURSE_TEMPLATES, findTopicById } from './data';
+import { COURSE_TEMPLATES, findTopicById, getUserSubjects } from './data';
 import { Home, ListCollapse, Users, User, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus, Smartphone, Check, Loader2, ExternalLink, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -11,6 +11,7 @@ import AuthPopupScreen from './components/AuthPopupScreen';
 import Header from './components/Header';
 import AppLogo from './components/AppLogo';
 import HomeTab from './components/HomeTab';
+import TodosTab from './components/TodosTab';
 import ProgressionTab from './components/ProgressionTab';
 import ProgressTab from './components/ProgressTab';
 import ProfileTab from './components/ProfileTab';
@@ -19,7 +20,7 @@ import FriendsTab from './components/FriendsTab';
 import TopicViewModal from './components/TopicViewModal';
 import CompletionAnimations from './components/CompletionAnimations';
 import BadgeUnlockModal from './components/BadgeUnlockModal';
-import { getUnlockedAchievementIds, ACHIEVEMENT_DEFS } from './utils/achievements';
+import { syncUserAchievementsAndXP } from './utils/achievements';
 import { auth, googleProvider, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount, mergeLocalAndCloudStates } from './lib/firebase';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onIdTokenChanged, getRedirectResult } from 'firebase/auth';
 import { encryptData } from './lib/crypto';
@@ -27,47 +28,20 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { Network } from '@capacitor/network';
 import { SoundManager } from './utils/soundManager';
+import { NotificationManager } from './utils/notificationManager';
 import { getLocalDateString } from './utils/dateUtils';
+import { evaluateDailyStreakCatchUp, calculateNextStreakOnActivity } from './utils/streakUtils';
 import { syncAndroidWidget } from './utils/widgetSync';
 import { getLevelAndProgress, getDifficultyConfig } from './utils/xpUtils';
 import { createInitialRevision, updateRevisionScheduling, sanitizeRevisions, getDailyReviewQueue, addDaysToDateString } from './lib/spacedRepetition';
 import ReviewSessionView from './components/ReviewSessionView';
+import BrowseSubjectsModal from './components/home/BrowseSubjectsModal';
 
 // New Study Habit Components
 import { StudyCalendar } from './components/StudyCalendar';
 import { FocusTimer } from './components/FocusTimer';
 
 const LOCAL_STORAGE_KEY = 'studyos-user-state';
-
-// Helper to calculate user subjects outside render so both state savers and hooks can access it
-function getUserSubjects(state: UserState) {
-  if (!state) return { activeSubjects: [], backlogSubjects: [] };
-  const { university = 'VTU', branch = 'CSE', scheme = '2022 Scheme', semester = 1, backlogSubjects = [] } = state;
-  
-  const activeSubjects = getTemplateSubjects(university || 'VTU', branch || 'CSE', scheme || '2022 Scheme', semester || 1);
-
-  const backlogSubjectsList: Subject[] = [];
-  const uData = COURSE_TEMPLATES[university || 'VTU'] || COURSE_TEMPLATES['VTU'];
-  const bData = uData[branch || 'CSE'] || uData['CSE'];
-  const sData = bData[scheme || '2022 Scheme'] || bData['2022 Scheme'];
-
-  for (let semNum = 1; semNum < (semester || 1); semNum++) {
-    let priorSubjects: Subject[] = [];
-    if (semNum === 1 || semNum === 2) {
-      priorSubjects = getTemplateSubjects(university || 'VTU', branch || 'CSE', scheme || '2022 Scheme', semNum);
-    } else if (sData[semNum]) {
-      priorSubjects = sData[semNum];
-    }
-
-    priorSubjects.forEach((sub) => {
-      if (backlogSubjects && Array.isArray(backlogSubjects) && backlogSubjects.includes(sub.id)) {
-        backlogSubjectsList.push(sub);
-      }
-    });
-  }
-
-  return { activeSubjects, backlogSubjects: backlogSubjectsList };
-}
 
 // Timezone-proof UTC date parsing and diffing helpers
 const parseDateUTC = (str: string | null | undefined) => {
@@ -81,7 +55,7 @@ const parseDateUTC = (str: string | null | undefined) => {
   return new Date(Date.UTC(year, month - 1, day));
 };
 
-const getDaysDifference = (dateStr1: string | null | undefined, dateStr2: string | null | undefined) => {
+export const getDaysDifference = (dateStr1: string | null | undefined, dateStr2: string | null | undefined) => {
   if (!dateStr1 || !dateStr2) return 0;
   const d1 = parseDateUTC(dateStr1);
   const d2 = parseDateUTC(dateStr2);
@@ -118,7 +92,7 @@ export default function App() {
       let resolved = typeof state === 'function' ? state(prev) : state;
       console.log(`[StudyOS Trace] setUserState invoked. Prev state exists: ${!!prev}, Resolved state exists: ${!!resolved}`);
       if (resolved) {
-        const validTabs = ['home', 'progression', 'progress', 'friends', 'profile', 'settings'];
+        const validTabs = ['home', 'todos', 'progression', 'progress', 'friends', 'profile', 'settings'];
         if (!resolved.activeTab || !validTabs.includes(resolved.activeTab)) {
           resolved = { ...resolved, activeTab: 'home' };
         }
@@ -184,6 +158,22 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Theme Mode effect (Dark, Light, OLED)
+  useEffect(() => {
+    const theme = userState?.themeMode || 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'light') {
+      document.documentElement.classList.add('light-mode');
+      document.documentElement.classList.remove('dark-mode', 'oled-mode');
+    } else if (theme === 'oled') {
+      document.documentElement.classList.add('oled-mode');
+      document.documentElement.classList.remove('light-mode', 'dark-mode');
+    } else {
+      document.documentElement.classList.add('dark-mode');
+      document.documentElement.classList.remove('light-mode', 'oled-mode');
+    }
+  }, [userState?.themeMode]);
+
   // Keep a ref of userState to prevent stale closure bugs in persistent handlers like onAuthStateChanged
   const userStateRef = useRef(userState);
   useEffect(() => {
@@ -231,11 +221,13 @@ export default function App() {
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
 
   // Focus and Study Habit states
+  const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const [isFocusTimerOpen, setIsFocusTimerOpen] = useState(false);
   const [isStudyCalendarOpen, setIsStudyCalendarOpen] = useState(false);
   const [isMinimizedFocusTimer, setIsMinimizedFocusTimer] = useState(true);
   const [showOnboardingCalendarPrompt, setShowOnboardingCalendarPrompt] = useState(false);
   const [focusTimerTopicName, setFocusTimerTopicName] = useState<string>('');
+  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
 
   // Reminders & Notification system states
   const [showStreakModal, setShowStreakModal] = useState(false);
@@ -750,14 +742,26 @@ export default function App() {
         }
       } catch (err) {
         console.error("[StudyOS Trace] onAuthStateChanged block encountered error:", err);
+        setAuthInitialized(true);
+        setIsLoading(false);
       }
     });
+
+    // Hard fail-safe timer: Guarantee boot sequence resolves within 2.5s no matter what
+    const bootFailSafeTimer = setTimeout(() => {
+      if (!authUnsubscribed) {
+        console.warn("[StudyOS Trace] Boot fail-safe timer triggered: forcing isLoading = false and authInitialized = true");
+        setAuthInitialized(true);
+        setIsLoading(false);
+      }
+    }, 2500);
 
     return () => {
       console.log("[StudyOS Trace] Cleaning up Firebase onAuthStateChanged and onIdTokenChanged subscriptions...");
       if (initTimeout) {
         clearTimeout(initTimeout);
       }
+      clearTimeout(bootFailSafeTimer);
       authUnsubscribed = true;
       unsubscribe();
       unsubscribeToken();
@@ -1195,6 +1199,24 @@ export default function App() {
     userState?.soundFocusModeEnabled
   ]);
 
+  // 1cc2. Synchronize NotificationManager daily study reminders (twice a day)
+  useEffect(() => {
+    if (userState) {
+      NotificationManager.syncDailyStudyReminders({
+        enabled: userState.dailyReminderEnabled !== false,
+        streakAlertsEnabled: userState.streakAlertsEnabled !== false,
+        streak: userState.streak || 1,
+        time1: userState.dailyReminderTime || '14:00',
+        time2: '20:00', // Evening urgent streak emergency warning
+      });
+    }
+  }, [
+    userState?.dailyReminderEnabled,
+    userState?.streakAlertsEnabled,
+    userState?.dailyReminderTime,
+    userState?.streak
+  ]);
+
   // 1d. Subscribe to notification status globally to control the notification bell active dot
   useEffect(() => {
     if (!userState || !userState.uid || !userState.onboarded) {
@@ -1255,9 +1277,9 @@ export default function App() {
 
   // Trigger Streak Danger Modal Pop-up once per browser session
   useEffect(() => {
-    if (userState && userState.onboarded && userState.streak > 0) {
+    if (userState && userState.onboarded && (userState.streak || 0) > 0) {
       const todayStr = getLocalDateString();
-      const studiedToday = userState.studyActivity && userState.studyActivity[todayStr] > 0;
+      const studiedToday = (userState.studyActivity && (userState.studyActivity[todayStr] || 0) > 0) || ((userState.todayFocusMinutes || 0) >= (userState.dailyFocusGoal ?? 30));
       const alreadyAlerted = sessionStorage.getItem('studyos-streak-alerted');
       
       if (!studiedToday && !alreadyAlerted) {
@@ -1285,139 +1307,24 @@ export default function App() {
   useEffect(() => {
     if (!userState || !userState.onboarded) return;
 
-    const todayStr = getLocalDateString(); // YYYY-MM-DD
-    const lastFocusStr = userState.lastFocusDate;
+    const { dailyResetUpdates, streakBroken, shieldsConsumedCount } = evaluateDailyStreakCatchUp(userState);
 
-    // Initialize lastFocusDate if null to start tracking fresh from today
-    if (!lastFocusStr) {
-      handleUpdateState({ 
-        lastFocusDate: todayStr,
-        todayFocusMinutes: 0,
-        todayFocusXPRewarded: 0
+    if (!dailyResetUpdates) return; // No updates needed for today
+
+    if (streakBroken) {
+      setToast({
+        title: "💔 Focus Streak Reset",
+        message: "You missed a study day and had no Study Shields left. Your focus streak has reset.",
+        type: "error"
       });
-      return;
+    } else if (shieldsConsumedCount > 0) {
+      setToast({
+        title: "🛡️ Study Shield Consumed",
+        message: `Streak protected! Consumed ${shieldsConsumedCount} shield(s). Remaining: ${dailyResetUpdates.studyShields}`,
+        type: "info"
+      });
     }
 
-    if (lastFocusStr === todayStr) {
-      return; // Already processed up to today
-    }
-
-    // Since lastFocusStr !== todayStr, it is a brand new day!
-    // Prepare our default updates for the new day: reset daily focus tracking
-    const dailyResetUpdates: Partial<UserState> = {
-      lastFocusDate: todayStr,
-      todayFocusMinutes: 0,
-      todayFocusXPRewarded: 0
-    };
-
-    const lastFocusDate = parseDateUTC(lastFocusStr);
-    const todayDate = parseDateUTC(todayStr);
-
-    // Calculate the difference in full days
-    const diffDays = getDaysDifference(lastFocusStr, todayStr);
-
-    // If they missed at least one full day between the last focus date and today
-    if (diffDays > 1) {
-      const missedDates: string[] = [];
-      for (let i = 1; i < diffDays; i++) {
-        const missedDate = new Date(lastFocusDate.getTime() + i * 24 * 60 * 60 * 1000);
-        const year = missedDate.getUTCFullYear();
-        const month = String(missedDate.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(missedDate.getUTCDate()).padStart(2, '0');
-        missedDates.push(`${year}-${month}-${day}`);
-      }
-
-      if (missedDates.length > 0) {
-        let shieldsRemaining = userState.studyShields ?? 3;
-        let academicStreak = userState.academicStudyStreak ?? 0;
-        let shieldsConsumedCount = 0;
-        let streakBroken = false;
-
-        for (const dateStr of missedDates) {
-          // 1. Check Semester dates boundary
-          if (userState.semesterStartDate && userState.semesterEndDate) {
-            if (dateStr < userState.semesterStartDate || dateStr > userState.semesterEndDate) {
-              continue; // outside semester boundary, ignore
-            }
-          }
-
-          // 2. Check Semester Breaks
-          const isSemesterBreak = (userState.semesterBreaks || []).some((b: any) => {
-            return dateStr >= b.startDate && dateStr <= b.endDate;
-          });
-          if (isSemesterBreak) {
-            continue;
-          }
-
-          // 3. Check Vacation Mode
-          const isVacation = !!(userState.vacationMode?.active && 
-            userState.vacationMode?.startDate && 
-            userState.vacationMode?.endDate && 
-            dateStr >= userState.vacationMode.startDate && 
-            dateStr <= userState.vacationMode.endDate);
-          if (isVacation) {
-            continue;
-          }
-
-          // 3.5 Check Semester Break Mode
-          if (userState.semesterBreakMode) {
-            continue;
-          }
-
-          // 4. Check Study Schedule
-          const missedDateObj = parseDateUTC(dateStr);
-          const dayOfWeek = missedDateObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
-          const isStudyDay = (userState.weeklyStudySchedule || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']).includes(dayOfWeek);
-          if (!isStudyDay) {
-            continue;
-          }
-
-          // 5. Check if goal met (either through Focus Timer or manually completing Topics/Revisions)
-          const focusMinsOnDay = (userState.focusHistory || {})[dateStr] || 0;
-          const completedActivityOnDay = (userState.studyActivity || {})[dateStr] || 0;
-          const goalMet = focusMinsOnDay >= (userState.dailyFocusGoal ?? 30) || completedActivityOnDay > 0;
-
-          if (!goalMet) {
-            if (shieldsRemaining > 0) {
-              shieldsRemaining -= 1;
-              shieldsConsumedCount += 1;
-            } else {
-              academicStreak = 0;
-              streakBroken = true;
-            }
-          }
-        }
-
-        // Apply missed day streak changes to our update object
-        dailyResetUpdates.studyShields = shieldsRemaining;
-        dailyResetUpdates.academicStudyStreak = academicStreak;
-        dailyResetUpdates.streak = academicStreak;
-
-        if (!streakBroken && academicStreak > 0) {
-          const yesterdayDate = new Date(todayDate.getTime() - 24 * 60 * 60 * 1000);
-          const yesterdayYear = yesterdayDate.getUTCFullYear();
-          const yesterdayMonth = String(yesterdayDate.getUTCMonth() + 1).padStart(2, '0');
-          const yesterdayDay = String(yesterdayDate.getUTCDate()).padStart(2, '0');
-          dailyResetUpdates.lastActiveDate = `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}`;
-        }
-
-        if (streakBroken) {
-          setToast({
-            title: "💔 Focus Streak Reset",
-            message: "You missed a study day and had no Study Shields left. Your focus streak has reset.",
-            type: "error"
-          });
-        } else if (shieldsConsumedCount > 0) {
-          setToast({
-            title: "🛡️ Study Shield Consumed",
-            message: `Streak protected! Consumed ${shieldsConsumedCount} shield(s). Remaining: ${shieldsRemaining}`,
-            type: "info"
-          });
-        }
-      }
-    }
-
-    // Commit state with both the new-day reset and any calculated streak/shield state updates
     handleUpdateState(dailyResetUpdates);
   }, [userState?.onboarded]);
 
@@ -1433,18 +1340,14 @@ export default function App() {
 
   // 2. State Persistent Save Trigger with Automatic Badge Unlock Detection
   const saveState = (updated: UserState) => {
-    if (userState && userState.onboarded && updated && updated.onboarded) {
-      const { activeSubjects, backlogSubjects } = getUserSubjects(userState);
-      const prevIds = getUnlockedAchievementIds(userState, activeSubjects, backlogSubjects);
-      const nextIds = getUnlockedAchievementIds(updated, activeSubjects, backlogSubjects);
-      const newlyUnlockedId = nextIds.find(id => !prevIds.includes(id));
-      
-      if (newlyUnlockedId) {
-        const foundDef = ACHIEVEMENT_DEFS.find(def => def.id === newlyUnlockedId);
-        if (foundDef) {
-          setUnlockedBadge(foundDef);
-          setIsBadgeModalOpen(true);
-        }
+    if (updated && updated.onboarded) {
+      const { activeSubjects, backlogSubjects } = getUserSubjects(updated);
+      const { updatedState, newlyUnlocked } = syncUserAchievementsAndXP(updated, activeSubjects, backlogSubjects);
+      updated = updatedState;
+
+      if (newlyUnlocked.length > 0) {
+        setUnlockedBadge(newlyUnlocked[0]);
+        setIsBadgeModalOpen(true);
       }
     }
     setUserState(updated);
@@ -1471,7 +1374,7 @@ export default function App() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
           
           {/* App Brand Icon */}
-          <div className="mx-auto w-20 h-20 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.2)] hover:scale-105 transition-transform duration-300 flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 border border-blue-400/20 p-2.5">
+          <div className="mx-auto w-20 h-20 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(56,189,248,0.25)] hover:scale-105 transition-transform duration-300 flex items-center justify-center bg-[#090D14] border border-cyan-500/30 p-2">
             <AppLogo className="w-full h-full" transparent={true} />
           </div>
 
@@ -1656,25 +1559,12 @@ export default function App() {
   // 3. Syllabus Subject Mapping based on active selections
   const { university, branch, scheme, semester, completedTopics = [] } = userState;
   
-  // Fetch active subjects in this semester
-  const activeSubjects = getTemplateSubjects(university, branch, scheme, semester);
-
-  // Fetch backlog subjects based on backlog IDs array (could be from sem 1 or 2 depending on chosen sem)
-  const backlogSubjects: Subject[] = [];
-  const uData = COURSE_TEMPLATES[university] || COURSE_TEMPLATES['VTU'];
-  const bData = uData[branch] || uData['CSE'];
-  const sData = bData[scheme] || bData['2022 Scheme'];
-
-  for (const semNum of [1, 2, 3]) {
-    if (semNum < semester && sData[semNum]) {
-      const priorSubjects = sData[semNum];
-      priorSubjects.forEach((sub) => {
-        if (userState.backlogSubjects.includes(sub.id)) {
-          backlogSubjects.push(sub);
-        }
-      });
-    }
-  }
+  // Fetch active and backlog subjects using unified helper
+  const { activeSubjects, backlogSubjects } = getUserSubjects(userState);
+  
+  const uData = COURSE_TEMPLATES[university] || COURSE_TEMPLATES['VTU'] || {};
+  const bData = uData[branch] || uData['CSE'] || (Object.keys(uData).length > 0 ? uData[Object.keys(uData)[0]] : {});
+  const sData = bData[scheme] || bData['2022 Scheme'] || (Object.keys(bData).length > 0 ? bData[Object.keys(bData)[0]] : {});
 
   // 4. Topic selector properties
   let activeTopic: Topic | null = null;
@@ -1756,25 +1646,16 @@ export default function App() {
 
     // Calendar Streak Tracking Calculations
     const todayStr = getLocalDateString(); // "YYYY-MM-DD"
-    const lastActiveStr = userState.lastActiveDate;
-    
-    let newStreak = userState.streak || 0;
-    
-    if (lastActiveStr !== todayStr) {
-      if (!lastActiveStr) {
-        newStreak = 1;
-      } else {
-        const diffDays = getDaysDifference(lastActiveStr, todayStr);
-        
-        if (diffDays === 1) {
-          newStreak += 1;
-        } else {
-          newStreak = 1; // Restart streak
+    const streakData = isAlreadyCompleted
+      ? {
+          streak: userState.streak || 0,
+          academicStudyStreak: userState.academicStudyStreak || 0,
+          longestStreak: userState.longestStreak || 0,
+          longestStudyStreak: userState.longestStudyStreak || 0,
+          lastActiveDate: userState.lastActiveDate,
+          lastFocusDate: userState.lastFocusDate || todayStr,
         }
-      }
-    }
-
-    const newLongestStreak = Math.max(userState.longestStreak || 0, newStreak);
+      : calculateNextStreakOnActivity(userState, todayStr);
 
     // Track study activity completions counts
     const studyActivityMap = userState.studyActivity || {};
@@ -1882,12 +1763,12 @@ export default function App() {
       ...userState,
       xp: newXp,
       level: newLevel,
-      streak: newStreak,
-      longestStreak: newLongestStreak,
-      academicStudyStreak: newStreak,
-      longestStudyStreak: Math.max(userState.longestStudyStreak || 0, newStreak),
-      lastActiveDate: todayStr,
-      lastFocusDate: todayStr,
+      streak: streakData.streak,
+      longestStreak: streakData.longestStreak,
+      academicStudyStreak: streakData.academicStudyStreak,
+      longestStudyStreak: streakData.longestStudyStreak,
+      lastActiveDate: streakData.lastActiveDate,
+      lastFocusDate: streakData.lastFocusDate,
       completedTopics: updatedCompletedTopics,
       completedModules: updatedCompletedModules,
       completedSubjects: updatedCompletedSubjects,
@@ -1911,7 +1792,7 @@ export default function App() {
 
       setToast({
         title: "🔥 Study Goal Secured!",
-        message: `You earned +${addedXp} XP and protected your ${newStreak}-day streak!`,
+        message: `You earned +${addedXp} XP and protected your ${streakData.streak}-day streak!`,
         type: "success"
       });
       setCelebrationType(triggeredCelebration);
@@ -1961,6 +1842,86 @@ export default function App() {
     }
   };
 
+  // 6b. Reset completed topic and reclaim XP
+  const handleResetTopic = (topicId: string) => {
+    if (!userState) return;
+
+    const completedTopicsList = userState.completedTopics || [];
+    if (!completedTopicsList.includes(topicId)) return;
+
+    const allLookupSubjects = [...activeSubjects, ...backlogSubjects];
+    if (sData) {
+      Object.keys(sData).forEach((semKey) => {
+        const semSubjects = sData[Number(semKey)] || [];
+        semSubjects.forEach((sub) => {
+          if (!allLookupSubjects.some((s) => s.id === sub.id)) {
+            allLookupSubjects.push(sub);
+          }
+        });
+      });
+    }
+
+    const result = findTopicById(topicId, allLookupSubjects, []);
+    if (!result) return;
+
+    const { topic, module, subject } = result;
+
+    const updatedCompletedTopics = completedTopicsList.filter((id) => id !== topicId);
+
+    const diffConfig = getDifficultyConfig(userState.subjectDifficulties, subject.id);
+    let xpToDeduct = diffConfig.xpReward;
+
+    const wasModuleCompleted = (userState.completedModules || []).includes(module.id);
+    const isModuleStillCompleted = module.topics.every((t: any) => updatedCompletedTopics.includes(t.id));
+    const updatedCompletedModules = [...(userState.completedModules || [])];
+
+    if (wasModuleCompleted && !isModuleStillCompleted) {
+      const modIndex = updatedCompletedModules.indexOf(module.id);
+      if (modIndex !== -1) {
+        updatedCompletedModules.splice(modIndex, 1);
+        xpToDeduct += 250;
+      }
+    }
+
+    const wasSubjectCompleted = (userState.completedSubjects || []).includes(subject.id);
+    const isSubjectStillCompleted = subject.modules.every((m: any) =>
+      m.topics.every((t: any) => updatedCompletedTopics.includes(t.id))
+    );
+    const updatedCompletedSubjects = [...(userState.completedSubjects || [])];
+
+    if (wasSubjectCompleted && !isSubjectStillCompleted) {
+      const subIndex = updatedCompletedSubjects.indexOf(subject.id);
+      if (subIndex !== -1) {
+        updatedCompletedSubjects.splice(subIndex, 1);
+      }
+    }
+
+    const newXp = Math.max(0, userState.xp - xpToDeduct);
+    const newLevel = getLevelAndProgress(newXp).level;
+
+    const updatedRevisions = (userState.revisions || []).filter((r) => r.topicId !== topicId);
+
+    const updatedState: UserState = {
+      ...userState,
+      xp: newXp,
+      level: newLevel,
+      completedTopics: updatedCompletedTopics,
+      completedModules: updatedCompletedModules,
+      completedSubjects: updatedCompletedSubjects,
+      revisions: updatedRevisions,
+    };
+
+    saveState(updatedState);
+
+    setToast({
+      title: "🔄 Topic Reset",
+      message: `Reset "${topic.name}". -${xpToDeduct} XP taken back.`,
+      type: "info",
+    });
+
+    SoundManager.play('click');
+  };
+
   // 7. Complete revision from Home tab card
   const handleCompleteRevision = (revisionId: string) => {
     if (!userState) return;
@@ -1977,23 +1938,7 @@ export default function App() {
 
     // Streak tracker updates
     const todayStr = getLocalDateString();
-    const lastActiveStr = userState.lastActiveDate;
-    
-    let newStreak = userState.streak || 0;
-    if (lastActiveStr !== todayStr) {
-      if (!lastActiveStr) {
-        newStreak = 1;
-      } else {
-        const diffDays = getDaysDifference(lastActiveStr, todayStr);
-        
-        if (diffDays === 1) {
-          newStreak += 1;
-        } else {
-          newStreak = 1;
-        }
-      }
-    }
-    const newLongestStreak = Math.max(userState.longestStreak || 0, newStreak);
+    const streakData = calculateNextStreakOnActivity(userState, todayStr);
 
     // Track study activity completions counts
     const studyActivityMap = userState.studyActivity || {};
@@ -2011,12 +1956,12 @@ export default function App() {
       ...userState,
       xp: newXp,
       level: newLevel,
-      streak: newStreak,
-      longestStreak: newLongestStreak,
-      academicStudyStreak: newStreak,
-      longestStudyStreak: Math.max(userState.longestStudyStreak || 0, newStreak),
-      lastActiveDate: todayStr,
-      lastFocusDate: todayStr,
+      streak: streakData.streak,
+      longestStreak: streakData.longestStreak,
+      academicStudyStreak: streakData.academicStudyStreak,
+      longestStudyStreak: streakData.longestStudyStreak,
+      lastActiveDate: streakData.lastActiveDate,
+      lastFocusDate: streakData.lastFocusDate,
       revisions: updatedRevisions,
       studyActivity: updatedStudyActivity,
     };
@@ -2100,23 +2045,7 @@ export default function App() {
 
     // Streak tracker updates
     const todayStr = getLocalDateString();
-    const lastActiveStr = userState.lastActiveDate;
-    
-    let newStreak = userState.streak || 0;
-    if (lastActiveStr !== todayStr) {
-      if (!lastActiveStr) {
-        newStreak = 1;
-      } else {
-        const diffDays = getDaysDifference(lastActiveStr, todayStr);
-        
-        if (diffDays === 1) {
-          newStreak += 1;
-        } else {
-          newStreak = 1;
-        }
-      }
-    }
-    const newLongestStreak = Math.max(userState.longestStreak || 0, newStreak);
+    const streakData = calculateNextStreakOnActivity(userState, todayStr);
 
     // Track study activity completions counts
     const studyActivityMap = userState.studyActivity || {};
@@ -2136,12 +2065,12 @@ export default function App() {
       ...userState,
       xp: newXp,
       level: newLevel,
-      streak: newStreak,
-      longestStreak: newLongestStreak,
-      academicStudyStreak: newStreak,
-      longestStudyStreak: Math.max(userState.longestStudyStreak || 0, newStreak),
-      lastActiveDate: todayStr,
-      lastFocusDate: todayStr,
+      streak: streakData.streak,
+      longestStreak: streakData.longestStreak,
+      academicStudyStreak: streakData.academicStudyStreak,
+      longestStudyStreak: streakData.longestStudyStreak,
+      lastActiveDate: streakData.lastActiveDate,
+      lastFocusDate: streakData.lastFocusDate,
       revisions: updatedRevisions,
       studyActivity: updatedStudyActivity,
     };
@@ -2191,6 +2120,13 @@ export default function App() {
       <Header
         userState={userState}
         onTabChange={(tab) => handleUpdateState({ activeTab: tab })}
+        onOpenSearch={() => setIsGlobalSearchOpen(true)}
+        onOpenNotifications={() => handleUpdateState({ 
+          previousTabBeforeNotification: userState.activeTab,
+          activeTab: 'friends', 
+          showNotificationsModal: true 
+        })}
+        hasActiveNotifications={hasPendingRequests || hasUnreadNotifs}
       />
 
       {userState.isOffline && (
@@ -2223,6 +2159,7 @@ export default function App() {
             activeSubjects={activeSubjects}
             backlogSubjects={backlogSubjects}
             onStartTopic={handleStartTopic}
+            onResetTopic={handleResetTopic}
             onCompleteRevision={handleCompleteRevision}
             onOpenFocusTimer={() => {
               setIsFocusTimerOpen(true);
@@ -2236,7 +2173,14 @@ export default function App() {
               SoundManager.vibrate('light');
               setIsReviewSessionActive(true);
             }}
-            hasActiveNotifications={hasPendingRequests || hasUnreadNotifs}
+            onOpenStreakModal={() => setShowStreakModal(true)}
+          />
+        )}
+
+        {userState.activeTab === 'todos' && (
+          <TodosTab
+            userState={userState}
+            onUpdateState={handleUpdateState}
           />
         )}
 
@@ -2246,6 +2190,7 @@ export default function App() {
             activeSubjects={activeSubjects}
             backlogSubjects={backlogSubjects}
             onStartTopic={handleStartTopic}
+            onResetTopic={handleResetTopic}
             onTriggerSemesterTransition={handleTriggerSemesterTransition}
             onChangeSubjectDifficulty={handleChangeSubjectDifficulty}
           />
@@ -2256,6 +2201,7 @@ export default function App() {
             userState={userState}
             activeSubjects={activeSubjects}
             backlogSubjects={backlogSubjects}
+            onUpdateState={handleUpdateState}
           />
         )}
 
@@ -2303,6 +2249,7 @@ export default function App() {
           )}
           onClose={() => setActiveTopicId(null)}
           onMarkCompleted={handleMarkTopicCompleted}
+          onResetTopic={handleResetTopic}
           onCompleteRevision={(topicId, rating) => {
             const rev = (userState.revisions || []).find(r => r.topicId === topicId);
             if (rev) {
@@ -2390,9 +2337,9 @@ export default function App() {
               </div>
 
               <div className="space-y-1.5 relative">
-                <h3 className="text-lg font-bold text-white font-display">Pair Mobile Device (Option A)</h3>
+                <h3 className="text-lg font-bold text-white font-display">Link Mobile Device</h3>
                 <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto">
-                  An Android device is requesting to link with your authenticated StudyOS account.
+                  An Android device is requesting to connect with your StudyOS account for real-time sync.
                 </p>
               </div>
 
@@ -2646,19 +2593,91 @@ export default function App() {
         </button>
 
         {/* Slot 3: Large Elevated Glowing Center PLUS Action Button */}
-        <div className="flex-1 flex justify-center -mt-6 md:-mt-8 select-none z-50">
+        <div className="flex-1 flex justify-center -mt-6 md:-mt-8 select-none z-50 relative">
+          {/* Smart Creation Speed-Dial Menu */}
+          <AnimatePresence>
+            {isQuickCreateOpen && (
+              <>
+                {/* Click outside backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsQuickCreateOpen(false)}
+                  className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs"
+                />
+
+                {/* Speed Dial Menu Card */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.85, y: 15 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.85, y: 15 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 28 }}
+                  className="absolute bottom-16 md:bottom-20 z-50 w-64 bg-[#111114]/95 border border-white/10 rounded-2xl p-3 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-2xl space-y-1"
+                >
+                  <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-white/5 mb-1">
+                    <span className="text-xs font-black uppercase font-mono tracking-widest text-[#A78BFA]">
+                      Create
+                    </span>
+                    <button
+                      onClick={() => setIsQuickCreateOpen(false)}
+                      className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* 📝 Task */}
+                  <button
+                    onClick={() => {
+                      setIsQuickCreateOpen(false);
+                      handleUpdateState({ activeTab: 'todos' });
+                    }}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#7C5CFF]/15 border border-transparent hover:border-[#7C5CFF]/30 transition-all text-left cursor-pointer group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-[#7C5CFF]/20 text-[#A78BFA] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <span className="text-sm">📝</span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white leading-tight">Task</p>
+                      <p className="text-[10px] text-gray-400 leading-tight">Open full-screen task manager</p>
+                    </div>
+                  </button>
+
+                  {/* 🎯 Focus Session */}
+                  <button
+                    onClick={() => {
+                      setIsQuickCreateOpen(false);
+                      setIsFocusTimerOpen(true);
+                      setIsMinimizedFocusTimer(false);
+                    }}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#7C5CFF]/15 border border-transparent hover:border-[#7C5CFF]/30 transition-all text-left cursor-pointer group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <span className="text-sm">🎯</span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white leading-tight">Focus Session</p>
+                      <p className="text-[10px] text-gray-400 leading-tight">Start pomodoro study timer</p>
+                    </div>
+                  </button>
+
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+
           <motion.button
             whileHover={{ scale: 1.1, y: -2 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => {
-              setIsFocusTimerOpen(true);
-              setIsMinimizedFocusTimer(false);
-            }}
+            onClick={() => setIsQuickCreateOpen(!isQuickCreateOpen)}
             className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#7C5CFF] to-[#A78BFA] hover:brightness-110 text-white rounded-full flex items-center justify-center shadow-[0_8px_25px_rgba(124,92,255,0.45)] cursor-pointer border border-white/20"
             id="global-plus-fab"
-            title="Start Focus Timer"
+            title="Create New..."
           >
-            <Plus className="w-6 h-6 stroke-[3.5]" />
+            <motion.div animate={{ rotate: isQuickCreateOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>
+              <Plus className="w-6 h-6 stroke-[3.5]" />
+            </motion.div>
           </motion.button>
         </div>
 
@@ -2979,7 +2998,7 @@ export default function App() {
       {/* Spaced Repetition Review Session Overlay */}
       {isReviewSessionActive && userState && (
         <ReviewSessionView
-          dueRevisions={getDailyReviewQueue(userState.revisions || [])}
+          dueRevisions={getDailyReviewQueue(userState.revisions || [], userState, activeSubjects, backlogSubjects)}
           userState={userState}
           activeSubjects={activeSubjects}
           backlogSubjects={backlogSubjects}
@@ -2987,6 +3006,20 @@ export default function App() {
           onClose={() => setIsReviewSessionActive(false)}
         />
       )}
+
+      {/* Global Browse/Search Subjects Modal */}
+      <BrowseSubjectsModal
+        isOpen={isGlobalSearchOpen}
+        onClose={() => setIsGlobalSearchOpen(false)}
+        activeSubjects={activeSubjects}
+        backlogSubjects={backlogSubjects}
+        completedTopics={userState?.completedTopics || []}
+        recommendation={null}
+        onSelectTopicManually={(_subj, top) => {
+          setIsGlobalSearchOpen(false);
+          handleStartTopic(top.id);
+        }}
+      />
 
     </div>
   );

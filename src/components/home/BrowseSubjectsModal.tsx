@@ -187,8 +187,8 @@ export default function BrowseSubjectsModal({
                               onClick={() => toggleSubject(subject.id)}
                               className="w-full p-3.5 flex items-center justify-between hover:bg-gray-900 transition-all text-left cursor-pointer border-0 bg-transparent outline-none"
                             >
-                              <div>
-                                <p className="text-xs font-extrabold text-white">{subject.name}</p>
+                              <div className="min-w-0 flex-1 pr-2">
+                                <p className="text-xs font-extrabold text-white leading-snug break-words">{subject.name}</p>
                                 <p className="text-[10px] text-gray-500">{subject.modules.length} Modules</p>
                               </div>
                               {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}

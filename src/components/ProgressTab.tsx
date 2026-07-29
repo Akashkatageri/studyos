@@ -1,26 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserState, Subject } from '../types';
 import { getLocalDateString } from '../utils/dateUtils';
 import { getLevelAndProgress } from '../utils/xpUtils';
 import { getReviewStats } from '../lib/spacedRepetition';
-import { Calendar, Award, CheckCircle2, Zap, Flame, BookOpen, Clock, Shield, Brain } from 'lucide-react';
+import { Calendar, Award, CheckCircle2, Zap, Flame, BookOpen, Clock, Shield, Brain, Trophy } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ALL_ACHIEVEMENTS } from '../utils/achievements';
+import AchievementModal from './AchievementModal';
 
 interface ProgressTabProps {
   userState: UserState;
   activeSubjects: Subject[];
   backlogSubjects: Subject[];
+  onUpdateState?: (newState: Partial<UserState>) => void;
 }
 
-interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  unlocked: boolean;
-}
-
-export default function ProgressTab({ userState, activeSubjects, backlogSubjects }: ProgressTabProps) {
+export default function ProgressTab({ userState, activeSubjects, backlogSubjects, onUpdateState }: ProgressTabProps) {
+  const [showAllAchievements, setShowAllAchievements] = useState(false);
   const { 
     xp, 
     level, 
@@ -85,53 +81,22 @@ export default function ProgressTab({ userState, activeSubjects, backlogSubjects
   // Level progression calculations
   const { xpInCurrentLevel, xpNeededForNextLevel, xpPercent } = getLevelAndProgress(xp);
 
-  // Dynamic real achievements list based on actual user progression
-  const achievements: Achievement[] = [
-    {
-      id: 'first-topic',
-      title: 'First Milestone',
-      description: 'Complete your first study topic',
-      icon: '🎯',
-      unlocked: completedTopicsCount >= 1,
-    },
-    {
-      id: 'module-master',
-      title: 'Module Explorer',
-      description: 'Master any full module (100%)',
-      icon: '🏆',
-      unlocked: userState.completedModules.length >= 1,
-    },
-    {
-      id: 'level-up',
-      title: 'Level 2 Apprentice',
-      description: 'Reach Level 2 in your learning journey',
-      icon: '⚡',
-      unlocked: level >= 2,
-    },
-    {
-      id: 'streak-3',
-      title: 'Consistency Star',
-      description: 'Maintain a 3-day study streak',
-      icon: '🔥',
-      unlocked: streak >= 3,
-    },
-    {
-      id: 'maestro',
-      title: 'Academic Maestro',
-      description: 'Complete 10 topics this semester',
-      icon: '👑',
-      unlocked: completedTopicsCount >= 10,
-    },
-    {
-      id: 'semester-completion',
-      title: 'Semester Champion',
-      description: 'Complete all topics in your current semester',
-      icon: '🎓',
-      unlocked: totalSyllabusTopicsCount > 0 && completedTopicsCount >= totalSyllabusTopicsCount,
-    }
-  ];
+  // Dynamic real achievements list based on ALL_ACHIEVEMENTS
+  const achievements = ALL_ACHIEVEMENTS.map((ach) => ({
+    id: ach.id,
+    title: ach.title,
+    description: ach.description,
+    icon: ach.icon,
+    xpReward: ach.xpReward,
+    unlocked: ach.checkUnlocked(userState, activeSubjects, backlogSubjects) || (userState.unlockedAchievements || []).includes(ach.id),
+  }));
 
-  const srsStats = getReviewStats(userState.revisions || []);
+  const sortedAchievements = [...achievements].sort((a, b) => {
+    if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
+    return b.xpReward - a.xpReward;
+  });
+
+  const srsStats = getReviewStats(userState.revisions || [], userState, activeSubjects, backlogSubjects);
 
   return (
     <div className="space-y-8 font-sans pb-16">
@@ -426,8 +391,8 @@ export default function ProgressTab({ userState, activeSubjects, backlogSubjects
 
           return {
             dailyGoal: userState.dailyFocusGoal ?? 30,
-            streak: userState.academicStudyStreak ?? 0,
-            longestStreak: userState.longestStudyStreak ?? 0,
+            streak: userState.academicStudyStreak ?? userState.streak ?? 0,
+            longestStreak: userState.longestStudyStreak ?? userState.longestStreak ?? 0,
             totalHours: ((userState.totalFocusMinutes || 0) / 60).toFixed(1),
             weeklyHours: (weeklyMins / 60).toFixed(1),
             monthlyHours: (monthlyMins / 60).toFixed(1),
@@ -569,19 +534,30 @@ export default function ProgressTab({ userState, activeSubjects, backlogSubjects
 
       {/* 3. ACHIEVEMENTS SECTION */}
       <div className="bg-[#141A1F] border border-gray-800/80 rounded-2xl p-6 shadow-md space-y-6">
-        <div className="space-y-1">
-          <h3 className="text-lg font-bold font-display text-white flex items-center gap-2">
-            <Award className="w-5 h-5 text-amber-500" />
-            Academic Achievements
-          </h3>
-          <p className="text-xs text-gray-400">Unlock dynamic reward badges as you progress through your academic coursework.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold font-display text-white flex items-center gap-2">
+              <Award className="w-5 h-5 text-amber-500" />
+              Academic Achievements ({achievements.filter(a => a.unlocked).length}/{ALL_ACHIEVEMENTS.length})
+            </h3>
+            <p className="text-xs text-gray-400">Unlock dynamic reward badges as you progress through your academic coursework.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAllAchievements(true)}
+            className="px-3.5 py-1.5 bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 font-bold text-xs rounded-xl transition-all cursor-pointer self-start sm:self-auto flex items-center gap-1.5 active:scale-95 shadow-sm"
+          >
+            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <span>See All Badges →</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {achievements.map((ach) => (
+          {sortedAchievements.slice(0, 6).map((ach) => (
             <div
               key={ach.id}
-              className={`p-4 rounded-xl border flex items-center gap-4 transition-all ${
+              onClick={() => setShowAllAchievements(true)}
+              className={`p-4 rounded-xl border flex items-center gap-4 transition-all cursor-pointer hover:border-purple-500/40 ${
                 ach.unlocked
                   ? 'bg-[#1C242C]/40 border-amber-500/25 shadow-[0_4px_12px_rgba(245,158,11,0.03)]'
                   : 'bg-[#1C242C]/10 border-gray-850 opacity-40'
@@ -609,6 +585,16 @@ export default function ProgressTab({ userState, activeSubjects, backlogSubjects
           ))}
         </div>
       </div>
+
+      {/* FULL ACHIEVEMENT MODAL */}
+      <AchievementModal
+        isOpen={showAllAchievements}
+        onClose={() => setShowAllAchievements(false)}
+        userState={userState}
+        activeSubjects={activeSubjects}
+        backlogSubjects={backlogSubjects}
+        onUpdateState={(updated) => onUpdateState?.(updated)}
+      />
 
     </div>
   );

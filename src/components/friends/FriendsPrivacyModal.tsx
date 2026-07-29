@@ -1,7 +1,8 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserState } from '../../types';
+import { containsProfanity } from '../../utils/moderation';
 
 interface FriendsPrivacyModalProps {
   isOpen: boolean;
@@ -85,6 +86,14 @@ export default function FriendsPrivacyModal({
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-mono text-gray-500 uppercase block">Short Bio</label>
+                  {(userState.bioViolation || (userState.bio && containsProfanity(userState.bio))) && (
+                    <div className="p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2 mb-2">
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-red-300">
+                        Your bio violates community guidelines. Please edit it before saving.
+                      </p>
+                    </div>
+                  )}
                   <textarea
                     name="bio"
                     defaultValue={userState.bio || ""}

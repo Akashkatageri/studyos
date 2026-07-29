@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserState, Subject, Module } from '../types';
-import { ChevronDown, ChevronUp, BookOpen, AlertCircle, Award } from 'lucide-react';
+import { ChevronDown, ChevronUp, BookOpen, AlertCircle, Award, RotateCcw } from 'lucide-react';
 import { getSubjectTheme } from '../utils/subjectThemes';
 import { COURSE_TEMPLATES, COMMON_S1, COMMON_S2 } from '../courses';
 import { getSubjectDifficulty, getTopicEstimatedTime } from '../utils/xpUtils';
@@ -31,6 +31,7 @@ interface ProgressionTabProps {
   activeSubjects: Subject[];
   backlogSubjects: Subject[];
   onStartTopic: (topicId: string) => void;
+  onResetTopic?: (topicId: string) => void;
   onTriggerSemesterTransition?: () => void;
   onChangeSubjectDifficulty?: (subjectId: string, difficulty: 'Easy' | 'Medium' | 'Hard') => void;
 }
@@ -40,6 +41,7 @@ export default function ProgressionTab({
   activeSubjects,
   backlogSubjects,
   onStartTopic,
+  onResetTopic,
   onTriggerSemesterTransition,
   onChangeSubjectDifficulty,
 }: ProgressionTabProps) {
@@ -49,6 +51,7 @@ export default function ProgressionTab({
   const [expandedSubjects, setExpandedSubjects] = useState<string[]>([]);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
   const [activeModuleTabs, setActiveModuleTabs] = useState<{[moduleId: string]: 'topics' | 'resources'}>({});
+  const [selectedArchivedSemester, setSelectedArchivedSemester] = useState<number | null>(null);
 
   const toggleSubject = (subjectId: string) => {
     setExpandedSubjects((prev) =>
@@ -89,17 +92,17 @@ export default function ProgressionTab({
   });
 
   return (
-    <div className="space-y-8 font-sans pb-16">
+    <div className="space-y-6 sm:space-y-8 font-sans pb-32 sm:pb-24">
       
       {/* 1. BACKLOG SUBJECTS SECTION (Displayed ABOVE current semester) */}
       {activeBacklogs.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-amber-500">
-            <AlertCircle className="w-5 h-5" />
-            <h3 className="text-lg font-bold font-display tracking-wide uppercase">⚠ Prior Semester Backlogs</h3>
+        <div className="space-y-3.5 sm:space-y-4">
+          <div className="flex items-center gap-2 text-amber-500 px-1">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <h3 className="text-base sm:text-lg font-bold font-display tracking-wide uppercase">⚠ Prior Semester Backlogs</h3>
           </div>
           
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3.5 sm:gap-4">
             {activeBacklogs.map((subj) => {
               const isExpanded = expandedSubjects.includes(subj.id);
               const stats = getSubjectStats(subj);
@@ -114,21 +117,21 @@ export default function ProgressionTab({
               return (
                 <div
                   key={subj.id}
-                  className="border border-white/5 bg-[#111114] rounded-[28px] overflow-hidden transition-all duration-300 shadow-md"
+                  className="border border-white/5 bg-[#111114] rounded-2xl sm:rounded-[28px] overflow-hidden transition-all duration-300 shadow-md"
                 >
                   {/* Subject Expandable Card Header */}
                   <div
                     onClick={() => toggleSubject(subj.id)}
-                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
+                    className="p-3.5 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
                   >
-                    <div className="flex items-center gap-3.5 flex-1 pr-2">
+                    <div className="flex items-center gap-3 sm:gap-3.5 flex-1 pr-1.5 min-w-0">
                       {/* Square colored avatar indicator */}
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-base select-none shrink-0 border ${visual.bg}`}>
+                      <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-sm sm:text-base select-none shrink-0 border ${visual.bg}`}>
                         <span>{visual.symbol}</span>
                       </div>
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className="text-sm font-extrabold text-white tracking-tight leading-tight truncate">
+                      <div className="space-y-1 sm:space-y-1.5 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                          <h4 className="text-xs sm:text-sm font-extrabold text-white tracking-tight leading-snug break-words">
                             {subj.name}
                           </h4>
                           {onChangeSubjectDifficulty ? (
@@ -139,7 +142,7 @@ export default function ProgressionTab({
                                 onChangeSubjectDifficulty(subj.id, e.target.value as 'Easy' | 'Medium' | 'Hard');
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className={`text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full border cursor-pointer focus:outline-none transition-all shrink-0 ${
+                              className={`text-[8.5px] sm:text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border cursor-pointer focus:outline-none transition-all shrink-0 ${
                                 diff === 'Easy'
                                   ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20'
                                   : diff === 'Hard'
@@ -153,7 +156,7 @@ export default function ProgressionTab({
                             </select>
                           ) : (
                             <span
-                              className={`text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full border shrink-0 ${
+                              className={`text-[8.5px] sm:text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${
                                 diff === 'Easy'
                                   ? 'bg-green-500/10 text-green-400 border-green-500/20'
                                   : diff === 'Hard'
@@ -165,14 +168,14 @@ export default function ProgressionTab({
                             </span>
                           )}
                         </div>
-                        <div className="flex justify-between items-center text-[10px] font-bold">
-                          <span className="text-gray-500">
-                            {completedModulesCount}/{subj.modules.length} Modules Completed
+                        <div className="flex justify-between items-center text-[9.5px] sm:text-[10px] font-bold">
+                          <span className="text-gray-500 truncate">
+                            {completedModulesCount}/{subj.modules.length} Modules
                           </span>
-                          <span className="text-gray-400 font-mono">{stats.percent}%</span>
+                          <span className="text-gray-400 font-mono ml-2">{stats.percent}%</span>
                         </div>
                         {/* Progress Bar */}
-                        <div className="w-full h-1 bg-black/20 rounded-full overflow-hidden">
+                        <div className="w-full h-1 bg-black/30 rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-500 bg-[#7C5CFF]"
                             style={{ width: `${stats.percent}%` }}
@@ -180,20 +183,20 @@ export default function ProgressionTab({
                         </div>
                       </div>
                     </div>
-                    <div className="pl-1 text-gray-500">
+                    <div className="pl-1 text-gray-500 shrink-0">
                       {isExpanded ? (
-                        <ChevronUp className="w-5 h-5 text-gray-400" />
+                        <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                       ) : (
-                        <ChevronDown className="w-5 h-5 text-gray-500" />
+                        <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
                       )}
                     </div>
                   </div>
 
                   {/* Subject Expanded Modules list */}
                   {isExpanded && (
-                    <div className="border-t border-gray-800 bg-[#0C0F12]/60 p-4 md:p-6 pl-8 md:pl-12 relative space-y-6">
+                    <div className="border-t border-gray-800 bg-[#0C0F12]/60 p-3 sm:p-5 pl-6 sm:pl-10 md:pl-12 relative space-y-4 sm:space-y-6">
                       {/* Beautiful continuous vertical module connecting line */}
-                      <div className="absolute left-[16px] md:left-[24px] top-8 bottom-12 w-[3px] bg-gradient-to-b from-amber-500/50 via-gray-800 to-gray-800/20 rounded-full pointer-events-none" />
+                      <div className="absolute left-[12px] sm:left-[20px] md:left-[24px] top-6 bottom-10 w-[2.5px] bg-gradient-to-b from-amber-500/50 via-gray-800 to-gray-800/20 rounded-full pointer-events-none" />
 
                       {subj.modules.map((mod) => {
                         const isModExpanded = expandedModules.includes(mod.id);
@@ -205,44 +208,44 @@ export default function ProgressionTab({
                             className="relative"
                           >
                             {/* Module Status Node on Timeline */}
-                            <div className="absolute left-[-27px] md:left-[-35px] top-5 z-10 bg-[#0C0F12] rounded-full p-1">
+                            <div className="absolute left-[-21px] sm:left-[-29px] md:left-[-35px] top-4 sm:top-5 z-10 bg-[#0C0F12] rounded-full p-0.5 sm:p-1">
                               {modStats.percent === 100 ? (
-                                <div className="w-5 h-5 rounded-full bg-amber-500/20 border-2 border-amber-500 flex items-center justify-center">
-                                  <span className="text-[9px] text-amber-400 font-bold">✓</span>
+                                <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-amber-500/20 border-2 border-amber-500 flex items-center justify-center">
+                                  <span className="text-[8px] sm:text-[9px] text-amber-400 font-bold">✓</span>
                                 </div>
                               ) : modStats.percent > 0 ? (
-                                <div className="w-5 h-5 rounded-full bg-blue-500/20 border-2 border-blue-400 flex items-center justify-center animate-pulse">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-blue-500/20 border-2 border-blue-400 flex items-center justify-center animate-pulse">
+                                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-blue-400" />
                                 </div>
                               ) : (
-                                <div className="w-5 h-5 rounded-full bg-gray-900 border-2 border-gray-800 flex items-center justify-center">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-gray-800" />
+                                <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gray-900 border-2 border-gray-800 flex items-center justify-center">
+                                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-gray-800" />
                                 </div>
                               )}
                             </div>
 
                             {/* Module card */}
-                            <div className="bg-[#141A1F] border border-gray-800/80 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="bg-[#141A1F] border border-gray-800/80 rounded-xl sm:rounded-2xl overflow-hidden shadow-sm">
                               <div
                                 onClick={() => toggleModule(mod.id)}
-                                className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-800/20 transition-colors"
+                                className="p-3 sm:p-4 flex items-center justify-between cursor-pointer hover:bg-gray-800/20 transition-colors"
                               >
-                                <div className="flex-1 pr-4 space-y-1.5">
-                                  <h5 className="text-sm font-extrabold text-gray-200 tracking-tight leading-snug">{mod.name}</h5>
+                                <div className="flex-1 pr-2 sm:pr-4 space-y-1 sm:space-y-1.5 min-w-0">
+                                  <h5 className="text-xs sm:text-sm font-extrabold text-gray-200 tracking-tight leading-snug break-words">{mod.name}</h5>
                                   <div className="flex items-center gap-2">
-                                    <div className="w-24 h-2 bg-gray-950 rounded-full overflow-hidden">
+                                    <div className="w-16 sm:w-24 h-1.5 sm:h-2 bg-gray-950 rounded-full overflow-hidden shrink-0">
                                       <div
                                         className="h-full bg-blue-500 rounded-full transition-all duration-300"
                                         style={{ width: `${modStats.percent}%` }}
                                       />
                                     </div>
-                                    <span className="text-[10px] font-mono text-gray-400">{modStats.percent}% Complete</span>
+                                    <span className="text-[9px] sm:text-[10px] font-mono text-gray-400">{modStats.percent}%</span>
                                   </div>
 
                                   {/* Module Reward Preview */}
                                   {modStats.percent < 100 && (
-                                    <div className="mt-1.5 bg-amber-500/[0.02] border border-amber-500/10 rounded-lg px-2.5 py-1.5 flex items-center justify-between text-[10px] w-full max-w-sm">
-                                      <span className="text-gray-400">Completion Reward:</span>
+                                    <div className="mt-1 bg-amber-500/[0.02] border border-amber-500/10 rounded-lg px-2 sm:px-2.5 py-1 flex items-center justify-between text-[9px] sm:text-[10px] w-full max-w-sm">
+                                      <span className="text-gray-400">Reward:</span>
                                       <div className="flex items-center gap-1 font-bold text-amber-400 font-display">
                                         <span>🏆 Module Master</span>
                                         <span>•</span>
@@ -252,17 +255,17 @@ export default function ProgressionTab({
                                   )}
                                 </div>
                                 <div className="p-1 rounded bg-[#0C0F12]/80 border border-gray-800/60 shrink-0">
-                                  {isModExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                                  {isModExpanded ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />}
                                 </div>
                               </div>
 
                               {isModExpanded && (
-                                <div className="bg-[#0C0F12]/40 border-t border-gray-800/40 p-4 relative space-y-4">
+                                <div className="bg-[#0C0F12]/40 border-t border-gray-800/40 p-3 sm:p-4 relative space-y-3 sm:space-y-4">
                                   {/* Mini Tabs Bar */}
-                                  <div className="flex items-center gap-1.5 border-b border-gray-850 pb-2.5">
+                                  <div className="flex items-center gap-1.5 border-b border-gray-850 pb-2">
                                     <button
                                       onClick={() => setActiveModuleTabs(prev => ({ ...prev, [mod.id]: 'topics' }))}
-                                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-tight transition-all cursor-pointer ${
+                                      className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold tracking-tight transition-all cursor-pointer ${
                                         (activeModuleTabs[mod.id] || 'topics') === 'topics'
                                           ? 'bg-[#141A1F] text-blue-400 border border-blue-500/20'
                                           : 'text-gray-400 hover:text-white border border-transparent'
@@ -272,20 +275,20 @@ export default function ProgressionTab({
                                     </button>
                                     <button
                                       onClick={() => setActiveModuleTabs(prev => ({ ...prev, [mod.id]: 'resources' }))}
-                                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-tight transition-all cursor-pointer flex items-center gap-1.5 ${
+                                      className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold tracking-tight transition-all cursor-pointer flex items-center gap-1 ${
                                         activeModuleTabs[mod.id] === 'resources'
                                           ? 'bg-[#141A1F] text-amber-400 border border-amber-500/20'
                                           : 'text-gray-400 hover:text-white border border-transparent'
                                       }`}
                                     >
-                                      🔗 Module Resources
+                                      🔗 Resources
                                     </button>
                                   </div>
 
                                   {(activeModuleTabs[mod.id] || 'topics') === 'topics' ? (
-                                    <div className="space-y-3 relative pl-2">
+                                    <div className="space-y-2.5 relative pl-0 sm:pl-2">
                                       {/* Connected line inside topics list */}
-                                      <div className="absolute left-[25px] top-4 bottom-8 w-[2px] bg-gradient-to-b from-blue-500/20 via-gray-800 to-gray-800/10 rounded-full pointer-events-none" />
+                                      <div className="absolute left-[18px] sm:left-[25px] top-3 bottom-6 w-[2px] bg-gradient-to-b from-blue-500/20 via-gray-800 to-gray-800/10 rounded-full pointer-events-none hidden sm:block" />
 
                                       {mod.topics.map((top) => {
                                         const isCompleted = completedTopics.includes(top.id);
@@ -306,7 +309,7 @@ export default function ProgressionTab({
                                           <button
                                             key={top.id}
                                             onClick={() => onStartTopic(top.id)}
-                                            className={`w-full text-left p-3.5 rounded-xl border flex flex-col sm:flex-row gap-3.5 sm:gap-4 sm:items-center sm:justify-between cursor-pointer group transition-all relative z-10 ${
+                                            className={`w-full text-left p-2.5 sm:p-3.5 rounded-xl border flex items-center justify-between gap-2.5 sm:gap-4 cursor-pointer group transition-all relative z-10 ${
                                               topicState === 'completed' 
                                                 ? 'bg-[#141A1F]/30 border-gray-800/30 hover:border-gray-800 hover:bg-[#141A1F]/50'
                                                 : topicState === 'revision'
@@ -316,62 +319,80 @@ export default function ProgressionTab({
                                                     : 'bg-[#141A1F]/20 border-gray-850/20 hover:border-gray-850/40 hover:bg-[#141A1F]/40'
                                             }`}
                                           >
-                                            <div className="flex items-center gap-3.5 w-full">
+                                            <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
                                               {/* Status indicators */}
                                               <div className="shrink-0 relative">
                                                 {topicState === 'completed' && (
-                                                  <div className="w-6 h-6 rounded-full bg-green-500/10 border-2 border-green-500 flex items-center justify-center shadow-[0_0_8px_rgba(34,197,94,0.2)]">
-                                                    <span className="text-[10px] text-green-400 font-bold">✓</span>
+                                                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-500/10 border-2 border-green-500 flex items-center justify-center shadow-[0_0_8px_rgba(34,197,94,0.2)]">
+                                                    <span className="text-[9px] sm:text-[10px] text-green-400 font-bold">✓</span>
                                                   </div>
                                                 )}
                                                 {topicState === 'revision' && (
-                                                  <div className="w-6 h-6 rounded-full bg-blue-500/10 border-2 border-blue-500 flex items-center justify-center shadow-[0_0_8px_rgba(59,130,246,0.2)]">
-                                                    <span className="text-[10px] text-blue-400 font-bold">↻</span>
+                                                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-500/10 border-2 border-blue-500 flex items-center justify-center shadow-[0_0_8px_rgba(59,130,246,0.2)]">
+                                                    <span className="text-[9px] sm:text-[10px] text-blue-400 font-bold">↻</span>
                                                   </div>
                                                 )}
                                                 {topicState === 'in_progress' && (
-                                                  <div className="w-6 h-6 rounded-full bg-amber-500/10 border-2 border-amber-500 flex items-center justify-center shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse">
-                                                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-amber-500/10 border-2 border-amber-500 flex items-center justify-center shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse">
+                                                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-500" />
                                                   </div>
                                                 )}
                                                 {topicState === 'not_started' && (
-                                                  <div className="w-6 h-6 rounded-full border-2 border-gray-700 flex items-center justify-center group-hover:border-blue-400 transition-colors">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-blue-400 transition-colors" />
+                                                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-700 flex items-center justify-center group-hover:border-blue-400 transition-colors">
+                                                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-transparent group-hover:bg-blue-400 transition-colors" />
                                                   </div>
                                                 )}
                                               </div>
 
-                                              <div className="space-y-0.5 min-w-0">
-                                                <p className={`text-sm font-bold tracking-tight transition-colors truncate-2-lines ${topicState === 'completed' ? 'text-gray-500 line-through font-normal' : 'text-gray-300 group-hover:text-white'}`}>
+                                              <div className="space-y-0.5 min-w-0 flex-1">
+                                                <p className={`text-xs sm:text-sm font-bold tracking-tight transition-colors line-clamp-2 ${topicState === 'completed' ? 'text-gray-500 line-through font-normal' : 'text-gray-300 group-hover:text-white'}`}>
                                                   {top.name}
                                                 </p>
-                                                <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-mono font-semibold">
+                                                <div className="flex items-center gap-1.5 text-[9.5px] sm:text-[10px] text-gray-500 font-mono font-semibold">
                                                   <span>{getTopicEstimatedTime(userState.subjectDifficulties, subj.id, top.estimatedTime)} mins</span>
                                                 </div>
                                               </div>
                                             </div>
 
                                             {/* Topic State badge display */}
-                                            {topicState === 'completed' && (
-                                              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-green-500/10 border-green-500/25 text-green-400 text-center w-full sm:w-auto shrink-0 select-none">
-                                                🟢 Completed
-                                              </span>
-                                            )}
-                                            {topicState === 'revision' && (
-                                              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-blue-500/10 border-blue-500/25 text-blue-400 text-center w-full sm:w-auto shrink-0 select-none">
-                                                🔵 Revision Due
-                                              </span>
-                                            )}
-                                            {topicState === 'in_progress' && (
-                                              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-amber-500/10 border-amber-500/25 text-amber-400 text-center w-full sm:w-auto shrink-0 select-none">
-                                                🟡 In Progress
-                                              </span>
-                                            )}
-                                            {topicState === 'not_started' && (
-                                              <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-transparent border-gray-800 text-gray-500 group-hover:text-gray-300 group-hover:border-gray-700 text-center w-full sm:w-auto shrink-0 select-none">
-                                                ⚪ Not Started
-                                              </span>
-                                            )}
+                                            <div className="shrink-0 flex items-center gap-1.5 select-none z-20">
+                                              {topicState === 'completed' && (
+                                                <>
+                                                  <span className="text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider py-1 px-2 sm:px-2.5 rounded-lg border bg-green-500/10 border-green-500/25 text-green-400">
+                                                    Done
+                                                  </span>
+                                                  {onResetTopic && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onResetTopic(top.id);
+                                                      }}
+                                                      className="py-1 px-2 text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider rounded-lg border bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400 transition-all cursor-pointer flex items-center gap-1"
+                                                      title="Reset topic progress and take back XP"
+                                                    >
+                                                      <RotateCcw className="w-2.5 h-2.5" />
+                                                      <span>Reset</span>
+                                                    </button>
+                                                  )}
+                                                </>
+                                              )}
+                                              {topicState === 'revision' && (
+                                                <span className="text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider py-1 px-2 sm:px-2.5 rounded-lg border bg-blue-500/10 border-blue-500/25 text-blue-400">
+                                                  Revise
+                                                </span>
+                                              )}
+                                              {topicState === 'in_progress' && (
+                                                <span className="text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider py-1 px-2 sm:px-2.5 rounded-lg border bg-amber-500/10 border-amber-500/25 text-amber-400">
+                                                  Active
+                                                </span>
+                                              )}
+                                              {topicState === 'not_started' && (
+                                                <span className="text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider py-1 px-2 rounded-lg border bg-transparent border-gray-800 text-gray-500 group-hover:text-gray-300 group-hover:border-gray-700">
+                                                  Start
+                                                </span>
+                                              )}
+                                            </div>
                                           </button>
                                         );
                                       })}
@@ -396,22 +417,12 @@ export default function ProgressionTab({
 
       {/* 2. CURRENT SEMESTER SUBJECTS TREE */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-[#141A1F]/30 border border-gray-800/40 p-4 rounded-2xl">
-          <div className="flex items-center gap-2 text-blue-400">
-            <BookOpen className="w-5 h-5" />
-            <h3 className="text-lg font-bold font-display tracking-wide uppercase">Semester {userState.semester} Progression Path</h3>
-          </div>
-          {onTriggerSemesterTransition && userState.semester < 8 && (
-            <button
-              onClick={onTriggerSemesterTransition}
-              className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:brightness-115 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md cursor-pointer select-none flex items-center justify-center gap-2 border border-white/5 active:scale-95"
-            >
-              <span>🎓 MOVE TO NEXT SEMESTER</span>
-            </button>
-          )}
+        <div className="flex items-center gap-2 text-blue-400 bg-[#141A1F]/30 border border-gray-800/40 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl">
+          <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+          <h3 className="text-base sm:text-lg font-bold font-display tracking-wide uppercase">Semester {userState.semester} Progression Path</h3>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-3.5 sm:gap-4">
           {activeSubjects.map((subj) => {
             const isExpanded = expandedSubjects.includes(subj.id);
             const stats = getSubjectStats(subj);
@@ -428,21 +439,21 @@ export default function ProgressionTab({
             return (
               <div
                 key={subj.id}
-                className="border border-white/5 bg-[#111114] rounded-[28px] overflow-hidden transition-all duration-300 shadow-md"
+                className="border border-white/5 bg-[#111114] rounded-2xl sm:rounded-[28px] overflow-hidden transition-all duration-300 shadow-md"
               >
                 {/* Subject Header */}
                 <div
                   onClick={() => toggleSubject(subj.id)}
-                  className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
+                  className="p-3.5 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
                 >
-                  <div className="flex items-center gap-3.5 flex-1 pr-2">
+                  <div className="flex items-center gap-3 sm:gap-3.5 flex-1 pr-1.5 min-w-0">
                     {/* Square colored avatar indicator */}
-                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-base select-none shrink-0 border ${visual.bg}`}>
+                    <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-sm sm:text-base select-none shrink-0 border ${visual.bg}`}>
                       <span>{visual.symbol}</span>
                     </div>
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="text-sm font-extrabold text-white tracking-tight leading-tight truncate">
+                    <div className="space-y-1 sm:space-y-1.5 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <h4 className="text-xs sm:text-sm font-extrabold text-white tracking-tight leading-snug break-words">
                           {subj.name}
                         </h4>
                         {onChangeSubjectDifficulty ? (
@@ -505,10 +516,10 @@ export default function ProgressionTab({
 
                 {/* Modules list */}
                 {isExpanded && (
-                  <div className="border-t border-gray-850 bg-black/10 p-4 md:p-6 pl-8 md:pl-12 relative space-y-6">
+                  <div className="border-t border-gray-850 bg-black/10 p-3 sm:p-5 pl-6 sm:pl-10 md:pl-12 relative space-y-4 sm:space-y-6">
                     {/* Beautiful continuous vertical module connecting line */}
                     <div 
-                      className={`absolute left-[16px] md:left-[24px] top-8 bottom-12 w-[3px] rounded-full pointer-events-none ${
+                      className={`absolute left-[12px] sm:left-[20px] md:left-[24px] top-6 bottom-10 w-[2.5px] rounded-full pointer-events-none ${
                         isCompletedGold ? 'bg-gradient-to-b from-amber-500/40 via-amber-700/30 to-transparent' : ''
                       }`}
                       style={isCompletedGold ? {} : { backgroundImage: `linear-gradient(to bottom, ${theme.primary}99, rgba(108, 99, 255, 0.1))` }}
@@ -524,41 +535,41 @@ export default function ProgressionTab({
                           className="relative"
                         >
                           {/* Module Status Node on Timeline */}
-                          <div className="absolute left-[-27px] md:left-[-35px] top-5 z-10 bg-[#0B091B] rounded-full p-1">
+                          <div className="absolute left-[-21px] sm:left-[-29px] md:left-[-35px] top-4 sm:top-5 z-10 bg-[#0B091B] rounded-full p-0.5 sm:p-1">
                             {modStats.percent === 100 ? (
-                              <div className="w-5 h-5 rounded-full bg-amber-500/20 border-2 border-amber-500 flex items-center justify-center shadow-[0_0_8px_rgba(245,158,11,0.2)]">
-                                <span className="text-[9px] text-amber-400 font-bold">✓</span>
+                              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-amber-500/20 border-2 border-amber-500 flex items-center justify-center shadow-[0_0_8px_rgba(245,158,11,0.2)]">
+                                <span className="text-[8px] sm:text-[9px] text-amber-400 font-bold">✓</span>
                               </div>
                             ) : modStats.percent > 0 ? (
                               <div 
-                                className="w-5 h-5 rounded-full border-2 flex items-center justify-center animate-pulse"
+                                className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center animate-pulse"
                                 style={{ borderColor: theme.primary, backgroundColor: `${theme.primary}20` }}
                               >
-                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: theme.primary }} />
+                                <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full" style={{ backgroundColor: theme.primary }} />
                               </div>
                             ) : (
-                              <div className="w-5 h-5 rounded-full bg-gray-900 border-2 border-gray-850 flex items-center justify-center">
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-800" />
+                              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gray-900 border-2 border-gray-850 flex items-center justify-center">
+                                <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-gray-800" />
                               </div>
                             )}
                           </div>
 
                           {/* Module card */}
-                          <div className={`border rounded-2xl overflow-hidden shadow-sm ${
+                          <div className={`border rounded-xl sm:rounded-2xl overflow-hidden shadow-sm ${
                             modStats.percent === 100
                               ? 'bg-[#181512] border-amber-500/20'
                               : 'bg-[#141A1F] border-gray-800/80'
                           }`}>
                             <div
                               onClick={() => toggleModule(mod.id)}
-                              className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-800/20 transition-colors"
+                              className="p-3 sm:p-4 flex items-center justify-between cursor-pointer hover:bg-gray-800/20 transition-colors"
                             >
-                              <div className="flex-1 pr-4 space-y-1.5">
-                                <h5 className={`text-sm font-extrabold tracking-tight leading-snug ${
+                              <div className="flex-1 pr-2 sm:pr-4 space-y-1 sm:space-y-1.5 min-w-0">
+                                <h5 className={`text-xs sm:text-sm font-extrabold tracking-tight leading-snug break-words ${
                                   modStats.percent === 100 ? 'text-amber-300' : 'text-gray-200'
                                 }`}>{mod.name}</h5>
                                 <div className="flex items-center gap-2">
-                                  <div className="w-24 h-2 bg-[#0C0F12] rounded-full overflow-hidden">
+                                  <div className="w-16 sm:w-24 h-1.5 sm:h-2 bg-[#0C0F12] rounded-full overflow-hidden shrink-0">
                                     <div
                                       className={`h-full rounded-full transition-all duration-300 ${
                                         modStats.percent === 100 ? 'bg-amber-500' : 'bg-blue-500'
@@ -566,13 +577,13 @@ export default function ProgressionTab({
                                       style={{ width: `${modStats.percent}%` }}
                                     />
                                   </div>
-                                  <span className="text-[10px] font-mono text-gray-400">{modStats.percent}% Complete</span>
+                                  <span className="text-[9px] sm:text-[10px] font-mono text-gray-400">{modStats.percent}%</span>
                                 </div>
 
                                 {/* Module Reward Preview */}
                                 {modStats.percent < 100 && (
-                                  <div className="mt-1.5 bg-amber-500/[0.02] border border-amber-500/10 rounded-lg px-2.5 py-1.5 flex items-center justify-between text-[10px] w-full max-w-sm">
-                                    <span className="text-gray-400">Completion Reward:</span>
+                                  <div className="mt-1 bg-amber-500/[0.02] border border-amber-500/10 rounded-lg px-2 sm:px-2.5 py-1 flex items-center justify-between text-[9px] sm:text-[10px] w-full max-w-sm">
+                                    <span className="text-gray-400">Reward:</span>
                                     <div className="flex items-center gap-1 font-bold text-amber-400 font-display">
                                       <span>🏆 Module Master</span>
                                       <span>•</span>
@@ -582,17 +593,17 @@ export default function ProgressionTab({
                                 )}
                               </div>
                               <div className="p-1 rounded bg-[#0C0F12]/80 border border-gray-800/60 shrink-0">
-                                {isModExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                                {isModExpanded ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />}
                               </div>
                             </div>
 
                             {isModExpanded && (
-                              <div className="bg-[#0C0F12]/40 border-t border-gray-800/40 p-4 relative space-y-4">
+                              <div className="bg-[#0C0F12]/40 border-t border-gray-800/40 p-3 sm:p-4 relative space-y-3 sm:space-y-4">
                                 {/* Mini Tabs Bar */}
-                                <div className="flex items-center gap-1.5 border-b border-gray-850 pb-2.5">
+                                <div className="flex items-center gap-1.5 border-b border-gray-850 pb-2">
                                   <button
                                     onClick={() => setActiveModuleTabs(prev => ({ ...prev, [mod.id]: 'topics' }))}
-                                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-tight transition-all cursor-pointer ${
+                                    className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold tracking-tight transition-all cursor-pointer ${
                                       (activeModuleTabs[mod.id] || 'topics') === 'topics'
                                         ? 'bg-[#141A1F] text-blue-400 border border-blue-500/20'
                                         : 'text-gray-400 hover:text-white border border-transparent'
@@ -602,20 +613,20 @@ export default function ProgressionTab({
                                   </button>
                                   <button
                                     onClick={() => setActiveModuleTabs(prev => ({ ...prev, [mod.id]: 'resources' }))}
-                                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-tight transition-all cursor-pointer flex items-center gap-1.5 ${
+                                    className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px] font-bold tracking-tight transition-all cursor-pointer flex items-center gap-1 ${
                                       activeModuleTabs[mod.id] === 'resources'
                                         ? 'bg-[#141A1F] text-amber-400 border border-amber-500/20'
                                         : 'text-gray-400 hover:text-white border border-transparent'
                                     }`}
                                   >
-                                    🔗 Module Resources
+                                    🔗 Resources
                                   </button>
                                 </div>
 
                                 {(activeModuleTabs[mod.id] || 'topics') === 'topics' ? (
-                                  <div className="space-y-3 relative pl-2">
+                                  <div className="space-y-2.5 relative pl-0 sm:pl-2">
                                     {/* Connected line inside topics list */}
-                                    <div className="absolute left-[25px] top-4 bottom-8 w-[2px] bg-gradient-to-b from-blue-500/20 via-gray-800 to-gray-800/10 rounded-full pointer-events-none" />
+                                    <div className="absolute left-[18px] sm:left-[25px] top-3 bottom-6 w-[2px] bg-gradient-to-b from-blue-500/20 via-gray-800 to-gray-800/10 rounded-full pointer-events-none hidden sm:block" />
 
                                     {mod.topics.map((top) => {
                                       const isCompleted = completedTopics.includes(top.id);
@@ -636,7 +647,7 @@ export default function ProgressionTab({
                                         <button
                                           key={top.id}
                                           onClick={() => onStartTopic(top.id)}
-                                          className={`w-full text-left p-3.5 rounded-xl border flex flex-col sm:flex-row gap-3.5 sm:gap-4 sm:items-center sm:justify-between cursor-pointer group transition-all relative z-10 ${
+                                          className={`w-full text-left p-2.5 sm:p-3.5 rounded-xl border flex items-center justify-between gap-2.5 sm:gap-4 cursor-pointer group transition-all relative z-10 ${
                                             topicState === 'completed' 
                                               ? 'bg-[#141A1F]/30 border-gray-800/30 hover:border-gray-800 hover:bg-[#141A1F]/50'
                                               : topicState === 'revision'
@@ -646,62 +657,80 @@ export default function ProgressionTab({
                                                   : 'bg-[#141A1F]/20 border-gray-850/20 hover:border-gray-850/40 hover:bg-[#141A1F]/40'
                                           }`}
                                         >
-                                          <div className="flex items-center gap-3.5 w-full">
+                                          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
                                             {/* Status indicators */}
                                             <div className="shrink-0 relative">
                                               {topicState === 'completed' && (
-                                                <div className="w-6 h-6 rounded-full bg-green-500/10 border-2 border-green-500 flex items-center justify-center shadow-[0_0_8px_rgba(34,197,94,0.2)]">
-                                                  <span className="text-[10px] text-green-400 font-bold">✓</span>
+                                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-500/10 border-2 border-green-500 flex items-center justify-center shadow-[0_0_8px_rgba(34,197,94,0.2)]">
+                                                  <span className="text-[9px] sm:text-[10px] text-green-400 font-bold">✓</span>
                                                 </div>
                                               )}
                                               {topicState === 'revision' && (
-                                                <div className="w-6 h-6 rounded-full bg-blue-500/10 border-2 border-blue-500 flex items-center justify-center shadow-[0_0_8px_rgba(59,130,246,0.2)]">
-                                                  <span className="text-[10px] text-blue-400 font-bold">↻</span>
+                                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-500/10 border-2 border-blue-500 flex items-center justify-center shadow-[0_0_8px_rgba(59,130,246,0.2)]">
+                                                  <span className="text-[9px] sm:text-[10px] text-blue-400 font-bold">↻</span>
                                                 </div>
                                               )}
                                               {topicState === 'in_progress' && (
-                                                <div className="w-6 h-6 rounded-full bg-amber-500/10 border-2 border-amber-500 flex items-center justify-center shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse">
-                                                  <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-amber-500/10 border-2 border-amber-500 flex items-center justify-center shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse">
+                                                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-500" />
                                                 </div>
                                               )}
                                               {topicState === 'not_started' && (
-                                                <div className="w-6 h-6 rounded-full border-2 border-gray-700 flex items-center justify-center group-hover:border-blue-400 transition-colors">
-                                                  <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-blue-400 transition-colors" />
+                                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-700 flex items-center justify-center group-hover:border-blue-400 transition-colors">
+                                                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-transparent group-hover:bg-blue-400 transition-colors" />
                                                 </div>
                                               )}
                                             </div>
 
-                                            <div className="space-y-0.5 min-w-0">
-                                              <p className={`text-sm font-bold tracking-tight transition-colors truncate-2-lines ${topicState === 'completed' ? 'text-gray-500 line-through font-normal' : 'text-gray-300 group-hover:text-white'}`}>
+                                            <div className="space-y-0.5 min-w-0 flex-1">
+                                              <p className={`text-xs sm:text-sm font-bold tracking-tight transition-colors line-clamp-2 ${topicState === 'completed' ? 'text-gray-500 line-through font-normal' : 'text-gray-300 group-hover:text-white'}`}>
                                                 {top.name}
                                               </p>
-                                              <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-mono font-semibold">
+                                              <div className="flex items-center gap-1.5 text-[9.5px] sm:text-[10px] text-gray-500 font-mono font-semibold">
                                                 <span>{getTopicEstimatedTime(userState.subjectDifficulties, subj.id, top.estimatedTime)} mins</span>
                                               </div>
                                             </div>
                                           </div>
 
                                           {/* Topic State badge display */}
-                                          {topicState === 'completed' && (
-                                            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-green-500/10 border-green-500/25 text-green-400 text-center w-full sm:w-auto shrink-0 select-none">
-                                              🟢 Completed
-                                            </span>
-                                          )}
-                                          {topicState === 'revision' && (
-                                            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-blue-500/10 border-blue-500/25 text-blue-400 text-center w-full sm:w-auto shrink-0 select-none">
-                                              🔵 Revision Due
-                                            </span>
-                                          )}
-                                          {topicState === 'in_progress' && (
-                                            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-amber-500/10 border-amber-500/25 text-amber-400 text-center w-full sm:w-auto shrink-0 select-none">
-                                              🟡 In Progress
-                                            </span>
-                                          )}
-                                          {topicState === 'not_started' && (
-                                            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-transparent border-gray-800 text-gray-500 group-hover:text-gray-300 group-hover:border-gray-700 text-center w-full sm:w-auto shrink-0 select-none">
-                                              ⚪ Not Started
-                                            </span>
-                                          )}
+                                          <div className="shrink-0 flex items-center gap-1.5 select-none z-20">
+                                            {topicState === 'completed' && (
+                                              <>
+                                                <span className="text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider py-1 px-2 sm:px-2.5 rounded-lg border bg-green-500/10 border-green-500/25 text-green-400">
+                                                  Done
+                                                </span>
+                                                {onResetTopic && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      onResetTopic(top.id);
+                                                    }}
+                                                    className="py-1 px-2 text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider rounded-lg border bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400 transition-all cursor-pointer flex items-center gap-1"
+                                                    title="Reset topic progress and take back XP"
+                                                  >
+                                                    <RotateCcw className="w-2.5 h-2.5" />
+                                                    <span>Reset</span>
+                                                  </button>
+                                                )}
+                                              </>
+                                            )}
+                                            {topicState === 'revision' && (
+                                              <span className="text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider py-1 px-2 sm:px-2.5 rounded-lg border bg-blue-500/10 border-blue-500/25 text-blue-400">
+                                                Revise
+                                              </span>
+                                            )}
+                                            {topicState === 'in_progress' && (
+                                              <span className="text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider py-1 px-2 sm:px-2.5 rounded-lg border bg-amber-500/10 border-amber-500/25 text-amber-400">
+                                                Active
+                                              </span>
+                                            )}
+                                            {topicState === 'not_started' && (
+                                              <span className="text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider py-1 px-2 rounded-lg border bg-transparent border-gray-800 text-gray-500 group-hover:text-gray-300 group-hover:border-gray-700">
+                                                Start
+                                              </span>
+                                            )}
+                                          </div>
                                         </button>
                                       );
                                     })}
@@ -754,24 +783,57 @@ export default function ProgressionTab({
 
         if (archivedOptionalSubjects.length === 0) return null;
 
+        const currentActiveSem = (selectedArchivedSemester && archivedOptionalSubjects.some(a => a.semester === selectedArchivedSemester))
+          ? selectedArchivedSemester
+          : archivedOptionalSubjects[0].semester;
+
+        const activeGroup = archivedOptionalSubjects.find(a => a.semester === currentActiveSem);
+
         return (
           <div className="space-y-4 pt-8 border-t border-gray-800/60">
-            <div className="flex items-center gap-2 text-purple-400">
-              <Award className="w-5 h-5 text-purple-500" />
-              <h3 className="text-lg font-bold font-display tracking-wide uppercase">📂 Archived → Optional Learning & Revisions</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-purple-400">
+                  <Award className="w-5 h-5 text-purple-500 shrink-0" />
+                  <h3 className="text-base sm:text-lg font-bold font-display tracking-wide uppercase">📂 Archived → Optional Learning & Revisions</h3>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  These subjects from your completed semesters are archived. You can study them at your own pace for revision.
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              These subjects from your completed semesters are archived. You can study them at your own pace for revision.
-            </p>
 
-            <div className="space-y-6">
-              {archivedOptionalSubjects.map((arch) => (
-                <div key={arch.semester} className="space-y-3">
+            {/* Semester Selector Dropdown */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-[#141A1F]/50 border border-gray-800/60 rounded-2xl">
+              <label htmlFor="archived-semester-select" className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-purple-300 flex items-center gap-2 select-none">
+                <span>Select Archived Semester:</span>
+              </label>
+              <div className="relative w-full sm:w-72">
+                <select
+                  id="archived-semester-select"
+                  value={currentActiveSem}
+                  onChange={(e) => setSelectedArchivedSemester(Number(e.target.value))}
+                  className="w-full bg-[#0C0F12] text-white font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-purple-500/30 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none appearance-none cursor-pointer pr-10 shadow-sm transition-all"
+                >
+                  {archivedOptionalSubjects.map((arch) => (
+                    <option key={arch.semester} value={arch.semester} className="bg-[#141A1F] text-white py-1">
+                      Semester {arch.semester} ({arch.subjects.length} Subjects)
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-purple-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            {activeGroup && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
                   <p className="text-[10px] font-black font-mono text-purple-400 uppercase tracking-widest bg-purple-500/10 border border-purple-500/25 px-3 py-1 rounded-full inline-block">
-                    Semester {arch.semester} Archive
+                    Semester {activeGroup.semester} Archive ({activeGroup.subjects.length} Subjects)
                   </p>
-                  <div className="grid grid-cols-1 gap-4">
-                    {arch.subjects.map((subj) => {
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  {activeGroup.subjects.map((subj) => {
                       const isExpanded = expandedSubjects.includes(subj.id);
                       const stats = getSubjectStats(subj);
                       const isCompletedGold = stats.percent === 100;
@@ -780,7 +842,7 @@ export default function ProgressionTab({
                       return (
                         <div
                           key={subj.id}
-                          className={`border rounded-2xl overflow-hidden transition-all duration-300 shadow-md ${
+                          className={`border rounded-xl sm:rounded-2xl overflow-hidden transition-all duration-300 shadow-md ${
                             isCompletedGold
                               ? 'bg-gradient-to-b from-amber-950/15 to-[#141A1F] border-amber-500/35 hover:border-amber-400/50 shadow-[0_0_15px_rgba(245,158,11,0.08)]'
                               : `bg-[#141A1F]/40 border-gray-800/80 hover:border-gray-700`
@@ -789,16 +851,16 @@ export default function ProgressionTab({
                           {/* Subject Header */}
                           <div
                             onClick={() => toggleSubject(subj.id)}
-                            className="p-6 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
+                            className="p-3.5 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
                           >
-                            <div className="space-y-2 flex-1 pr-4">
+                            <div className="space-y-1.5 flex-1 pr-3">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400 font-mono">
+                                <span className="text-[10px] sm:text-xs text-gray-400 font-mono">
                                   {stats.completed}/{stats.total} Topics Completed
                                 </span>
                               </div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <h4 className={`text-lg font-extrabold tracking-tight leading-snug ${
+                                <h4 className={`text-sm sm:text-base font-extrabold tracking-tight leading-snug ${
                                   isCompletedGold ? 'text-amber-400' : 'text-white'
                                 }`}>
                                   {subj.name}
@@ -811,7 +873,7 @@ export default function ProgressionTab({
                                       onChangeSubjectDifficulty(subj.id, e.target.value as 'Easy' | 'Medium' | 'Hard');
                                     }}
                                     onClick={(e) => e.stopPropagation()}
-                                    className={`text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full border cursor-pointer focus:outline-none transition-all shrink-0 ${
+                                    className={`text-[8.5px] sm:text-[9px] font-extrabold uppercase tracking-widest px-2 sm:px-2.5 py-0.5 rounded-full border cursor-pointer focus:outline-none transition-all shrink-0 ${
                                       diff === 'Easy'
                                         ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20'
                                         : diff === 'Hard'
@@ -825,7 +887,7 @@ export default function ProgressionTab({
                                   </select>
                                 ) : (
                                   <span
-                                    className={`text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full border shrink-0 ${
+                                    className={`text-[8.5px] sm:text-[9px] font-extrabold uppercase tracking-widest px-2 sm:px-2.5 py-0.5 rounded-full border shrink-0 ${
                                       diff === 'Easy'
                                         ? 'bg-green-500/10 text-green-400 border-green-500/20'
                                         : diff === 'Hard'
@@ -840,16 +902,16 @@ export default function ProgressionTab({
                             </div>
                             <div>
                               {isExpanded ? (
-                                <ChevronUp className="w-5 h-5 text-gray-400" />
+                                <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                               ) : (
-                                <ChevronDown className="w-5 h-5 text-gray-400" />
+                                <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                               )}
                             </div>
                           </div>
 
                           {/* Modules list when expanded */}
                           {isExpanded && (
-                            <div className="border-t border-gray-800/40 p-6 space-y-4">
+                            <div className="border-t border-gray-800/40 p-3.5 sm:p-5 space-y-3 sm:space-y-4">
                               {subj.modules.map((mod) => {
                                 const isModExpanded = expandedModules.includes(mod.id);
                                 const modStats = getModuleStats(mod);
@@ -978,9 +1040,25 @@ export default function ProgressionTab({
                                                   </div>
 
                                                   {topicState === 'completed' && (
-                                                    <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-green-500/10 border-green-500/25 text-green-400 text-center w-full sm:w-auto shrink-0 select-none">
-                                                      🟢 Completed
-                                                    </span>
+                                                    <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 select-none z-20">
+                                                      <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-green-500/10 border-green-500/25 text-green-400 text-center flex-1 sm:flex-initial">
+                                                        🟢 Completed
+                                                      </span>
+                                                      {onResetTopic && (
+                                                        <button
+                                                          type="button"
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onResetTopic(top.id);
+                                                          }}
+                                                          className="py-1.5 px-3 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider rounded-xl border bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                                          title="Reset topic progress and take back XP"
+                                                        >
+                                                          <RotateCcw className="w-3 h-3" />
+                                                          <span>Reset</span>
+                                                        </button>
+                                                      )}
+                                                    </div>
                                                   )}
                                                   {topicState === 'revision' && (
                                                     <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-xl border bg-blue-500/10 border-blue-500/25 text-blue-400 text-center w-full sm:w-auto shrink-0 select-none">
@@ -1016,11 +1094,23 @@ export default function ProgressionTab({
                     })}
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
           </div>
         );
       })()}
+
+      {/* 4. MOVE TO NEXT SEMESTER BUTTON (Bottom of Journey Page) */}
+      {onTriggerSemesterTransition && userState.semester < 8 && (
+        <div className="pt-8 pb-4 border-t border-gray-800/60 flex flex-col items-center justify-center text-center space-y-3">
+          <p className="text-xs text-gray-400 font-medium">Ready to advance your academic journey?</p>
+          <button
+            onClick={onTriggerSemesterTransition}
+            className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:brightness-115 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl transition-all shadow-xl cursor-pointer select-none flex items-center justify-center gap-2.5 border border-white/10 active:scale-95"
+          >
+            <span>🎓 MOVE TO NEXT SEMESTER</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

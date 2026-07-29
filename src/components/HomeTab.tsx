@@ -1,27 +1,24 @@
-import React, { useState } from 'react';
-import { UserState, Subject, Module, Topic } from '../types';
+import React, { useState, useMemo } from 'react';
+import { UserState, Subject, Module, Topic, TodoItem } from '../types';
 import { findTopicById } from '../data';
 import { SoundManager } from '../utils/soundManager';
 import { getLocalDateString } from '../utils/dateUtils';
-import { getTopicEstimatedTime } from '../utils/xpUtils';
 import { getDailyReviewQueue } from '../lib/spacedRepetition';
 import { 
   Play, 
   Flame, 
-  Sparkles, 
   Trophy, 
   Shield, 
-  Clock, 
-  Search, 
-  ArrowRight, 
-  CheckCircle2, 
+  Brain,
   BookOpen,
-  Bell,
-  Users,
-  Brain
+  Target,
+  CheckSquare,
+  Square,
+  Plus,
+  ListTodo,
+  ArrowRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import AndroidWidgetSimulator from './AndroidWidgetSimulator';
 import SvgBookIllustration from './home/SvgBookIllustration';
 import BrowseSubjectsModal from './home/BrowseSubjectsModal';
 
@@ -30,13 +27,14 @@ interface HomeTabProps {
   activeSubjects: Subject[];
   backlogSubjects: Subject[];
   onStartTopic: (topicId: string) => void;
-  onCompleteRevision: (revisionId: string) => void;
+  onResetTopic?: (topicId: string) => void;
+  onCompleteRevision?: (revisionId: string) => void;
   onOpenFocusTimer?: () => void;
   onOpenStudyCalendar?: () => void;
   onTriggerSemesterTransition?: () => void;
-  onUpdateState: (updated: Partial<UserState>) => void;
+  onUpdateState?: (updated: Partial<UserState>) => void;
   onStartReviewSession?: () => void;
-  hasActiveNotifications?: boolean;
+  onOpenStreakModal?: () => void;
 }
 
 export default function HomeTab({
@@ -44,21 +42,122 @@ export default function HomeTab({
   activeSubjects,
   backlogSubjects,
   onStartTopic,
-  onOpenFocusTimer,
-  onUpdateState,
+  onResetTopic: _onResetTopic,
   onStartReviewSession,
-  hasActiveNotifications = false,
+  onUpdateState,
 }: HomeTabProps) {
   const { completedTopics = [] } = userState;
 
   // Spaced Repetition Due Count
-  const dueReviews = getDailyReviewQueue(userState.revisions || []);
+  const dueReviews = getDailyReviewQueue(userState.revisions || [], userState, activeSubjects, backlogSubjects);
   const dueCount = dueReviews.length;
 
   // Search & Browse Subjects state
   const [isBrowseOpen, setIsBrowseOpen] = useState(false);
 
   const todayStr = getLocalDateString();
+
+  // ==========================================
+  // TODAY'S TASKS (DAILY TASKS)
+  // ==========================================
+  const todos = userState.todos || [];
+  const [homeQuickTaskTitle, setHomeQuickTaskTitle] = useState('');
+
+  const todayTasks = useMemo(() => {
+    const rawToday = todos.filter(t => t.dateCreated === todayStr);
+    const dateObj = new Date();
+    const dayOfWeek = dateObj.getDay();
+
+    const repeatingTemplates = todos.filter(t => t.repeat && t.repeat !== 'none' && t.dateCreated < todayStr);
+    const newlyGeneratedRepeats: TodoItem[] = [];
+
+    repeatingTemplates.forEach(template => {
+      let applies = false;
+      if (template.repeat === 'daily') applies = true;
+      else if (template.repeat === 'mon-wed-fri' && (dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5)) applies = true;
+      else if (template.repeat === 'weekly' && new Date(template.dateCreated).getDay() === dayOfWeek) applies = true;
+
+      if (applies) {
+        const existingInstance = rawToday.find(t => t.id === `${template.id}_${todayStr}` || t.title === template.title);
+        if (!existingInstance) {
+          newlyGeneratedRepeats.push({
+            ...template,
+            id: `${template.id}_${todayStr}`,
+            dateCreated: todayStr,
+            completed: false,
+            completedAt: undefined,
+          });
+        }
+      }
+    });
+
+    return [...rawToday, ...newlyGeneratedRepeats].sort((a, b) => {
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      return (a.order || 0) - (b.order || 0);
+    });
+  }, [todos, todayStr]);
+
+  const completedHomeTasksCount = todayTasks.filter(t => t.completed).length;
+  const totalHomeTasksCount = todayTasks.length;
+  const homeTasksPercent = totalHomeTasksCount > 0 ? Math.round((completedHomeTasksCount / totalHomeTasksCount) * 100) : 0;
+
+  const handleToggleHomeTask = (task: TodoItem) => {
+    if (!onUpdateState) return;
+
+    const isExistingInState = todos.some(t => t.id === task.id);
+    let updatedTodos: TodoItem[];
+
+    if (isExistingInState) {
+      updatedTodos = todos.map(t => {
+        if (t.id === task.id) {
+          const next = !t.completed;
+          if (next) {
+            SoundManager.play('topic_complete');
+            SoundManager.vibrate('success');
+          } else {
+            SoundManager.play('click');
+          }
+          return { ...t, completed: next, completedAt: next ? new Date().toISOString() : undefined };
+        }
+        return t;
+      });
+    } else {
+      const nextCompleted = !task.completed;
+      if (nextCompleted) {
+        SoundManager.play('topic_complete');
+        SoundManager.vibrate('success');
+      } else {
+        SoundManager.play('click');
+      }
+      const newInstance: TodoItem = {
+        ...task,
+        completed: nextCompleted,
+        completedAt: nextCompleted ? new Date().toISOString() : undefined,
+      };
+      updatedTodos = [...todos, newInstance];
+    }
+
+    onUpdateState({ todos: updatedTodos });
+  };
+
+  const handleAddHomeTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!homeQuickTaskTitle.trim() || !onUpdateState) return;
+
+    const newTask: TodoItem = {
+      id: `todo_${Date.now()}`,
+      title: homeQuickTaskTitle.trim(),
+      completed: false,
+      priority: 'medium',
+      category: 'study',
+      dateCreated: todayStr,
+      order: todos.length + 1,
+    };
+
+    onUpdateState({ todos: [...todos, newTask] });
+    setHomeQuickTaskTitle('');
+    SoundManager.play('click');
+  };
 
   // ==========================================
   // SMART RECOMMENDATION ENGINE
@@ -72,7 +171,6 @@ export default function HomeTab({
         if (pref.date === todayStr) {
           const prefSubject = [...activeSubjects, ...backlogSubjects].find(s => s.id === pref.subjectId);
           if (prefSubject) {
-            // Find first incomplete topic
             for (const mod of prefSubject.modules) {
               for (const top of mod.topics) {
                 if (!completedTopics.includes(top.id)) {
@@ -99,7 +197,7 @@ export default function HomeTab({
       }
     }
 
-    // 3. Exam Approaching check (within 14 days of semesterEndDate) -> recommend Hard/Medium first
+    // 3. Exam Approaching check (within 14 days of semesterEndDate)
     let isExamApproaching = false;
     if (userState.semesterEndDate) {
       const endD = new Date(userState.semesterEndDate);
@@ -111,7 +209,6 @@ export default function HomeTab({
     }
 
     if (isExamApproaching) {
-      // Find Hard incomplete active topics
       for (const sub of activeSubjects) {
         for (const mod of sub.modules) {
           for (const top of mod.topics) {
@@ -121,7 +218,6 @@ export default function HomeTab({
           }
         }
       }
-      // Find Medium incomplete active topics
       for (const sub of activeSubjects) {
         for (const mod of sub.modules) {
           for (const top of mod.topics) {
@@ -133,7 +229,7 @@ export default function HomeTab({
       }
     }
 
-    // 4. Backlog subjects recommendation occasionally (~33% chance based on day of month)
+    // 4. Backlog subjects recommendation occasionally
     const hasBacklogs = backlogSubjects.length > 0;
     const shouldRecommendBacklog = hasBacklogs && (new Date().getDate() % 3 === 0);
     if (shouldRecommendBacklog) {
@@ -159,7 +255,7 @@ export default function HomeTab({
       }
     }
 
-    // Fallback: Check backlogs unconditionally if everything else is completed
+    // Fallback: Check backlogs
     if (hasBacklogs) {
       for (const sub of backlogSubjects) {
         for (const mod of sub.modules) {
@@ -197,8 +293,7 @@ export default function HomeTab({
   };
 
   const focusStats = getFocusStats();
-  const dailyGoal = userState.dailyFocusGoal ?? 25;
-  const isGoalCompletedToday = focusStats.today >= dailyGoal;
+  const dailyGoal = userState.dailyFocusGoal ?? 30;
 
   // Handles starting the recommended learning topic
   const handleContinueLearning = () => {
@@ -207,50 +302,28 @@ export default function HomeTab({
     SoundManager.play('click');
     SoundManager.vibrate('light');
 
-    // Save preference for today
     localStorage.setItem('studyos_last_studied_subject_today', JSON.stringify({
       date: todayStr,
       subjectId: recommendation.subject.id
     }));
 
-    // Setup focus timer session to run automatically for 25 mins
-    const startSessionData = {
-      totalSeconds: 25 * 60,
-      mode: 'pomodoro',
-      isRunning: true,
-      secondsElapsed: 0,
-      lastTick: Date.now()
-    };
-    localStorage.setItem('studyos_focus_session', JSON.stringify(startSessionData));
-
-    // Launch details sheet / modal
     onStartTopic(recommendation.topic.id);
-
-    // Open the focus timer overlay
-    if (onOpenFocusTimer) {
-      onOpenFocusTimer();
-    }
   };
 
-  // Handles manual topic clicks from the Browse Subjects list
+  // Handles manual topic selection from Browse Subjects
   const handleSelectTopicManually = (subj: Subject, top: Topic) => {
     SoundManager.play('click');
     SoundManager.vibrate('light');
 
-    // Record today's manual study preference
     localStorage.setItem('studyos_last_studied_subject_today', JSON.stringify({
       date: todayStr,
       subjectId: subj.id
     }));
 
-    // Trigger learning topic details
     onStartTopic(top.id);
-
-    // Close browse modal
     setIsBrowseOpen(false);
   };
 
-  // Dynamic Helpers for Redesigned UI
   const getSubjectProgress = (subject: Subject) => {
     const total = subject.modules.reduce((sum, m) => sum + m.topics.length, 0);
     if (total === 0) return 0;
@@ -260,485 +333,341 @@ export default function HomeTab({
     return Math.round((completed / total) * 100);
   };
 
-  const getUpNextTopic = (): { topic: Topic; module: Module; subject: Subject } | null => {
-    if (!recommendation) return null;
-    const { topic: currentTopic, module: currentModule, subject: currentSubject } = recommendation;
-    
-    // Scan topics in current module first, find the one right after currentTopic
-    const topicIndex = currentModule.topics.findIndex(t => t.id === currentTopic.id);
-    if (topicIndex !== -1 && topicIndex + 1 < currentModule.topics.length) {
-      for (let i = topicIndex + 1; i < currentModule.topics.length; i++) {
-        const nextTopic = currentModule.topics[i];
-        if (!completedTopics.includes(nextTopic.id)) {
-          return { topic: nextTopic, module: currentModule, subject: currentSubject };
-        }
-      }
-    }
-
-    // Try other modules in same subject
-    for (const mod of currentSubject.modules) {
-      if (mod.id !== currentModule.id) {
-        for (const top of mod.topics) {
-          if (!completedTopics.includes(top.id)) {
-            return { topic: top, module: mod, subject: currentSubject };
-          }
-        }
-      }
-    }
-
-    // Otherwise, try other active subjects
-    for (const sub of activeSubjects) {
-      if (sub.id !== currentSubject.id) {
-        for (const mod of sub.modules) {
-          for (const top of mod.topics) {
-            if (!completedTopics.includes(top.id)) {
-              return { topic: top, module: mod, subject: sub };
-            }
-          }
-        }
-      }
-    }
-    return null;
-  };
-
-  const getRecentCompletedTopic = (): { topic: Topic; subject: Subject } | null => {
-    if (completedTopics.length > 0) {
-      for (const sub of [...activeSubjects, ...backlogSubjects]) {
-        for (const mod of sub.modules) {
-          for (const top of mod.topics) {
-            if (completedTopics.includes(top.id)) {
-              return { topic: top, subject: sub };
-            }
-          }
-        }
-      }
-    }
-    return null;
-  };
-
-  const upNext = getUpNextTopic();
-  const recent = getRecentCompletedTopic();
-
-  // Progress calculations
   const circularProgressValue = Math.min((focusStats.today / dailyGoal) * 100, 100);
-  const remainingMinutes = Math.max(0, dailyGoal - focusStats.today);
 
   return (
-    <div className="space-y-5 font-sans pb-20 max-w-md mx-auto select-none px-4" id="home-tab-container">
+    <div className="space-y-4 font-sans pb-24 max-w-md mx-auto select-none px-4 pt-2" id="home-tab-container">
       
       {/* ==========================================
-          1. GREETING HEADER (CLEAN MATCH TO REFERENCE)
+          1. TOP QUICK STATS ROW
           ========================================== */}
-      <div className="pt-6 pb-2 flex items-center justify-between" id="greeting-header">
-        <div className="flex items-center gap-3">
-          <motion.div 
-            whileHover={{ scale: 1.05 }}
-            className="w-11 h-11 bg-[#18181C] border border-white/5 rounded-full flex items-center justify-center text-2xl shadow-lg relative group select-none overflow-hidden" 
-            id="user-avatar-emoji"
-          >
-            {userState.avatar || '🎓'}
-            {/* Subtle glow under avatar */}
-            <div className="absolute inset-0 bg-[#7C5CFF]/10 rounded-full filter blur-sm opacity-0 group-hover:opacity-100 transition-opacity animate-pulse" />
-          </motion.div>
-          <div>
-            <p className="text-xs font-medium text-gray-500 leading-tight">Good Evening,</p>
-            <h2 className="text-xl font-extrabold text-white tracking-tight mt-0.5 flex items-center gap-1.5" id="user-display-name">
-              {userState.displayName || userState.username || 'Akash'} <span className="animate-bounce origin-bottom-right">👋</span>
-            </h2>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5" id="user-header-actions">
-          {/* Search Button */}
-          <button 
-            onClick={() => setIsBrowseOpen(true)}
-            className="w-10 h-10 rounded-full bg-[#111114] border border-white/5 flex items-center justify-center text-gray-400 hover:text-white transition-all hover:bg-white/5 active:scale-95"
-            id="header-search-btn"
-          >
-            <Search className="w-4.5 h-4.5" />
-          </button>
-          {/* Notification Button */}
-          <button 
-            onClick={() => onUpdateState({ 
-              previousTabBeforeNotification: userState.activeTab,
-              activeTab: 'friends', 
-              showNotificationsModal: true 
-            })}
-            className="w-10 h-10 rounded-full bg-[#111114] border border-white/5 flex items-center justify-center text-gray-400 hover:text-white transition-all hover:bg-white/5 active:scale-95 relative cursor-pointer"
-            id="header-notification-btn"
-          >
-            <Bell className="w-4.5 h-4.5" />
-            {/* Purple glowing active indicator dot */}
-            {hasActiveNotifications && (
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#7C5CFF] rounded-full border border-[#111114] shadow-[0_0_8px_rgba(124,92,255,0.8)]" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* ==========================================
-          2. HORIZONTAL STATS ROW (STREAK, SHIELDS, TOTAL XP)
-          ========================================== */}
-      <div className="grid grid-cols-3 gap-3" id="stats-pill-grid">
-        {/* Day Streak */}
-        <div className="bg-[#111114] border border-white/5 rounded-[20px] p-3 flex flex-col items-start relative overflow-hidden group">
-          <div className="flex items-center gap-1.5 text-[#FFB547]">
-            <Flame className="w-4.5 h-4.5 fill-[#FFB547]/15" />
-            <span className="text-base font-extrabold font-mono leading-none">{userState.semesterBreakMode ? '0' : (userState.academicStudyStreak ?? 0)}</span>
-          </div>
-          <span className="text-[9px] font-bold text-gray-500 mt-1 uppercase tracking-wider font-mono">Day Streak</span>
-        </div>
-        {/* Shields */}
-        <div className="bg-[#111114] border border-white/5 rounded-[20px] p-3 flex flex-col items-start relative overflow-hidden group">
-          <div className="flex items-center gap-1.5 text-[#00D4FF]">
-            <Shield className="w-4.5 h-4.5 fill-[#00D4FF]/10" />
-            <span className="text-base font-extrabold font-mono leading-none">{userState.studyShields ?? 3}</span>
-          </div>
-          <span className="text-[9px] font-bold text-gray-500 mt-1 uppercase tracking-wider font-mono">Shields</span>
-        </div>
-        {/* Total XP */}
-        <div className="bg-[#111114] border border-white/5 rounded-[20px] p-3 flex flex-col items-start relative overflow-hidden group">
-          <div className="flex items-center gap-1.5 text-[#7C5CFF]">
-            <Trophy className="w-4.5 h-4.5" />
-            <span className="text-base font-extrabold font-mono leading-none">{userState.xp}</span>
-          </div>
-          <span className="text-[9px] font-bold text-gray-500 mt-1 uppercase tracking-wider font-mono">Total XP</span>
-        </div>
-      </div>
-
-      {/* ==========================================
-          SPACED REPETITION - TODAY'S REVIEWS CARD
-          ========================================== */}
-      {dueCount > 0 && onStartReviewSession && (
-        <div className="bg-gradient-to-br from-[#1A102F] via-[#351052] to-[#7B1393] border border-[#7B1393]/30 rounded-[32px] p-5.5 shadow-[0_20px_50px_rgba(123,19,147,0.25)] relative overflow-hidden flex items-center justify-between gap-4 animate-fade-in mb-6" id="spaced-repetition-reviews-card">
-          <div className="absolute top-[-10%] right-[-10%] w-48 h-48 bg-white/5 rounded-full filter blur-xl pointer-events-none" />
-          <div className="absolute bottom-[-10%] left-[-10%] w-32 h-32 bg-[#7C5CFF]/10 rounded-full filter blur-xl pointer-events-none" />
-
-          <div className="space-y-4 flex-1">
-            <div className="space-y-1">
-              <span className="text-[8px] font-black text-[#E892FF] uppercase tracking-widest font-mono flex items-center gap-1">
-                <Brain className="w-3.5 h-3.5 text-[#E892FF]" />
-                <span>SPACED REPETITION DUE</span>
-              </span>
-              <h3 className="text-xl font-black text-white tracking-tight leading-none pt-1">Today's Reviews</h3>
-              <p className="text-xs text-white/80 font-medium">{dueCount} {dueCount === 1 ? 'topic needs' : 'topics need'} revision</p>
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onStartReviewSession}
-              className="px-5 py-2.5 bg-white text-[#9C13B3] text-xs font-black rounded-full shadow-md hover:bg-gray-50 flex items-center gap-2 cursor-pointer transition-transform duration-200"
-              id="start-review-session-btn"
-              style={{ minHeight: '44px' }}
-            >
-              <Play className="w-3 h-3 fill-current" />
-              <span>Start Review</span>
-            </motion.button>
-          </div>
-
-          {/* Brain Icon Illustration */}
-          <div className="text-6xl select-none filter drop-shadow-[0_10px_20px_rgba(123,19,147,0.5)] pr-2 animate-pulse">
-            🧠
-          </div>
-        </div>
-      )}
-
-      {/* ==========================================
-          3. CONTINUE LEARNING MAIN CARD
-          ========================================== */}
-      {recommendation ? (
-        <div className="bg-gradient-to-br from-[#1C184E] via-[#3B26B2] to-[#7C5CFF] border border-[#7C5CFF]/30 rounded-[32px] p-5.5 shadow-[0_20px_50px_rgba(124,92,255,0.3)] relative overflow-hidden flex items-center justify-between gap-4 animate-fade-in" id="continue-learning-main-card">
-          {/* Glowing particle rings inside gradient */}
-          <div className="absolute top-[-10%] right-[-10%] w-48 h-48 bg-white/5 rounded-full filter blur-xl pointer-events-none" />
-          <div className="absolute bottom-[-10%] left-[-10%] w-32 h-32 bg-[#00D4FF]/10 rounded-full filter blur-xl pointer-events-none" />
-
-          <div className="space-y-4 flex-1">
-            <div className="space-y-1">
-              <span className="text-[8px] font-black text-white/70 uppercase tracking-widest font-mono">CONTINUE LEARNING</span>
-              <h3 className="text-lg font-black text-white tracking-tight leading-none pt-1">{recommendation.subject.name}</h3>
-              <p className="text-[11px] text-white/80 font-bold">{recommendation.module.name}</p>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-[10px] text-white/75 font-semibold font-mono">
-              <Clock className="w-3.5 h-3.5 text-white/80" />
-              <span>{getTopicEstimatedTime(userState.subjectDifficulties, recommendation.subject.id, recommendation.topic.estimatedTime)} min estimated</span>
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex justify-between items-center text-[10px] text-white/80 font-bold font-mono">
-                <span>{getSubjectProgress(recommendation.subject)}% Completed</span>
-              </div>
-              <div className="w-full h-1 bg-black/25 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-white rounded-full transition-all duration-500"
-                  style={{ width: `${getSubjectProgress(recommendation.subject)}%` }}
-                />
-              </div>
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleContinueLearning}
-              className="px-5 py-2.5 bg-white text-[#5B36F4] text-xs font-black rounded-full shadow-md hover:bg-gray-50 flex items-center gap-2 cursor-pointer transition-transform duration-200"
-              id="continue-learning-card-btn"
-            >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Continue</span>
-            </motion.button>
-          </div>
-
-          {/* Svg Book Illustration */}
-          <SvgBookIllustration />
-        </div>
-      ) : (
-        <div className="bg-[#111114] border border-white/5 rounded-[32px] p-6 shadow-premium relative overflow-hidden text-center space-y-4" id="all-completed-card">
-          <div className="w-14 h-14 bg-[#2BD97F]/10 border border-[#2BD97F]/20 text-[#2BD97F] rounded-full flex items-center justify-center mx-auto shadow-md shadow-[#2BD97F]/5 animate-pulse">
-            <Trophy className="w-6 h-6" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-base font-bold text-white font-display">All Subjects Completed!</h3>
-            <p className="text-xs text-gray-400 leading-relaxed max-w-[280px] mx-auto">
-              Incredible job, Scholar! You've mastered all current topics. You can still revise or choose any subject manually.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ==========================================
-          4. TODAY'S GOAL CARD WITH SEGMENTED PROGRESS
-          ========================================== */}
-      <div className="bg-[#111114] border border-white/5 rounded-[28px] p-5 space-y-4.5 shadow-lg" id="todays-goal-container">
-        <div className="flex items-center justify-between">
-          <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest font-mono">TODAY'S GOAL</span>
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-white font-mono">{focusStats.today}</span>
-              <span className="text-sm font-bold text-gray-500 font-mono">/ {dailyGoal}</span>
-            </div>
-            <p className="text-xs text-gray-400 font-bold">Focus Minutes</p>
-          </div>
-
-          {/* Custom Glowing Circular Progress Ring */}
-          <div className="relative w-16 h-16 flex items-center justify-center shrink-0" id="goal-circular-progress">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 64 64">
-              {/* Background circle */}
-              <circle
-                cx="32"
-                cy="32"
-                r="26"
-                className="stroke-[#18181C]"
-                strokeWidth="4.5"
-                fill="transparent"
-              />
-              {/* Foreground progress circle */}
-              <circle
-                cx="32"
-                cy="32"
-                r="26"
-                className="stroke-[#2BD97F]"
-                strokeWidth="4.5"
-                fill="transparent"
-                strokeDasharray="163.36"
-                strokeDashoffset={163.36 - (163.36 * circularProgressValue) / 100}
-                strokeLinecap="round"
-                style={{ filter: 'drop-shadow(0px 0px 4px rgba(43, 217, 127, 0.45))' }}
-              />
-            </svg>
-            <div className="absolute text-xs font-black text-white font-mono">
-              {Math.round(circularProgressValue)}%
-            </div>
-          </div>
-        </div>
-
-        {/* Segmented Progress bar & Golden Star Slider */}
-        <div className="relative pt-1" id="segmented-goal-bar">
-          <div className="flex gap-1.5 h-1.5 items-center w-full">
-            {[0, 1, 2, 3, 4].map((index) => {
-              const segMin = index * 20;
-              const segMax = (index + 1) * 20;
-              let fillPct = 0;
-              if (circularProgressValue >= segMax) {
-                fillPct = 100;
-              } else if (circularProgressValue > segMin) {
-                fillPct = ((circularProgressValue - segMin) / 20) * 100;
-              }
-
-              // Color transition: segments 1-3 green, segment 4 orange/yellow, segment 5 orange/yellow with a star
-              const segBg = index === 4 ? 'bg-[#FFB547]' : index >= 3 ? 'bg-[#FFB547]/80' : 'bg-[#2BD97F]';
-
-              return (
-                <div key={index} className="flex-1 h-1.5 bg-[#18181C] rounded-full overflow-hidden border border-white/5 relative">
-                  <div 
-                    className={`h-full ${segBg} transition-all duration-300`}
-                    style={{ width: `${fillPct}%` }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Floating Star Handle */}
-          <div 
-            className="absolute -top-1.5 w-5 h-5 flex items-center justify-center transition-all duration-300 pointer-events-none text-[#FFB547]"
-            style={{ left: `calc(${circularProgressValue}% - 10px)` }}
-          >
-            <span className="text-xs filter drop-shadow-[0_0_4px_rgba(255,181,71,0.6)]">★</span>
-          </div>
-        </div>
-
-        <p className="text-[10px] text-gray-500 font-bold leading-relaxed pt-0.5">
-          {isGoalCompletedToday 
-            ? "✓ Daily Focus Goal completed! Streak secured."
-            : `${remainingMinutes} more minutes to complete today's goal`}
-        </p>
-      </div>
-
-      {/* ==========================================
-          4B. QUICK ACTIONS (BENTO GRID - MATCHING SCREEN 1)
-          ========================================== */}
-      <div className="space-y-2.5" id="quick-actions-section">
-        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest font-mono">QUICK ACTIONS</span>
-        <div className="grid grid-cols-4 gap-3">
-          {/* Focus Action */}
-          <button
-            onClick={onOpenFocusTimer}
-            className="bg-[#111114] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center text-center gap-1.5 hover:bg-[#18181C] transition-all cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-full bg-[#7C5CFF]/10 text-[#7C5CFF] border border-[#7C5CFF]/15 flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-bold text-gray-400">Focus</span>
-          </button>
-          {/* Revise Action */}
-          <button
-            onClick={() => onUpdateState({ activeTab: 'progression' })}
-            className="bg-[#111114] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center text-center gap-1.5 hover:bg-[#18181C] transition-all cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-full bg-[#FFB547]/10 text-[#FFB547] border border-[#FFB547]/15 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-bold text-gray-400">Revise</span>
-          </button>
-          {/* Subjects Action */}
-          <button
-            onClick={() => onUpdateState({ activeTab: 'progression' })}
-            className="bg-[#111114] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center text-center gap-1.5 hover:bg-[#18181C] transition-all cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-full bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/15 flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-bold text-gray-400">Subjects</span>
-          </button>
-          {/* Friends Action */}
-          <button
-            onClick={() => onUpdateState({ activeTab: 'friends' })}
-            className="bg-[#111114] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center text-center gap-1.5 hover:bg-[#18181C] transition-all cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-full bg-[#2BD97F]/10 text-[#2BD97F] border border-[#2BD97F]/15 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-bold text-gray-400">Friends</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ==========================================
-          5. UP NEXT SECTION
-          ========================================== */}
-      <div className="space-y-2.5" id="up-next-section">
-        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest font-mono">UP NEXT</span>
-        {upNext ? (
-          <div 
-            onClick={() => onStartTopic(upNext.topic.id)}
-            className="bg-[#111114] border border-white/5 rounded-2xl p-3.5 flex items-center justify-between gap-3 hover:bg-[#18181C]/75 cursor-pointer transition-all"
-            id="up-next-card"
-          >
-            <div className="flex items-center gap-3">
-              {/* Green icon box with { } */}
-              <div className="w-11 h-11 rounded-2xl bg-[#153B2D] border border-[#235C45] text-[#2BD97F] flex items-center justify-center font-mono font-bold text-sm shrink-0">
-                <span>{"{}"}</span>
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-white leading-tight">{upNext.topic.name}</h4>
-                <p className="text-[10px] text-gray-500 font-semibold">{upNext.module.name} • {upNext.subject.name}</p>
-              </div>
-            </div>
-            <div className="bg-[#18181C] border border-white/5 rounded-full px-2.5 py-1 text-[10px] text-gray-400 font-bold font-mono">
-              {getTopicEstimatedTime(userState.subjectDifficulties, upNext.subject.id, upNext.topic.estimatedTime)} min
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 bg-[#111114] border border-white/5 rounded-2xl text-center text-xs text-gray-500 italic">
-            No remaining topics left. Start revision!
-          </div>
-        )}
-      </div>
-
-      {/* ==========================================
-          6. RECENT ACTIVITY SECTION
-          ========================================== */}
-      <div className="space-y-2.5" id="recent-activity-section">
-        <div className="flex items-center justify-between">
-          <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest font-mono">RECENT ACTIVITY</span>
-          <ArrowRight className="w-4 h-4 text-gray-500 hover:text-white cursor-pointer transition-colors" />
-        </div>
-
-        {recent ? (
-          <div className="bg-[#111114] border border-white/5 rounded-2xl p-3.5 flex items-center justify-between gap-3" id="recent-activity-item">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#7C5CFF]/10 text-[#7C5CFF] border border-[#7C5CFF]/15 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-white leading-tight">{recent.topic.name}</h4>
-                <p className="text-[10px] text-gray-500 font-semibold">{recent.subject.name} • Completed</p>
-              </div>
-            </div>
-            <span className="text-[11px] font-extrabold text-[#7C5CFF] font-mono">+20 XP</span>
-          </div>
-        ) : (
-          <div className="bg-[#111114] border border-white/5 rounded-2xl p-3.5 flex items-center justify-between gap-3" id="recent-activity-item-placeholder">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#7C5CFF]/10 text-[#7C5CFF] border border-[#7C5CFF]/15 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-white leading-tight">Basics of Functions</h4>
-                <p className="text-[10px] text-gray-500 font-semibold">Completed • 2h ago</p>
-              </div>
-            </div>
-            <span className="text-[11px] font-extrabold text-[#A78BFA] font-mono">+20 XP</span>
-          </div>
-        )}
-      </div>
-
-      {/* Android Widget Companion Panel */}
-      <AndroidWidgetSimulator
-        userState={userState}
-        onStartRecommended={recommendation ? () => onStartTopic(recommendation.topic.id) : undefined}
-        onOpenFocusTimer={onOpenFocusTimer}
-      />
-
-      {/* Choose Something Else Trigger Button */}
-      <div className="text-center pt-2" id="secondary-action-container">
-        <button
-          onClick={() => setIsBrowseOpen(true)}
-          className="text-xs font-bold text-gray-400 hover:text-white transition-all inline-flex items-center gap-1.5 cursor-pointer bg-transparent border-0 py-1"
-          id="browse-subjects-trigger"
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-3.5" id="stats-pill-grid">
+        {/* Streak */}
+        <button 
+          onClick={() => {
+            if (onUpdateState) {
+              onUpdateState({ activeTab: 'progress' });
+            }
+          }}
+          className="bg-[#111114] hover:bg-[#1A1A22] border border-white/5 hover:border-amber-500/30 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between transition-all cursor-pointer group active:scale-95 text-left w-full shadow-sm hover:shadow-[0_0_15px_rgba(245,158,11,0.1)] min-w-0"
+          title="View Streak Details & Progress"
+          id="home-streak-stat-card"
         >
-          <span>Choose Something Else</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2 text-[#FFB547] min-w-0">
+            <Flame className="w-4.5 h-4.5 sm:w-5 sm:h-5 fill-[#FFB547]/20 group-hover:scale-110 transition-transform shrink-0" />
+            <span className="text-base sm:text-lg md:text-xl font-extrabold font-mono leading-none truncate">{userState.academicStudyStreak ?? userState.streak ?? 0}</span>
+          </div>
+          <div className="flex items-center justify-between w-full mt-2.5">
+            <span className="text-[10px] sm:text-[11px] font-extrabold text-gray-500 group-hover:text-amber-400 uppercase tracking-wider font-mono transition-colors truncate">STREAK</span>
+            <span className="text-[10px] text-amber-500/60 group-hover:text-amber-400 font-mono font-bold">→</span>
+          </div>
+        </button>
+
+        {/* Shields */}
+        <button 
+          onClick={() => {
+            if (onUpdateState) {
+              onUpdateState({ activeTab: 'progress' });
+            }
+          }}
+          className="bg-[#111114] hover:bg-[#1A1A22] border border-white/5 hover:border-cyan-500/30 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between transition-all cursor-pointer group active:scale-95 text-left w-full shadow-sm hover:shadow-[0_0_15px_rgba(0,212,255,0.1)] min-w-0"
+          title="View Shields & Progress"
+          id="home-shields-stat-card"
+        >
+          <div className="flex items-center gap-2 text-[#00D4FF] min-w-0">
+            <Shield className="w-4.5 h-4.5 sm:w-5 sm:h-5 fill-[#00D4FF]/10 group-hover:scale-110 transition-transform shrink-0" />
+            <span className="text-base sm:text-lg md:text-xl font-extrabold font-mono leading-none truncate">{userState.studyShields ?? 0}</span>
+          </div>
+          <div className="flex items-center justify-between w-full mt-2.5">
+            <span className="text-[10px] sm:text-[11px] font-extrabold text-gray-500 group-hover:text-cyan-400 uppercase tracking-wider font-mono transition-colors truncate">SHIELDS</span>
+            <span className="text-[10px] text-cyan-500/60 group-hover:text-cyan-400 font-mono font-bold">→</span>
+          </div>
+        </button>
+
+        {/* Total XP */}
+        <button 
+          onClick={() => {
+            if (onUpdateState) {
+              onUpdateState({ activeTab: 'progress' });
+            }
+          }}
+          className="bg-[#111114] hover:bg-[#1A1A22] border border-white/5 hover:border-[#7C5CFF]/30 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between transition-all cursor-pointer group active:scale-95 text-left w-full shadow-sm hover:shadow-[0_0_15px_rgba(124,92,255,0.1)] min-w-0"
+          title="View XP Stats & Progress Analytics"
+          id="home-xp-stat-card"
+        >
+          <div className="flex items-center gap-2 text-[#7C5CFF] min-w-0">
+            <Trophy className="w-4.5 h-4.5 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform shrink-0" />
+            <span className="text-base sm:text-lg md:text-xl font-extrabold font-mono leading-none truncate">{userState.xp || 0}</span>
+          </div>
+          <div className="flex items-center justify-between w-full mt-2.5">
+            <span className="text-[10px] sm:text-[11px] font-extrabold text-gray-500 group-hover:text-[#A78BFA] uppercase tracking-wider font-mono transition-colors truncate">TOTAL XP</span>
+            <span className="text-[10px] text-[#7C5CFF]/60 group-hover:text-[#A78BFA] font-mono font-bold">→</span>
+          </div>
+        </button>
+
+        {/* Today's Goal */}
+        <button 
+          onClick={() => {
+            if (onUpdateState) {
+              onUpdateState({ activeTab: 'progress' });
+            }
+          }}
+          className="bg-[#111114] hover:bg-[#1A1A22] border border-white/5 hover:border-emerald-500/30 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between transition-all cursor-pointer group active:scale-95 text-left w-full shadow-sm hover:shadow-[0_0_15px_rgba(43,217,127,0.1)] min-w-0"
+          title="View Daily Goal Progress"
+          id="home-goal-stat-card"
+        >
+          <div className="flex items-center gap-2 text-[#2BD97F] min-w-0">
+            <Target className="w-4.5 h-4.5 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform shrink-0" />
+            <span className="text-base sm:text-lg md:text-xl font-extrabold font-mono leading-none truncate">{focusStats.today}/{dailyGoal}m</span>
+          </div>
+          <div className="flex items-center justify-between w-full mt-2.5">
+            <span className="text-[10px] sm:text-[11px] font-extrabold text-gray-500 group-hover:text-emerald-400 uppercase tracking-wider font-mono transition-colors truncate">GOAL</span>
+            <span className="text-[10px] text-emerald-500/80 group-hover:text-emerald-400 font-mono font-bold">{Math.round(circularProgressValue)}%</span>
+          </div>
         </button>
       </div>
 
       {/* ==========================================
-          BROWSE SUBJECTS BOTTOM SHEET / MODAL
+          3. DOMINANT PRIMARY HERO CARD ("CONTINUE LEARNING")
           ========================================== */}
+      {recommendation ? (
+        <div className="bg-[#130F30] border border-[#2F216E] rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 shadow-[0_12px_30px_rgba(124,92,255,0.2)] relative overflow-hidden flex items-start sm:items-center justify-between gap-3 sm:gap-4 animate-fade-in" id="continue-learning-main-card">
+          <div className="space-y-3.5 flex-1 min-w-0 z-10">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] sm:text-[10px] font-black text-[#A78BFA] uppercase tracking-widest font-mono flex items-center gap-1">
+                  <Play className="w-2.5 h-2.5 fill-current text-[#A78BFA]" />
+                  <span>CONTINUE LEARNING</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsBrowseOpen(true)}
+                  className="text-[10px] sm:text-[11px] font-bold text-[#A78BFA] hover:text-white bg-white/10 hover:bg-white/20 active:scale-95 px-2.5 py-1 rounded-full border border-white/15 flex items-center gap-1 cursor-pointer transition-all shrink-0"
+                  title="Change Topic"
+                  id="change-topic-btn"
+                >
+                  <BookOpen className="w-3 h-3" />
+                  <span>Change Topic</span>
+                </button>
+              </div>
+              <h3 className="text-lg sm:text-2xl font-extrabold text-white tracking-tight leading-tight">{recommendation.subject.name}</h3>
+              <p className="text-xs sm:text-sm text-[#A78BFA] font-medium leading-snug">
+                {recommendation.module.name}
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <div className="w-full h-2 bg-[#0D0A22] rounded-full overflow-hidden flex items-center">
+                <div 
+                  className="h-full bg-[#7C5CFF] rounded-full transition-all duration-500"
+                  style={{ width: `${getSubjectProgress(recommendation.subject)}%` }}
+                />
+              </div>
+              <div className="flex justify-end text-[10px] sm:text-xs text-[#A78BFA] font-bold font-mono">
+                <span>{getSubjectProgress(recommendation.subject)}% done</span>
+              </div>
+            </div>
+
+            <div className="pt-0.5">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleContinueLearning}
+                className="px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
+                id="continue-learning-card-btn"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Continue</span>
+              </motion.button>
+            </div>
+          </div>
+
+          <div className="w-20 sm:w-28 shrink-0 flex items-center justify-center pt-2 sm:pt-0">
+            <SvgBookIllustration />
+          </div>
+        </div>
+      ) : (
+        <div className="bg-[#111114] border border-white/5 rounded-[28px] p-6 text-center space-y-3">
+          <Trophy className="w-8 h-8 text-[#2BD97F] mx-auto" />
+          <h3 className="text-base font-bold text-white">All Subjects Completed!</h3>
+          <p className="text-xs text-gray-400">Great work! You can revise or choose any topic manually.</p>
+          <button
+            onClick={() => setIsBrowseOpen(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl inline-flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Select Topic Manually</span>
+          </button>
+        </div>
+      )}
+
+
+
+
+
+      {/* ==========================================
+          5. REVIEW DUE (SPACED REPETITION AS SUPPORTING NOTE)
+          ========================================== */}
+      {onStartReviewSession && (
+        <div className="space-y-1.5" id="review-due-section">
+          <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest font-mono">REVIEW DUE</span>
+          <div className="bg-[#15102A] border border-[#2F216E] rounded-[24px] p-4.5 flex items-center justify-between gap-3 animate-fade-in" id="spaced-repetition-reviews-card">
+            <div className="space-y-3 flex-1">
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-black text-[#A78BFA] uppercase tracking-widest font-mono flex items-center gap-1">
+                  <Brain className="w-3 h-3 text-[#A78BFA]" />
+                  <span>SPACED REPETITION</span>
+                </span>
+                <h3 className="text-base font-extrabold text-white tracking-tight pt-0.5">Today's reviews</h3>
+                <p className="text-xs font-medium text-gray-400">
+                  {dueCount > 0 
+                    ? `${dueCount} ${dueCount === 1 ? 'topic needs' : 'topics need'} revision` 
+                    : 'All caught up! 0 reviews due today'}
+                </p>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onStartReviewSession}
+                className="px-4 py-2 bg-[#1C1635] hover:bg-[#251E45] border border-white/10 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all"
+                id="start-review-session-btn"
+              >
+                <Play className="w-3 h-3 fill-current text-white" />
+                <span>{dueCount > 0 ? 'Start review' : 'Review / Practice'}</span>
+              </motion.button>
+            </div>
+
+            <div className="text-4xl shrink-0 pr-1 select-none opacity-90">
+              🧠
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          6. DAILY TASKS (COLORFUL TODAY'S TASK LIST)
+          ========================================== */}
+      <div className="space-y-1.5" id="home-daily-tasks-section">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black text-[#A78BFA] uppercase tracking-widest font-mono flex items-center gap-1.5">
+              <ListTodo className="w-3.5 h-3.5 text-purple-400" />
+              <span>DAILY TASKS</span>
+            </span>
+            {totalHomeTasksCount > 0 && (
+              <span className="bg-purple-500/20 border border-purple-400/30 text-purple-200 text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full">
+                {completedHomeTasksCount}/{totalHomeTasksCount} Done ({homeTasksPercent}%)
+              </span>
+            )}
+          </div>
+          {onUpdateState && (
+            <button
+              type="button"
+              onClick={() => onUpdateState({ activeTab: 'todos' })}
+              className="text-[11px] font-bold text-purple-300 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <span>View All</span>
+              <ArrowRight className="w-3.5 h-3.5 text-purple-400" />
+            </button>
+          )}
+        </div>
+
+        <div className="bg-gradient-to-br from-[#181133] via-[#130E2B] to-[#201442] border border-[#3A2785] rounded-[24px] p-4.5 sm:p-5 space-y-3.5 shadow-[0_10px_30px_rgba(124,92,255,0.15)] relative overflow-hidden" id="home-daily-tasks-card">
+          <div className="absolute -right-8 -top-8 w-32 h-32 bg-purple-600/15 rounded-full blur-2xl pointer-events-none" />
+
+          {/* Progress bar if tasks exist */}
+          {totalHomeTasksCount > 0 && (
+            <div className="space-y-1">
+              <div className="w-full h-2 bg-[#0E0A21] rounded-full overflow-hidden p-0.5 border border-purple-900/40">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 via-indigo-400 to-emerald-400 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                  style={{ width: `${homeTasksPercent}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Quick Add Form */}
+          <form onSubmit={handleAddHomeTask} className="flex items-center gap-2 relative z-10">
+            <input
+              type="text"
+              value={homeQuickTaskTitle}
+              onChange={(e) => setHomeQuickTaskTitle(e.target.value)}
+              placeholder="Add a quick task for today..."
+              className="flex-1 bg-[#0F0A22] border border-[#332377] focus:border-[#A78BFA] text-xs font-medium text-white placeholder-purple-300/40 px-3.5 py-2.5 rounded-xl focus:outline-none transition-all shadow-inner"
+            />
+            <button
+              type="submit"
+              disabled={!homeQuickTaskTitle.trim()}
+              className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-[0_4px_14px_rgba(124,92,255,0.4)] active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add</span>
+            </button>
+          </form>
+
+          {/* Task List */}
+          {todayTasks.length > 0 ? (
+            <div className="space-y-2 pt-1 relative z-10">
+              {todayTasks.map((task) => (
+                <div
+                  key={task.id}
+                  onClick={() => handleToggleHomeTask(task)}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                    task.completed
+                      ? 'bg-emerald-950/20 border-emerald-500/30 text-gray-400 shadow-none'
+                      : task.priority === 'high'
+                        ? 'bg-gradient-to-r from-[#2B1432] to-[#1F1238] border-pink-500/40 text-white shadow-[0_2px_12px_rgba(236,72,153,0.15)] hover:border-pink-500/60'
+                        : 'bg-[#181233]/90 hover:bg-[#1E1740] border-purple-500/20 text-white shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <button
+                      type="button"
+                      className="shrink-0 cursor-pointer focus:outline-none"
+                    >
+                      {task.completed ? (
+                        <CheckSquare className="w-4.5 h-4.5 text-emerald-400" />
+                      ) : (
+                        <Square className="w-4.5 h-4.5 text-purple-400 hover:text-white" />
+                      )}
+                    </button>
+                    <span className={`text-xs font-semibold truncate ${task.completed ? 'line-through text-gray-400' : 'text-white'}`}>
+                      {task.title}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {task.category && (
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase font-mono bg-purple-500/15 text-purple-300 border border-purple-500/25">
+                        {task.category}
+                      </span>
+                    )}
+                    {task.priority === 'high' ? (
+                      <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase font-mono bg-pink-500/20 text-pink-300 border border-pink-500/40 shadow-[0_0_8px_rgba(236,72,153,0.3)]">
+                        High
+                      </span>
+                    ) : task.priority === 'medium' ? (
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase font-mono bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                        Med
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 px-2 space-y-1.5 relative z-10">
+              <ListTodo className="w-6 h-6 text-purple-400/60 mx-auto" />
+              <p className="text-xs text-purple-200/90 font-semibold">No tasks set for today yet</p>
+              <p className="text-[10px] text-purple-300/60">Type a task above or click <span className="text-[#A78BFA] font-bold">View All</span> to manage your full checklist.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* BROWSE SUBJECTS BOTTOM SHEET / MODAL */}
       <BrowseSubjectsModal
         isOpen={isBrowseOpen}
         onClose={() => setIsBrowseOpen(false)}

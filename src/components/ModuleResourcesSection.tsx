@@ -413,7 +413,7 @@ export default function ModuleResourcesSection({ moduleId, userState }: ModuleRe
 
                 <div className="flex-1 min-w-0 pr-16 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h5 className="text-xs font-extrabold text-white leading-tight truncate">
+                    <h5 className="text-xs font-extrabold text-white leading-snug break-words">
                       {res.title}
                     </h5>
                     <span className={`text-[8px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full border ${badgeStyle}`}>

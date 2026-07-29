@@ -38,6 +38,7 @@ import {
   getProfileFromState
 } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { containsProfanity } from '../utils/moderation';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import FriendProfileModal from './friends/FriendProfileModal';
 import FriendsPrivacyModal from './friends/FriendsPrivacyModal';
@@ -410,6 +411,10 @@ export default function FriendsTab({
   };
 
   const handleUpdateBioAndName = async (name: string, bio: string) => {
+    if (containsProfanity(name) || containsProfanity(bio)) {
+      onTriggerToast("Validation Error", "Name or bio contains vulgar or inappropriate words. Please remove them.", "warning");
+      return;
+    }
     const updated = { displayName: name, bio };
     onUpdateState(updated);
     if (userState.uid) {
@@ -676,7 +681,7 @@ export default function FriendsTab({
                   </h3>
                 </div>
                 <div className="divide-y divide-gray-850/50">
-                  {friendsActivities.map((act) => (
+                  {friendsActivities.slice(0, 7).map((act) => (
                     <div key={act.id} className="py-3 flex items-start gap-3 first:pt-0 last:pb-0">
                       <span className="text-xl bg-white/5 w-8 h-8 rounded-lg flex items-center justify-center">{act.avatar}</span>
                       <div className="flex-1 space-y-0.5">

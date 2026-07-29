@@ -229,7 +229,8 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
       setAuthData({
         uid: initialUser.uid,
         email: initialUser.email,
-        displayName: initialUser.displayName
+        displayName: initialUser.displayName,
+        usernameViolation: initialUser.usernameViolation
       });
       setStep('username');
     }
@@ -276,7 +277,7 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
           );
         }
 
-        if (cloudData && cloudData.onboarded) {
+        if (cloudData && cloudData.onboarded && cloudData.username) {
           onAuthComplete({
             uid,
             email,
@@ -289,7 +290,7 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
           return;
         }
 
-        setAuthData({ uid, email, displayName });
+        setAuthData({ uid, email, displayName, usernameViolation: cloudData?.usernameViolation });
         setStep('username');
       } catch (err: any) {
         console.error("Failed to initialize direct native Google Sign-In:", err);
@@ -332,12 +333,25 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
           setIsLoadingAuth(true);
           try {
             let firebaseUser = null;
-            if (data.idToken) {
-              const credential = GoogleAuthProvider.credential(data.idToken, data.accessToken);
-              const result = await signInWithCredential(auth, credential);
-              firebaseUser = result.user;
+            if (data.idToken && data.isGoogleToken !== false) {
+              try {
+                const credential = GoogleAuthProvider.credential(data.idToken, data.accessToken || undefined);
+                const result = await signInWithCredential(auth, credential);
+                firebaseUser = result.user;
+              } catch (tokenErr) {
+                console.warn("[AuthRouter] GoogleAuthProvider.credential token validation skipped or failed, using auth.currentUser/payload user:", tokenErr);
+                firebaseUser = auth.currentUser;
+              }
             } else {
               firebaseUser = auth.currentUser;
+            }
+
+            if (!firebaseUser && data.user && data.user.uid) {
+              firebaseUser = {
+                uid: data.user.uid,
+                email: data.user.email || undefined,
+                displayName: data.user.displayName || undefined,
+              } as any;
             }
 
             if (firebaseUser) {
@@ -352,7 +366,7 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
                 console.warn("Failed to query Firestore inside iframe during message handling:", dbErr);
               }
 
-              if (cloudData && cloudData.onboarded) {
+              if (cloudData && cloudData.onboarded && cloudData.username) {
                 onAuthComplete({
                   uid,
                   email,
@@ -373,7 +387,7 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
                     onboarded: false
                   });
                 } else {
-                  setAuthData({ uid, email, displayName });
+                  setAuthData({ uid, email, displayName, usernameViolation: cloudData?.usernameViolation });
                   setStep('username');
                 }
               }
@@ -507,7 +521,7 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
         );
       }
 
-      if (cloudData && cloudData.onboarded) {
+      if (cloudData && cloudData.onboarded && cloudData.username) {
         onAuthComplete({
           uid,
           email,
@@ -532,7 +546,7 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
         return;
       }
 
-      setAuthData({ uid, email, displayName });
+      setAuthData({ uid, email, displayName, usernameViolation: cloudData?.usernameViolation });
       setStep('username');
     } catch (err: any) {
       console.error("Google Authentication error:", err);

@@ -1,11 +1,11 @@
 import { Revision, UserState, Subject } from '../types';
 import { getLocalDateString } from '../utils/dateUtils';
-import { findTopicById } from '../data';
+import { findTopicById, getReviewSubjectsForState } from '../data';
 
 /**
  * Parses a "YYYY-MM-DD" string into a Date object in a timezone-safe manner.
  */
-function parseDateUTC(str: string): Date {
+export function parseDateUTC(str: string): Date {
   const [year, month, day] = str.split('-').map(Number);
   if (isNaN(year) || isNaN(month) || isNaN(day)) {
     return new Date();
@@ -207,13 +207,32 @@ export function sanitizeRevisions(revisions: Revision[]): Revision[] {
 /**
  * Returns the Daily Review Queue, containing overdue reviews and reviews due today.
  * Supports Exam Mode scheduling override if userState is passed.
+ * Automatically filters out topics from past completed semesters unless they are backlog subjects.
  */
-export function getDailyReviewQueue(revisions: Revision[], userState?: UserState): Revision[] {
+export function getDailyReviewQueue(
+  revisions: Revision[],
+  userState?: UserState,
+  activeSubjects?: Subject[],
+  backlogSubjects?: Subject[]
+): Revision[] {
   const sanitized = sanitizeRevisions(revisions);
   const todayStr = getLocalDateString();
 
+  let validSubjects: Subject[] = [];
+
+  if (userState) {
+    validSubjects = getReviewSubjectsForState(userState);
+  } else if (activeSubjects && activeSubjects.length > 0) {
+    validSubjects = [...activeSubjects, ...(backlogSubjects || [])];
+  }
+
+  // Filter out topics from past completed semesters (unless included in review scope or backlog)
+  const scopedRevisions = (validSubjects.length > 0)
+    ? sanitized.filter((rev) => !!findTopicById(rev.topicId, validSubjects, []))
+    : sanitized;
+
   // Filter for reviews that are due today or overdue
-  const dueReviews = sanitized.filter((rev) => {
+  const dueReviews = scopedRevisions.filter((rev) => {
     // If it was reviewed today, let it be completed for today
     if (rev.lastReviewed === todayStr && rev.repetitions > 0 && rev.status === 'scheduled') {
       return false;
@@ -286,27 +305,41 @@ export interface ReviewStats {
 /**
  * Computes spaced repetition dashboard statistics.
  */
-export function getReviewStats(revisions: Revision[]): ReviewStats {
+export function getReviewStats(
+  revisions: Revision[],
+  userState?: UserState,
+  activeSubjects?: Subject[],
+  backlogSubjects?: Subject[]
+): ReviewStats {
   const sanitized = sanitizeRevisions(revisions);
   const todayStr = getLocalDateString();
 
+  let validSubjects: Subject[] = [];
+
+  if (userState) {
+    validSubjects = getReviewSubjectsForState(userState);
+  } else if (activeSubjects && activeSubjects.length > 0) {
+    validSubjects = [...activeSubjects, ...(backlogSubjects || [])];
+  }
+
+  const scoped = (validSubjects.length > 0)
+    ? sanitized.filter((rev) => !!findTopicById(rev.topicId, validSubjects, []))
+    : sanitized;
+
   // 1. Reviews Due Today (currently due based on nextReview <= today)
-  const reviewsDueToday = sanitized.filter((rev) => rev.nextReview <= todayStr).length;
+  const reviewsDueToday = scoped.filter((rev) => rev.nextReview <= todayStr).length;
 
   // 2. Reviews Completed Today
-  const reviewsCompletedToday = sanitized.filter(
+  const reviewsCompletedToday = scoped.filter(
     (rev) => rev.lastReviewed === todayStr && (rev.repetitions ?? 0) > 0
   ).length;
 
   // 3. Total Reviews Completed (sum of repetitions)
-  const totalReviewsCompleted = sanitized.reduce((sum, rev) => sum + (rev.repetitions ?? 0), 0);
+  const totalReviewsCompleted = scoped.reduce((sum, rev) => sum + (rev.repetitions ?? 0), 0);
 
   // 4. Retention Percentage
-  // Calculated as the percentage of items that have easeFactor >= 2.3 or repetitions > 1.
-  // Standard SM-2 defaults starting at 2.5 ease factor. If students remember well, easeFactor stays high.
-  // Let's use a natural formula based on easeFactors of active reps:
-  const reviewedItems = sanitized.filter((rev) => (rev.repetitions ?? 0) > 0);
-  let retentionPercentage = 95; // Default healthy starting retention
+  const reviewedItems = scoped.filter((rev) => (rev.repetitions ?? 0) > 0);
+  let retentionPercentage = 95;
 
   if (reviewedItems.length > 0) {
     const highEaseCount = reviewedItems.filter((rev) => rev.easeFactor >= 2.2).length;
@@ -314,7 +347,7 @@ export function getReviewStats(revisions: Revision[]): ReviewStats {
   }
 
   // 5. Total Scheduled Revisions count
-  const totalScheduled = sanitized.length;
+  const totalScheduled = scoped.length;
 
   return {
     reviewsDueToday,

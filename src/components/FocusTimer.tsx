@@ -13,12 +13,14 @@ import {
   Coffee,
   BrainCircuit,
   Trophy,
-  X
+  X,
+  Minimize2
 } from 'lucide-react';
 import { UserState } from '../types';
 import { SoundManager } from '../utils/soundManager';
 import { getLocalDateString } from '../utils/dateUtils';
 import { getLevelAndProgress } from '../utils/xpUtils';
+import { calculateNextStreakOnActivity } from '../utils/streakUtils';
 import { getTemplateSubjects, COURSE_TEMPLATES } from '../data';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
@@ -458,15 +460,14 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     let streakIncrement = 0;
     let statusMessage = `Focus session logged! Focused for ${minutes} minutes.`;
 
-    let userStreak = userState.academicStudyStreak ?? 0;
-    let userLongestStreak = userState.longestStudyStreak ?? 0;
+    let userStreak = userState.academicStudyStreak ?? userState.streak ?? 0;
 
     // Check if goal met for the first time today
     if (!completedGoalTodayBefore && completedGoalTodayNow) {
       addedXP += 25; // +25 XP upon reaching Daily Goal
       streakIncrement = 1;
-      userStreak += 1;
-      userLongestStreak = Math.max(userStreak, userLongestStreak);
+      const streakData = calculateNextStreakOnActivity(userState, todayStr);
+      userStreak = streakData.streak;
       statusMessage = `🔥 Daily Goal Complete! You earned +25 XP and extended your Focus Streak to ${userStreak} days!`;
       SoundManager.play('streak_secured');
       SoundManager.vibrate('success');
@@ -507,10 +508,13 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     };
 
     if (streakIncrement > 0) {
-      changes.academicStudyStreak = userStreak;
-      changes.longestStudyStreak = userLongestStreak;
-      changes.streak = userStreak;
-      changes.longestStreak = userLongestStreak;
+      const streakData = calculateNextStreakOnActivity(userState, todayStr);
+      changes.academicStudyStreak = streakData.academicStudyStreak;
+      changes.longestStudyStreak = streakData.longestStudyStreak;
+      changes.streak = streakData.streak;
+      changes.longestStreak = streakData.longestStreak;
+      changes.lastActiveDate = streakData.lastActiveDate;
+      changes.lastFocusDate = streakData.lastFocusDate;
     }
 
     onUpdateState(changes);
@@ -627,42 +631,57 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   if (isMinimized && totalSeconds > 0) {
     return (
       <motion.div 
+        id="focus-timer-minimized"
         layoutId="studyos-focus-minimized"
-        className="fixed bottom-24 right-4 md:right-8 bg-[#141A1F]/95 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-4 shadow-2xl flex items-center gap-4 z-40 select-none max-w-sm"
+        onClick={() => {
+          if (onMinimize) onMinimize();
+        }}
+        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] left-4 right-4 sm:left-auto sm:right-8 bg-[#141A1F]/95 backdrop-blur-xl border border-blue-500/40 rounded-2xl p-3.5 shadow-2xl flex items-center justify-between gap-3 z-40 select-none max-w-sm cursor-pointer touch-manipulation active:scale-[0.98] transition-transform"
       >
-        <div className="relative w-12 h-12 flex items-center justify-center">
-          <svg className="w-full h-full -rotate-90">
-            <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.05)" strokeWidth="3" fill="none" />
-            <circle cx="24" cy="24" r="20" stroke="#3b82f6" strokeWidth="3" fill="none" 
-              strokeDasharray="125.6" 
-              strokeDashoffset={125.6 - (125.6 * progressPercent) / 100} 
-            />
-          </svg>
-          <BrainCircuit className="absolute w-4 h-4 text-blue-400 animate-pulse" />
-        </div>
-        
-        <div>
-          <p className="text-xs font-bold text-white font-display">Focus Mode Active</p>
-          <p className="text-sm font-mono font-semibold text-blue-400">{formatTime(remainingSecs)}</p>
+        <div className="flex items-center gap-3">
+          <div className="relative w-11 h-11 flex items-center justify-center shrink-0">
+            <svg className="w-full h-full -rotate-90">
+              <circle cx="22" cy="22" r="18" stroke="rgba(255,255,255,0.08)" strokeWidth="3" fill="none" />
+              <circle cx="22" cy="22" r="18" stroke="#3b82f6" strokeWidth="3" fill="none" 
+                strokeDasharray="113" 
+                strokeDashoffset={113 - (113 * progressPercent) / 100} 
+              />
+            </svg>
+            <BrainCircuit className="absolute w-4 h-4 text-blue-400 animate-pulse" />
+          </div>
+          
+          <div className="overflow-hidden">
+            <p className="text-[11px] font-bold text-white font-display truncate">{selectedTopicName || "Focus Mode"}</p>
+            <p className="text-xs font-mono font-bold text-blue-400">{formatTime(remainingSecs)}</p>
+          </div>
         </div>
 
-        <div className="flex gap-1.5 ml-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button 
-            onClick={toggleTimer}
-            className="p-2 bg-gray-900 border border-gray-850 hover:border-gray-700 text-gray-300 rounded-lg cursor-pointer animate-none"
-            style={{ minWidth: '32px', minHeight: '32px' }}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleTimer();
+            }}
+            className="w-10 h-10 bg-gray-900 border border-gray-800 active:bg-gray-800 text-gray-200 rounded-xl flex items-center justify-center cursor-pointer touch-manipulation"
+            style={{ minWidth: '40px', minHeight: '40px' }}
+            title={isRunning ? "Pause" : "Resume"}
           >
-            {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+            {isRunning ? <Pause className="w-4 h-4 text-amber-400" /> : <Play className="w-4 h-4 text-emerald-400 fill-current" />}
           </button>
           
           {onMinimize && (
             <button 
-              onClick={onMinimize}
-              className="p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg cursor-pointer shadow-md animate-none"
-              style={{ minWidth: '32px', minHeight: '32px' }}
-              title="Expand Timer"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMinimize();
+              }}
+              className="w-10 h-10 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center cursor-pointer shadow-md touch-manipulation"
+              style={{ minWidth: '40px', minHeight: '40px' }}
+              title="Expand Focus Timer"
             >
-              <Maximize2 className="w-3.5 h-3.5" />
+              <Maximize2 className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -675,13 +694,14 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     if (showPausedExitedScreen) {
       return (
         <div 
+          id="focus-timer-screen"
           ref={containerRef}
-          className="fixed inset-0 w-full h-full min-h-screen bg-[#0C0F12] text-white flex flex-col items-center justify-center p-6 z-50 select-none font-sans"
+          className="fixed inset-0 w-full h-full min-h-[100dvh] bg-[#0C0F12] text-white flex flex-col items-center justify-center p-4 sm:p-6 z-50 select-none font-sans overflow-y-auto"
         >
           {/* Ambient Glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-          <div className="max-w-md w-full bg-[#141A1F] border border-gray-800 rounded-3xl p-6 sm:p-8 text-center space-y-6 shadow-2xl relative z-10">
+          <div className="max-w-md w-full bg-[#141A1F] border border-gray-800 rounded-3xl p-6 sm:p-8 text-center space-y-6 shadow-2xl relative z-10 my-auto">
             <div className="w-16 h-16 bg-blue-500/15 border-2 border-blue-500/30 rounded-full flex items-center justify-center mx-auto text-blue-400 animate-pulse">
               <Clock className="w-8 h-8" />
             </div>
@@ -695,17 +715,25 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
             <div className="flex flex-col gap-3 pt-2">
               <button
-                onClick={handleResumeSession}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-98 text-xs font-black tracking-widest uppercase text-white rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer font-mono"
-                style={{ minHeight: '44px' }}
+                type="button"
+                onClick={() => {
+                  SoundManager.vibrate('light');
+                  handleResumeSession();
+                }}
+                className="w-full py-3.5 bg-blue-600 active:bg-blue-500 text-xs font-black tracking-widest uppercase text-white rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer font-mono touch-manipulation"
+                style={{ minHeight: '48px' }}
               >
                 <Play className="w-4 h-4 fill-white" />
                 <span>Resume Session</span>
               </button>
               <button
-                onClick={handleExitSession}
-                className="w-full py-3.5 bg-gray-900 hover:bg-gray-850 text-xs font-black tracking-widest uppercase text-gray-400 hover:text-white rounded-xl border border-gray-800 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono"
-                style={{ minHeight: '44px' }}
+                type="button"
+                onClick={() => {
+                  SoundManager.vibrate('light');
+                  handleExitSession();
+                }}
+                className="w-full py-3.5 bg-gray-900 active:bg-gray-800 text-xs font-black tracking-widest uppercase text-gray-400 hover:text-white rounded-xl border border-gray-800 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono touch-manipulation"
+                style={{ minHeight: '48px' }}
               >
                 <X className="w-4 h-4" />
                 <span>Exit Session</span>
@@ -718,33 +746,75 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
     return (
       <div 
+        id="focus-timer-screen"
         ref={containerRef}
-        className="fixed inset-0 w-full h-full min-h-screen bg-[#0C0F12] text-white flex flex-col items-center justify-center p-6 z-50 select-none font-sans"
+        className="fixed inset-0 w-full h-full min-h-[100dvh] bg-[#0C0F12] text-white flex flex-col items-center justify-between p-4 sm:p-6 z-50 select-none font-sans overflow-y-auto pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]"
       >
-        {/* Subtle Ambient Ring */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full border border-blue-500/5 animate-pulse pointer-events-none" />
+        {/* Top Header Bar with Android Status Bar Clearance */}
+        <div className="w-full max-w-4xl flex items-center justify-between z-20 px-2 sm:px-4 shrink-0">
+          <div className="flex items-center gap-2">
+            <BrainCircuit className="w-5 h-5 text-blue-500 shrink-0" />
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-400 font-display">Focus Engine</span>
+          </div>
 
-        <div className="max-w-xl w-full flex flex-col items-center justify-center space-y-12 text-center relative z-10">
+          <div className="flex items-center gap-2">
+            {/* Audio toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                SoundManager.vibrate('light');
+                setIsMuted(!isMuted);
+              }}
+              className="w-10 h-10 rounded-xl bg-gray-950/90 border border-gray-850 hover:border-gray-800 flex items-center justify-center text-gray-400 hover:text-white transition-all cursor-pointer touch-manipulation"
+              style={{ minHeight: '42px', minWidth: '42px' }}
+              title={isMuted ? "Unmute Alarm" : "Mute Alarm"}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+            </button>
+
+            {/* Minimize / Back Button */}
+            {onMinimize && (
+              <button
+                type="button"
+                onClick={() => {
+                  SoundManager.vibrate('light');
+                  onMinimize();
+                }}
+                className="px-3.5 py-2 rounded-2xl bg-gray-800/90 border border-gray-700/80 hover:border-gray-600 flex items-center gap-1.5 text-xs font-bold text-gray-200 hover:text-white transition-all cursor-pointer shadow-xl active:scale-95 touch-manipulation"
+                style={{ minHeight: '42px', minWidth: '42px' }}
+                title="Minimize timer to background"
+              >
+                <Minimize2 className="w-4 h-4 text-blue-400" />
+                <span className="text-xs font-bold">Minimize</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Subtle Ambient Ring */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] sm:w-[450px] sm:h-[450px] rounded-full border border-blue-500/5 animate-pulse pointer-events-none" />
+
+        {/* Main Focus Center View */}
+        <div className="max-w-xl w-full flex flex-col items-center justify-center my-auto py-4 space-y-6 sm:space-y-8 text-center relative z-10 shrink-0">
           
           {/* 1. CURRENT TOPIC */}
-          <div className="space-y-2.5 max-w-lg">
-            <span className="text-[10px] font-mono font-black text-blue-400 uppercase tracking-[0.2em] border border-blue-500/20 bg-blue-500/5 px-3 py-1 rounded-full">
+          <div className="space-y-2 max-w-lg px-4">
+            <span className="inline-block text-[10px] font-mono font-black text-blue-400 uppercase tracking-[0.2em] border border-blue-500/20 bg-blue-500/10 px-3.5 py-1.5 rounded-full">
               ⚡ CURRENT TOPIC
             </span>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white font-display leading-tight">
+            <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-white font-display leading-tight line-clamp-2">
               {selectedTopicName || "General Study Block"}
             </h1>
           </div>
 
-          {/* 2. REMAINING TIME */}
-          <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center">
-            {/* Minimal Elegant Circular Progress */}
+          {/* 2. REMAINING TIME RADIAL RING */}
+          <div className="relative w-60 h-60 sm:w-72 sm:h-72 flex items-center justify-center shrink-0">
             <svg className="w-full h-full -rotate-90">
-              <circle cx="50%" cy="50%" r="44%" stroke="rgba(255,255,255,0.02)" strokeWidth="4" fill="none" />
-              <circle cx="50%" cy="50%" r="44%" stroke="url(#activeTimerGradient)" strokeWidth="4" fill="none" 
+              <circle cx="50%" cy="50%" r="43%" stroke="rgba(255,255,255,0.03)" strokeWidth="5" fill="none" />
+              <circle cx="50%" cy="50%" r="43%" stroke="url(#activeTimerGradient)" strokeWidth="5" fill="none" 
                 strokeLinecap="round"
-                strokeDasharray="502.6" 
-                strokeDashoffset={502.6 - (502.6 * progressPercent) / 100} 
+                strokeDasharray="490" 
+                strokeDashoffset={490 - (490 * progressPercent) / 100} 
               />
               <defs>
                 <linearGradient id="activeTimerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -758,53 +828,66 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
               <span className="text-5xl sm:text-6xl font-mono font-bold tracking-tighter text-white">
                 {formatTime(remainingSecs)}
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 font-mono">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 font-mono">
                 {isRunning ? "FOCUS ACTIVE" : "PAUSED"}
               </span>
             </div>
           </div>
 
           {/* 3. CONTROL ACTIONS (Pause, Finish, Exit) */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-sm">
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 w-full max-w-md px-2">
             {/* Pause / Resume Button */}
             <button
-              onClick={toggleTimer}
-              className={`w-full py-4 rounded-2xl font-bold text-sm tracking-wider uppercase flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${
+              type="button"
+              onClick={() => {
+                SoundManager.vibrate('light');
+                toggleTimer();
+              }}
+              className={`py-3.5 px-2 rounded-2xl font-bold text-xs sm:text-sm tracking-wide uppercase flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 touch-manipulation ${
                 isRunning 
-                  ? 'bg-amber-600/10 hover:bg-amber-600/20 text-amber-400 border border-amber-500/30' 
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20'
+                  ? 'bg-amber-600/15 active:bg-amber-600/30 text-amber-400 border border-amber-500/30' 
+                  : 'bg-emerald-600 active:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20'
               }`}
-              style={{ minHeight: '48px' }}
+              style={{ minHeight: '52px' }}
             >
-              {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+              {isRunning ? <Pause className="w-4 h-4 shrink-0" /> : <Play className="w-4 h-4 fill-current shrink-0" />}
               <span>{isRunning ? "Pause" : "Resume"}</span>
             </button>
 
             {/* Finish Button */}
             <button
-              onClick={handleFinishSession}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm tracking-wider uppercase rounded-2xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-              style={{ minHeight: '48px' }}
+              type="button"
+              onClick={() => {
+                SoundManager.vibrate('medium');
+                handleFinishSession();
+              }}
+              className="py-3.5 px-2 bg-blue-600 active:bg-blue-500 text-white font-bold text-xs sm:text-sm tracking-wide uppercase rounded-2xl shadow-lg shadow-blue-600/20 transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer active:scale-95 touch-manipulation"
+              style={{ minHeight: '52px' }}
             >
-              <Trophy className="w-4 h-4" />
+              <Trophy className="w-4 h-4 shrink-0" />
               <span>Finish</span>
             </button>
 
             {/* Exit Button */}
             <button
+              type="button"
               onClick={() => {
+                SoundManager.vibrate('light');
                 setIsRunning(false);
                 setShowStopConfirm(true);
               }}
-              className="w-full py-4 bg-gray-950 hover:bg-red-500/10 border border-gray-850 hover:border-red-500/30 text-gray-400 hover:text-red-400 font-bold text-sm tracking-wider uppercase rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-              style={{ minHeight: '48px' }}
+              className="py-3.5 px-2 bg-gray-950 active:bg-red-500/15 border border-gray-800 text-gray-300 hover:text-red-400 font-bold text-xs sm:text-sm tracking-wide uppercase rounded-2xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer active:scale-95 touch-manipulation"
+              style={{ minHeight: '52px' }}
             >
-              <Square className="w-4 h-4" />
+              <Square className="w-4 h-4 shrink-0" />
               <span>Exit</span>
             </button>
           </div>
 
         </div>
+
+        {/* Bottom space filler for balanced vertical alignment */}
+        <div className="h-2 shrink-0" />
 
         {/* Custom Stop/Exit Session Confirmation Modal */}
         {showStopConfirm && (
@@ -812,7 +895,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-md bg-[#141A1F] border border-gray-800 rounded-2xl p-6 text-center space-y-5 shadow-2xl relative z-20"
+              className="w-full max-w-md bg-[#141A1F] border border-gray-800 rounded-3xl p-6 text-center space-y-5 shadow-2xl relative z-20 my-auto"
             >
               <div className="w-14 h-14 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center mx-auto text-red-400">
                 <Square className="w-6 h-6 fill-current" />
@@ -827,19 +910,25 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
               <div className="flex gap-3 pt-2">
                 <button
+                  type="button"
                   onClick={() => {
+                    SoundManager.vibrate('light');
                     setShowStopConfirm(false);
                     setIsRunning(true);
                   }}
-                  className="flex-1 py-2.5 bg-gray-900 border border-gray-800 hover:bg-gray-850 text-xs font-bold text-gray-400 hover:text-white rounded-xl transition-all cursor-pointer"
-                  style={{ minHeight: '38px' }}
+                  className="flex-1 py-3 bg-gray-900 border border-gray-800 active:bg-gray-850 text-xs font-bold text-gray-300 rounded-xl transition-all cursor-pointer touch-manipulation"
+                  style={{ minHeight: '44px' }}
                 >
                   Keep Studying
                 </button>
                 <button
-                  onClick={handleExitSession}
-                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-xs font-bold text-white rounded-xl shadow-lg transition-all cursor-pointer"
-                  style={{ minHeight: '38px' }}
+                  type="button"
+                  onClick={() => {
+                    SoundManager.vibrate('light');
+                    handleExitSession();
+                  }}
+                  className="flex-1 py-3 bg-red-600 active:bg-red-500 text-xs font-bold text-white rounded-xl shadow-lg transition-all cursor-pointer touch-manipulation"
+                  style={{ minHeight: '44px' }}
                 >
                   Exit Session
                 </button>
@@ -853,25 +942,29 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
   // MODE CONFIGURATION / SETUP SCREEN
   return (
-    <div ref={containerRef} className="fixed inset-0 w-full h-full min-h-screen bg-[#0C0F12]/98 text-white flex flex-col items-center justify-center p-6 overflow-y-auto select-none z-50 font-sans">
+    <div id="focus-timer-screen" ref={containerRef} className="fixed inset-0 w-full h-full min-h-[100dvh] bg-[#0C0F12]/98 text-white flex flex-col items-center justify-between p-4 sm:p-6 overflow-y-auto select-none z-50 font-sans pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)]">
       
       {/* Background visual effects */}
       <div className="absolute top-1/4 left-1/4 w-80 h-80 rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-emerald-500/5 blur-[120px] pointer-events-none" />
 
-      {/* Top action header */}
-      <div className="absolute top-6 left-6 right-6 flex items-center justify-between max-w-4xl mx-auto w-full z-10">
+      {/* Top action header safe for Android status bar and notches */}
+      <div className="w-full max-w-4xl flex items-center justify-between z-20 px-2 sm:px-4 shrink-0">
         <div className="flex items-center gap-2">
-          <BrainCircuit className="w-5 h-5 text-blue-500" />
+          <BrainCircuit className="w-5 h-5 text-blue-500 shrink-0" />
           <span className="text-xs font-bold uppercase tracking-widest text-gray-400 font-display">StudyOS Focus Engine</span>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Audio toggle */}
           <button
-            onClick={() => setIsMuted(!isMuted)}
-            className="w-10 h-10 rounded-xl bg-gray-950 border border-gray-850 hover:border-gray-800 flex items-center justify-center text-gray-400 hover:text-white transition-all cursor-pointer"
-            style={{ minHeight: '40px', minWidth: '40px' }}
+            type="button"
+            onClick={() => {
+              SoundManager.vibrate('light');
+              setIsMuted(!isMuted);
+            }}
+            className="w-10 h-10 rounded-xl bg-gray-950/90 border border-gray-850 hover:border-gray-800 flex items-center justify-center text-gray-400 hover:text-white transition-all cursor-pointer touch-manipulation"
+            style={{ minHeight: '42px', minWidth: '42px' }}
             title={isMuted ? "Unmute Alarm" : "Mute Alarm"}
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
@@ -880,31 +973,37 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
           {/* Close button */}
           {onMinimize && (
             <button
-              onClick={onMinimize}
-              className="w-11 h-11 rounded-full bg-gray-800 border border-gray-700 hover:border-gray-600 hover:bg-gray-700 flex items-center justify-center text-gray-200 hover:text-white transition-all cursor-pointer shadow-lg"
-              style={{ minHeight: '44px', minWidth: '44px' }}
+              type="button"
+              onClick={() => {
+                SoundManager.vibrate('light');
+                onMinimize();
+              }}
+              className="px-3.5 py-2 rounded-2xl bg-gray-800/90 border border-gray-700/80 hover:border-gray-600 flex items-center gap-1.5 text-xs font-bold text-gray-200 hover:text-white transition-all cursor-pointer shadow-xl active:scale-95 touch-manipulation"
+              style={{ minHeight: '42px', minWidth: '42px' }}
+              title="Close Focus Timer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-gray-300" />
+              <span className="text-xs font-bold">Close</span>
             </button>
           )}
         </div>
       </div>
 
-      <div className="max-w-2xl w-full flex flex-col items-center justify-center space-y-8 z-10 text-center pt-16 pb-6">
+      <div className="max-w-2xl w-full flex flex-col items-center justify-center z-10 text-center my-auto py-4">
         
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md bg-[#141A1F]/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl text-left"
+          className="w-full max-w-md bg-[#141A1F]/80 backdrop-blur-xl border border-gray-800 rounded-3xl p-5 sm:p-7 space-y-5 shadow-2xl text-left"
         >
-          <div className="text-center space-y-1.5 pb-2 border-b border-gray-850">
+          <div className="text-center space-y-1 pb-2 border-b border-gray-850">
             <h2 className="text-xl font-extrabold text-white font-display">Initialize Focus Session</h2>
-            <p className="text-xs text-gray-400">Select a preconfigured study block or program a custom focus countdown.</p>
+            <p className="text-xs text-gray-400">Select a study block or program a custom focus countdown.</p>
           </div>
 
           {/* Topic selection with list */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest font-mono">Topic to Focus On</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Topic to Focus On</label>
             <input
               type="text"
               list="topics-datalist"
@@ -921,50 +1020,80 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
           </div>
 
           <div className="space-y-3">
-            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest font-mono">Select Session Mode</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Select Session Mode</label>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
               {TIMER_MODES.map((mode) => {
                 const ModeIcon = mode.icon;
+                const isSelected = !showCustomInput && activeMode === mode.id;
                 return (
                   <button
                     type="button"
                     key={mode.id}
                     onClick={() => {
+                      SoundManager.vibrate('light');
                       setActiveMode(mode.id);
                       setShowCustomInput(false);
                     }}
-                    className={`p-4 rounded-xl border text-left flex flex-col gap-2 transition-all cursor-pointer ${
-                      !showCustomInput && activeMode === mode.id
-                        ? 'bg-blue-600/10 border-blue-500 text-blue-300 shadow-[0_0_15px_rgba(37,99,235,0.15)]'
+                    className={`p-3.5 rounded-2xl border text-left flex flex-col gap-1.5 transition-all cursor-pointer touch-manipulation active:scale-[0.98] ${
+                      isSelected
+                        ? 'bg-blue-600/15 border-blue-500 text-blue-300 shadow-[0_0_15px_rgba(37,99,235,0.2)]'
                         : 'bg-gray-950 border-gray-850 text-gray-400 hover:border-gray-800 hover:text-white'
                     }`}
+                    style={{ minHeight: '56px' }}
                   >
-                    <ModeIcon className="w-5 h-5 shrink-0" />
+                    <ModeIcon className={`w-5 h-5 shrink-0 ${isSelected ? 'text-blue-400' : 'text-gray-500'}`} />
                     <div>
-                      <p className="text-xs font-bold font-display">{mode.name}</p>
-                      <p className="text-[10px] text-gray-500 font-mono">{mode.duration} minutes</p>
+                      <p className="text-xs font-bold font-display text-white">{mode.name}</p>
+                      <p className="text-[10px] text-gray-400 font-mono">{mode.duration} minutes</p>
                     </div>
                   </button>
                 );
               })}
             </div>
 
+            {/* Quick Presets row */}
+            <div className="flex items-center gap-1.5 pt-1 overflow-x-auto pb-1 no-scrollbar">
+              <span className="text-[10px] font-mono text-gray-500 uppercase shrink-0 mr-1">Presets:</span>
+              {[15, 25, 45, 60, 90].map((mins) => (
+                <button
+                  type="button"
+                  key={mins}
+                  onClick={() => {
+                    SoundManager.vibrate('light');
+                    setShowCustomInput(true);
+                    setCustomDuration(mins);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all shrink-0 cursor-pointer touch-manipulation ${
+                    showCustomInput && customDuration === mins
+                      ? 'bg-blue-600 border-blue-500 text-white'
+                      : 'bg-gray-950 border-gray-850 text-gray-400 hover:border-gray-700'
+                  }`}
+                >
+                  {mins}m
+                </button>
+              ))}
+            </div>
+
             {/* Custom Duration Switch */}
             <button
               type="button"
-              onClick={() => setShowCustomInput(true)}
-              className={`w-full p-4 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+              onClick={() => {
+                SoundManager.vibrate('light');
+                setShowCustomInput(!showCustomInput);
+              }}
+              className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer touch-manipulation active:scale-[0.98] ${
                 showCustomInput
-                  ? 'bg-blue-600/10 border-blue-500 text-blue-300 shadow-[0_0_15px_rgba(37,99,235,0.15)]'
+                  ? 'bg-blue-600/15 border-blue-500 text-blue-300 shadow-[0_0_15px_rgba(37,99,235,0.2)]'
                   : 'bg-gray-950 border-gray-850 text-gray-400 hover:border-gray-800 hover:text-white'
               }`}
+              style={{ minHeight: '52px' }}
             >
               <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-gray-500" />
+                <Clock className="w-5 h-5 text-gray-400 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold font-display">Custom study duration</p>
-                  <p className="text-[10px] text-gray-500 font-mono">Program any countdown</p>
+                  <p className="text-xs font-bold font-display text-white">Custom study duration</p>
+                  <p className="text-[10px] text-gray-400 font-mono">Program any custom countdown</p>
                 </div>
               </div>
               {showCustomInput && (
@@ -985,9 +1114,9 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
                   step="5"
                   value={customDuration}
                   onChange={(e) => setCustomDuration(Number(e.target.value))}
-                  className="w-full accent-blue-500 cursor-pointer h-1 bg-gray-800 rounded-lg"
+                  className="w-full accent-blue-500 cursor-pointer h-2 bg-gray-800 rounded-lg"
                 />
-                <div className="flex justify-between text-[10px] text-gray-500 font-mono">
+                <div className="flex justify-between text-[10px] text-gray-400 font-mono">
                   <span>5 minutes</span>
                   <span>180 minutes</span>
                 </div>
@@ -996,25 +1125,45 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
           </div>
 
           {/* Daily Focus Goal status indicator */}
-          <div className="bg-gray-950/60 border border-gray-850 rounded-xl p-3 flex items-start gap-3">
+          <div className="bg-gray-950/70 border border-gray-850 rounded-2xl p-3 flex items-start gap-3">
             <Shield className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <p className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">Daily Target Consistency</p>
-              <p className="text-[10px] text-gray-500 leading-relaxed">
-                Your daily goal is **{userState.dailyFocusGoal ?? 30} minutes**. Reaching this completes your study day, and secures your **Academic Study Streak**!
+              <p className="text-[10px] text-gray-400 leading-relaxed">
+                Your daily goal is <strong className="text-white">{userState.dailyFocusGoal ?? 30} minutes</strong>. Reaching this secures your study streak!
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleStartSession}
-            className="w-full py-4 bg-blue-600 hover:bg-blue-500 active:scale-98 text-sm font-bold text-white rounded-xl shadow-[0_4px_20px_rgba(37,99,235,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer font-display"
-            style={{ minHeight: '48px' }}
-          >
-            <Play className="w-4 h-4" />
-            <span>Begin Study Deep-Work block</span>
-          </button>
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                SoundManager.vibrate('medium');
+                handleStartSession();
+              }}
+              className="flex-1 w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 active:from-blue-500 active:to-indigo-500 text-sm font-bold text-white rounded-2xl shadow-[0_4px_25px_rgba(37,99,235,0.35)] transition-all flex items-center justify-center gap-2 cursor-pointer font-display active:scale-[0.98] touch-manipulation"
+              style={{ minHeight: '52px' }}
+            >
+              <Play className="w-4 h-4 fill-current" />
+              <span>Begin Focus Block</span>
+            </button>
+
+            {onMinimize && (
+              <button
+                type="button"
+                onClick={() => {
+                  SoundManager.vibrate('light');
+                  onMinimize();
+                }}
+                className="w-full sm:w-auto px-5 py-4 bg-gray-950 active:bg-gray-850 border border-gray-800 text-gray-300 font-bold text-xs rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-1.5 touch-manipulation"
+                style={{ minHeight: '52px' }}
+              >
+                <X className="w-4 h-4" />
+                <span>Close</span>
+              </button>
+            )}
+          </div>
         </motion.div>
 
       </div>

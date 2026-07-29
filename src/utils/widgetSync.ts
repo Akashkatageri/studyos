@@ -1,6 +1,59 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { UserState } from '../types';
 
+export interface DayStatus {
+  short: string;    // 'M', 'T', 'W', 'T', 'F', 'S', 'S'
+  full: string;     // 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+  date: string;     // 'YYYY-MM-DD'
+  active: boolean;  // whether user studied or focused on this date
+  isToday: boolean;
+  focusMins: number;
+}
+
+export type WidgetTheme = 'duo_green' | 'fire_orange' | 'obsidian_dark' | 'mint_cream';
+
+export function getTodayWidgetTheme(): WidgetTheme {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
+  const oneDay = 1000 * 60 * 60 * 24;
+  const dayOfYear = Math.floor(diff / oneDay);
+  
+  const themes: WidgetTheme[] = ['duo_green', 'fire_orange', 'obsidian_dark', 'mint_cream'];
+  return themes[dayOfYear % themes.length];
+}
+
+export function getWeeklyDaysStatus(userState: UserState): DayStatus[] {
+  const now = new Date();
+  const currentDay = now.getDay(); // 0 = Sun, 1 = Mon...
+  const monIndex = (currentDay + 6) % 7; // Mon = 0 ... Sun = 6
+  
+  const shortNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const fullNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  
+  const days: DayStatus[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - monIndex + i);
+    const dateStr = d.toLocaleDateString('sv-SE');
+    
+    const focusMins = (userState.focusHistory && userState.focusHistory[dateStr]) || 0;
+    const studyCount = (userState.studyActivity && userState.studyActivity[dateStr]) || 0;
+    const active = focusMins > 0 || studyCount > 0;
+    const isToday = i === monIndex;
+    
+    days.push({
+      short: shortNames[i],
+      full: fullNames[i],
+      date: dateStr,
+      active,
+      isToday,
+      focusMins
+    });
+  }
+  return days;
+}
+
 interface StudyOSWidgetPlugin {
   updateWidgetData(options: {
     streak: string;
@@ -8,6 +61,10 @@ interface StudyOSWidgetPlugin {
     todayFocus: string;
     petStatus: string;
     avatarIcon: string;
+    daysJson?: string;
+    activeDaysCount?: string;
+    daysMask?: string;
+    dailyTheme?: string;
   }): Promise<{ success: boolean }>;
 }
 
@@ -43,33 +100,44 @@ export async function syncAndroidWidget(userState: UserState | null) {
       todayFocus = `${todayMinutes} min`;
     }
 
+    // Days status calculation
+    const days = getWeeklyDaysStatus(userState);
+    const daysJson = JSON.stringify(days);
+    const activeDaysCount = String(days.filter(d => d.active).length);
+    const daysMask = days.map(d => (d.active ? '1' : '0')).join('');
+
     // Pet companion status based on study state
     const focusGoal = userState.dailyFocusGoal || 25;
-    let petStatus = "Zzz... Complete a study session to wake Mochi!";
-    let avatarIcon = userState.avatar || "🐱";
+    let petStatus = "Zzz... Complete a study session to wake PanPan the Panda! 🐼";
+    let avatarIcon = userState.avatar || "🐼";
 
     if (todayMinutes >= focusGoal) {
-      petStatus = "Scholar King! Mochi is so proud of you! 🥰👑";
-      if (avatarIcon === "🐱") {
-        avatarIcon = "🥰";
+      petStatus = "Scholar King! PanPan the Panda is so proud of you! 👑🐼";
+      if (avatarIcon === "🐼" || avatarIcon === "🐱") {
+        avatarIcon = "👑🐼";
       }
     } else if (todayMinutes > 0) {
-      petStatus = "Mochi is studying with you! Keep it up! 📚🐾";
-      if (avatarIcon === "🐱") {
-        avatarIcon = "📚";
+      petStatus = "PanPan the Panda is studying with you! Bamboo power! 🎋🐼";
+      if (avatarIcon === "🐼" || avatarIcon === "🐱") {
+        avatarIcon = "📚🐼";
       }
     } else {
-      if (avatarIcon === "🐱") {
-        avatarIcon = "😴";
+      if (avatarIcon === "🐼" || avatarIcon === "🐱") {
+        avatarIcon = "😴🐼";
       }
     }
 
-    console.log("[WidgetSync] Syncing native widget data:", {
+    const dailyTheme = getTodayWidgetTheme();
+
+    console.log("[WidgetSync] Syncing native Focus Streak widget data with auto-rotating theme:", {
       streak,
       username,
       todayFocus,
       petStatus,
-      avatarIcon
+      avatarIcon,
+      activeDaysCount,
+      daysMask,
+      dailyTheme
     });
 
     await StudyOSWidget.updateWidgetData({
@@ -77,9 +145,13 @@ export async function syncAndroidWidget(userState: UserState | null) {
       username,
       todayFocus,
       petStatus,
-      avatarIcon
+      avatarIcon,
+      daysJson,
+      activeDaysCount,
+      daysMask,
+      dailyTheme
     });
-    console.log("Android native widget updated successfully via Capacitor!");
+    console.log("Android native 1x4 widget updated successfully via Capacitor!");
   } catch (err) {
     console.warn("Failed to synchronize Android native widget:", err);
   }

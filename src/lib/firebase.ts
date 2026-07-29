@@ -23,6 +23,32 @@ import {
 } from "firebase/firestore";
 import { UserState, FriendProfile, FriendRequest, SocialNotification, SocialActivity } from "../types";
 import { getLocalDateString } from "../utils/dateUtils";
+import { containsProfanity, sanitizeUsername, sanitizeDisplayName, sanitizeBio } from "../utils/moderation";
+
+/**
+ * Recursively cleans an object before passing to Firestore setDoc/updateDoc/transaction.set.
+ * Removes any key whose value is `undefined` or converts `undefined` values to `null`
+ * so Firestore never throws 'Unsupported field value: undefined'.
+ */
+export function cleanFirestoreData<T>(obj: T): T {
+  if (obj === undefined) {
+    return null as any;
+  }
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => cleanFirestoreData(item)) as any;
+  }
+  const cleaned: Record<string, any> = {};
+  for (const key of Object.keys(obj)) {
+    const val = (obj as any)[key];
+    if (val !== undefined) {
+      cleaned[key] = cleanFirestoreData(val);
+    }
+  }
+  return cleaned as T;
+}
 
 // Firebase Applet Configuration (from firebase-applet-config.json)
 const firebaseConfig = {
@@ -209,6 +235,7 @@ console.log("[StudyOS Trace] Firestore DB object created successfully.");
 // Check if a username is unique (excluding current user) with an 8-second timeout
 export async function isUsernameUnique(username: string, currentUid?: string): Promise<boolean> {
   if (!username) return false;
+  if (containsProfanity(username)) return false;
   
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("Username uniqueness check timed out")), 8000)
@@ -246,8 +273,8 @@ export function getProfileFromState(state: UserState): Partial<FriendProfile> {
 
   return {
     uid: state.uid || "",
-    username: state.username,
-    displayName: state.displayName || state.username,
+    username: sanitizeUsername(state.username, state.uid),
+    displayName: sanitizeDisplayName(state.displayName || state.username, "Student"),
     avatar: state.avatar,
     university: state.university,
     branch: state.branch,
@@ -262,7 +289,7 @@ export function getProfileFromState(state: UserState): Partial<FriendProfile> {
       ((state.completedTopics?.length || 0) / Math.max(state.completedTopics?.length + state.revisions?.length || 1, 15)) * 100
     ),
     joinedDate: state.joinedDate || new Date().toISOString(),
-    bio: state.bio || "",
+    bio: sanitizeBio(state.bio),
     isPublic: state.isPublic !== false, // default true
     allowFriendRequests: state.allowFriendRequests !== false, // default true
     hideXP: state.hideXP === true,
@@ -284,8 +311,30 @@ export enum OperationType {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  const errCode = (error as any)?.code || '';
+
+  const isNetworkOrOffline = 
+    errCode === 'unavailable' ||
+    errCode === 'deadline-exceeded' ||
+    errCode === 'failed-precondition' ||
+    errMsg.includes('timed out') ||
+    errMsg.includes('network') ||
+    errMsg.includes('offline') ||
+    errMsg.includes('unavailable') ||
+    errMsg.includes('Failed to fetch') ||
+    errMsg.includes('Connection to cloud database timed out');
+
+  const isPermissionDenied =
+    errCode === 'permission-denied' ||
+    errMsg.includes('permission-denied') ||
+    errMsg.includes('Missing or insufficient permissions');
+
   const errInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
+    errorCode: errCode,
+    isNetworkError: isNetworkOrOffline,
+    isPermissionError: isPermissionDenied,
     authInfo: {
       userId: auth.currentUser?.uid || null,
       email: auth.currentUser?.email || null,
@@ -295,6 +344,17 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
+
+  if (isNetworkOrOffline) {
+    console.warn(`[Firestore Network Warning] ${operationType} operation on '${path || 'unknown'}' encountered a temporary network/offline state:`, errMsg);
+    return errInfo;
+  }
+
+  if (isPermissionDenied) {
+    console.error(`[Firestore Permission Error] ${operationType} on '${path || 'unknown'}' denied by Security Rules:`, JSON.stringify(errInfo));
+    throw new Error(`Permission Denied for ${operationType} on ${path}: ${errMsg}`);
+  }
+
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
@@ -432,17 +492,23 @@ export async function syncUserToFirestore(uid: string, state: UserState): Promis
   try {
     const publicProfile = getProfileFromState(state);
     
+    const cleanUsername = sanitizeUsername(state.username, uid);
+    const cleanDisplayName = sanitizeDisplayName(state.displayName || state.username, "Student");
+    const cleanBio = sanitizeBio(state.bio);
+
     // 1. Root Profile: /users/{uid}
     const userDocRef = doc(db, "users", uid);
+    const userEmail = (state.email || auth.currentUser?.email || "").toLowerCase().trim();
     const profileData = {
       uid,
-      username: state.username,
-      displayName: state.displayName || state.username,
-      avatar: state.avatar,
-      university: state.university,
-      branch: state.branch,
-      semester: state.semester,
-      scheme: state.scheme,
+      username: cleanUsername,
+      email: userEmail || "",
+      displayName: cleanDisplayName,
+      avatar: state.avatar || "avatar_1",
+      university: state.university || "VTU",
+      branch: state.branch || "CSE",
+      semester: state.semester || 1,
+      scheme: state.scheme || "2022 Scheme",
       firstYearCycle: state.firstYearCycle || null,
       level: state.level || 1,
       xp: state.xp || 0,
@@ -460,9 +526,9 @@ export async function syncUserToFirestore(uid: string, state: UserState): Promis
       hideXP: state.hideXP === true,
       hideStreak: state.hideStreak === true,
       hideAchievements: state.hideAchievements === true,
-      bio: state.bio || ""
+      bio: cleanBio
     };
-    await setDoc(userDocRef, profileData, { merge: true });
+    await setDoc(userDocRef, cleanFirestoreData(profileData), { merge: true });
 
     // 2. Settings Profile: /settings/{uid}
     const settingsDocRef = doc(db, "settings", uid);
@@ -472,10 +538,20 @@ export async function syncUserToFirestore(uid: string, state: UserState): Promis
       hideXP: state.hideXP === true,
       hideStreak: state.hideStreak === true,
       hideAchievements: state.hideAchievements === true,
-      bio: state.bio || "",
-      email: state.email || ""
+      bio: cleanBio,
+      email: state.email || "",
+      themeMode: state.themeMode || 'dark',
+      dailyReminderEnabled: state.dailyReminderEnabled !== false,
+      dailyReminderTime: state.dailyReminderTime || '20:00',
+      streakAlertsEnabled: state.streakAlertsEnabled !== false,
+      soundEffectsEnabled: state.soundEffectsEnabled !== false,
+      hapticFeedbackEnabled: state.hapticFeedbackEnabled !== false,
+      celebrationAnimationsEnabled: state.celebrationAnimationsEnabled !== false,
+      soundFocusModeEnabled: state.soundFocusModeEnabled === true,
+      soundVolume: state.soundVolume ?? 70,
+      autoMoveUncompletedTodos: state.autoMoveUncompletedTodos === true,
     };
-    await setDoc(settingsDocRef, settingsData, { merge: true });
+    await setDoc(settingsDocRef, cleanFirestoreData(settingsData), { merge: true });
 
     // 3. Progress Stats Profile: /studyStats/{uid}
     const statsDocRef = doc(db, "studyStats", uid);
@@ -485,12 +561,13 @@ export async function syncUserToFirestore(uid: string, state: UserState): Promis
       completedSubjects: state.completedSubjects || [],
       completedSemesters: state.completedSemesters || [],
       backlogSubjects: state.backlogSubjects || [],
+      includedReviewSemesters: state.includedReviewSemesters || [],
       revisions: state.revisions || [],
       inProgressTopics: state.inProgressTopics || [],
       studyActivity: state.studyActivity || {},
       unlockedAchievements: state.unlockedAchievements || [],
       // Focus Habit fields
-      dailyFocusGoal: state.dailyFocusGoal ?? 30,
+      dailyFocusGoal: state.dailyFocusGoal ?? 25,
       academicStudyStreak: state.academicStudyStreak ?? 0,
       longestStudyStreak: state.longestStudyStreak ?? 0,
       totalFocusMinutes: state.totalFocusMinutes ?? 0,
@@ -510,15 +587,26 @@ export async function syncUserToFirestore(uid: string, state: UserState): Promis
       lastFocusDate: state.lastFocusDate || null,
       lastActiveDate: state.lastActiveDate || null,
       focusHistory: state.focusHistory || {},
-      subjectDifficulties: state.subjectDifficulties || {}
+      subjectDifficulties: state.subjectDifficulties || {},
+      todos: state.todos || [],
+      autoMoveUncompletedTodos: state.autoMoveUncompletedTodos || false,
+      themeMode: state.themeMode || 'dark',
+      dailyReminderEnabled: state.dailyReminderEnabled !== false,
+      dailyReminderTime: state.dailyReminderTime || '20:00',
+      streakAlertsEnabled: state.streakAlertsEnabled !== false,
+      soundEffectsEnabled: state.soundEffectsEnabled !== false,
+      hapticFeedbackEnabled: state.hapticFeedbackEnabled !== false,
+      celebrationAnimationsEnabled: state.celebrationAnimationsEnabled !== false,
+      soundFocusModeEnabled: state.soundFocusModeEnabled === true,
+      soundVolume: state.soundVolume ?? 70,
     };
-    await setDoc(statsDocRef, statsData, { merge: true });
+    await setDoc(statsDocRef, cleanFirestoreData(statsData), { merge: true });
 
     // 4. Reserve username: /usernames/{username_lowercase}
     if (state.username) {
       const usernameKey = state.username.toLowerCase().trim();
       const usernameDocRef = doc(db, "usernames", usernameKey);
-      await setDoc(usernameDocRef, { uid, username: state.username.trim() }, { merge: true });
+      await setDoc(usernameDocRef, cleanFirestoreData({ uid, username: state.username.trim() }), { merge: true });
     }
     console.log(`[StudyOS Trace] syncUserToFirestore SUCCEEDED for UID: ${uid}`);
   } catch (err) {
@@ -533,6 +621,12 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
     console.log("[StudyOS Trace] loadUserFromFirestore called but UID is falsy.");
     return null;
   }
+
+  // Graceful check if browser/device is offline
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    console.warn(`[StudyOS Trace] loadUserFromFirestore: Device is offline. Falling back gracefully to cached local state for UID: ${uid}`);
+    return null;
+  }
   
   console.log(`[StudyOS Trace] loadUserFromFirestore starting for UID: ${uid}`);
   
@@ -544,15 +638,11 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
   try {
     const userDocRef = doc(db, "users", uid);
     
-    // Fetch user doc first to check if they exist
+    // Fetch user doc directly by canonical Firebase Auth UID
     const userSnap = await Promise.race([
-      getDoc(userDocRef).catch(err => {
-        console.error(`[StudyOS Trace] loadUserFromFirestore error fetching userDocRef (users/${uid}):`, err);
-        handleFirestoreError(err, OperationType.GET, `users/${uid}`);
-        throw err;
-      }),
+      getDoc(userDocRef),
       timeoutPromise
-    ]);
+    ]) as any;
 
     if (!userSnap.exists()) {
       console.log(`[StudyOS Trace] loadUserFromFirestore completed: No user profile doc exists in cloud for UID: ${uid}`);
@@ -563,7 +653,7 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
 
     const userData = userSnap.data();
 
-    // Only if user exists, fetch settings and studyStats
+    // Fetch settings and studyStats for UID
     const settingsDocRef = doc(db, "settings", uid);
     const statsDocRef = doc(db, "studyStats", uid);
 
@@ -579,27 +669,41 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
         })
       ]),
       timeoutPromise
-    ]);
+    ]) as [any, any];
 
     const settingsData = (settingsSnap && settingsSnap.exists()) ? settingsSnap.data() : {};
     const statsData = (statsSnap && statsSnap.exists()) ? statsSnap.data() : {};
     
+    const rawUsername = userData?.username || "";
+    const rawDisplayName = userData?.displayName || "";
+    const rawBio = userData?.bio || settingsData?.bio || "";
+
+    const isUsernameProfane = containsProfanity(rawUsername);
+    const isBioProfane = containsProfanity(rawBio);
+
     const loadedState = {
       ...userData,
       ...settingsData,
       ...statsData,
+      // If username violates policy, clear it and set usernameViolation flag to trigger Force Rename Screen
+      username: isUsernameProfane ? "" : rawUsername,
+      displayName: rawDisplayName,
+      bio: rawBio,
+      usernameViolation: isUsernameProfane,
+      bioViolation: isBioProfane,
       lastActiveDate: userData?.lastActive || userData?.lastActiveDate || statsData?.lastActiveDate || null,
       uid,
+      email: userData?.email || settingsData?.email || auth.currentUser?.email || "",
       onboarded: true,
       isOffline: false
     } as UserState;
 
-    console.log(`[StudyOS Trace] loadUserFromFirestore SUCCEEDED. Loaded username: @${loadedState.username}, level: ${loadedState.level}, streak: ${loadedState.streak}`);
+    console.log(`[StudyOS Trace] loadUserFromFirestore SUCCEEDED for UID: ${uid}. Username: @${loadedState.username}, level: ${loadedState.level}, streak: ${loadedState.streak}`);
     return loadedState;
   } catch (err) {
-    console.error(`[StudyOS Trace] loadUserFromFirestore FAILED for UID: ${uid}. Error:`, err);
-    handleFirestoreError(err, OperationType.GET, `users/${uid}`);
-    throw err;
+    console.warn(`[StudyOS Trace] loadUserFromFirestore: Network timeout or connection state issue for UID: ${uid}. Falling back gracefully to cached local state.`, err);
+    try { handleFirestoreError(err, OperationType.GET, `users/${uid}`); } catch (_) { /* ignore re-throw for graceful fallback */ }
+    return null;
   }
 }
 
@@ -611,6 +715,7 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
   const completedSemesters = Array.from(new Set([...(local.completedSemesters || []), ...(cloud.completedSemesters || [])]));
   const backlogSubjects = Array.from(new Set([...(local.backlogSubjects || []), ...(cloud.backlogSubjects || [])]));
   const inProgressTopics = Array.from(new Set([...(local.inProgressTopics || []), ...(cloud.inProgressTopics || [])]));
+  const includedReviewSemesters = Array.from(new Set([...(local.includedReviewSemesters || []), ...(cloud.includedReviewSemesters || [])]));
   
   const allRevisions = [...(local.revisions || []), ...(cloud.revisions || [])];
   const uniqueRevisions = allRevisions.reduce((acc, current) => {
@@ -636,15 +741,39 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
     }
   }
 
+  const allTodos = [...(local.todos || []), ...(cloud.todos || [])];
+  const mergedTodos = allTodos.reduce((acc, current) => {
+    const existingIndex = acc.findIndex(t => t.id === current.id);
+    if (existingIndex < 0) {
+      acc.push(current);
+    } else if (current.completed && !acc[existingIndex].completed) {
+      acc[existingIndex] = current;
+    }
+    return acc;
+  }, [] as typeof local.todos);
+
   return {
     ...cloud,
     ...local,
+    todos: mergedTodos,
+    autoMoveUncompletedTodos: local.autoMoveUncompletedTodos ?? cloud.autoMoveUncompletedTodos ?? false,
+    themeMode: local.themeMode ?? cloud.themeMode ?? 'dark',
+    dailyReminderEnabled: local.dailyReminderEnabled ?? cloud.dailyReminderEnabled ?? true,
+    dailyReminderTime: local.dailyReminderTime ?? cloud.dailyReminderTime ?? '20:00',
+    streakAlertsEnabled: local.streakAlertsEnabled ?? cloud.streakAlertsEnabled ?? true,
+    soundEffectsEnabled: local.soundEffectsEnabled ?? cloud.soundEffectsEnabled ?? true,
+    hapticFeedbackEnabled: local.hapticFeedbackEnabled ?? cloud.hapticFeedbackEnabled ?? true,
+    celebrationAnimationsEnabled: local.celebrationAnimationsEnabled ?? cloud.celebrationAnimationsEnabled ?? true,
+    soundFocusModeEnabled: local.soundFocusModeEnabled ?? cloud.soundFocusModeEnabled ?? false,
+    soundVolume: local.soundVolume ?? cloud.soundVolume ?? 70,
+
     xp: Math.max(local.xp || 0, cloud.xp || 0),
     level: Math.max(local.level || 1, cloud.level || 1),
     streak: Math.max(local.streak || 0, cloud.streak || 0),
     longestStreak: Math.max(local.longestStreak || 0, cloud.longestStreak || 0),
-    // Merge new focus stats
-    dailyFocusGoal: cloud.dailyFocusGoal || local.dailyFocusGoal || 30,
+
+    // Merge focus stats & study calendar configs (local setting updates take precedence over old cloud data)
+    dailyFocusGoal: local.dailyFocusGoal ?? cloud.dailyFocusGoal ?? 25,
     academicStudyStreak: Math.max(local.academicStudyStreak || 0, cloud.academicStudyStreak || 0),
     longestStudyStreak: Math.max(local.longestStudyStreak || 0, cloud.longestStudyStreak || 0),
     totalFocusMinutes: Math.max(local.totalFocusMinutes || 0, cloud.totalFocusMinutes || 0),
@@ -654,20 +783,21 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
     longestFocusSessionMinutes: Math.max(local.longestFocusSessionMinutes || 0, cloud.longestFocusSessionMinutes || 0),
     todayFocusMinutes: Math.max(local.todayFocusMinutes || 0, cloud.todayFocusMinutes || 0),
     todayFocusXPRewarded: Math.max(local.todayFocusXPRewarded || 0, cloud.todayFocusXPRewarded || 0),
-    studyShields: cloud.studyShields ?? local.studyShields ?? 3,
-    weeklyStudySchedule: cloud.weeklyStudySchedule || local.weeklyStudySchedule || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-    semesterStartDate: cloud.semesterStartDate || local.semesterStartDate || null,
-    semesterEndDate: cloud.semesterEndDate || local.semesterEndDate || null,
-    semesterBreaks: cloud.semesterBreaks || local.semesterBreaks || [],
-    vacationMode: cloud.vacationMode || local.vacationMode || { active: false, startDate: null, endDate: null },
-    semesterBreakMode: cloud.semesterBreakMode ?? local.semesterBreakMode ?? false,
-    lastFocusDate: cloud.lastFocusDate || local.lastFocusDate || null,
+    studyShields: local.studyShields ?? cloud.studyShields ?? 3,
+    weeklyStudySchedule: local.weeklyStudySchedule ?? cloud.weeklyStudySchedule ?? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    semesterStartDate: local.semesterStartDate ?? cloud.semesterStartDate ?? null,
+    semesterEndDate: local.semesterEndDate ?? cloud.semesterEndDate ?? null,
+    semesterBreaks: local.semesterBreaks ?? cloud.semesterBreaks ?? [],
+    vacationMode: local.vacationMode ?? cloud.vacationMode ?? { active: false, startDate: null, endDate: null },
+    semesterBreakMode: local.semesterBreakMode ?? cloud.semesterBreakMode ?? false,
+    lastFocusDate: local.lastFocusDate || cloud.lastFocusDate || null,
     focusHistory: mergedFocusHistory,
     completedTopics,
     completedModules,
     completedSubjects,
     completedSemesters,
     backlogSubjects,
+    includedReviewSemesters,
     revisions: uniqueRevisions,
     studyActivity: mergedStudyActivity,
     unlockedAchievements,
@@ -680,6 +810,9 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
 
 // Atomic username registration inside a Firestore transaction with a 12-second timeout fallback
 export async function registerUserProfileTransaction(uid: string, username: string, state: UserState): Promise<void> {
+  if (containsProfanity(username) || containsProfanity(state.displayName) || containsProfanity(state.bio)) {
+    throw new Error("PROFANITY_NOT_ALLOWED");
+  }
   const usernameKey = username.toLowerCase().trim();
   const usernameDocRef = doc(db, "usernames", usernameKey);
   const userDocRef = doc(db, "users", uid);
@@ -707,11 +840,11 @@ export async function registerUserProfileTransaction(uid: string, username: stri
           uid,
           username,
           displayName: state.displayName || username,
-          avatar: state.avatar,
-          university: state.university,
-          branch: state.branch,
-          semester: state.semester,
-          scheme: state.scheme,
+          avatar: state.avatar || 'avatar_1',
+          university: state.university || 'VTU',
+          branch: state.branch || 'CSE',
+          semester: state.semester || 1,
+          scheme: state.scheme || '2022 Scheme',
           firstYearCycle: state.firstYearCycle || null,
           level: state.level || 1,
           xp: state.xp || 0,
@@ -753,10 +886,10 @@ export async function registerUserProfileTransaction(uid: string, username: stri
           unlockedAchievements: state.unlockedAchievements || []
         };
 
-        transaction.set(usernameDocRef, { uid, username: username.trim() });
-        transaction.set(userDocRef, profileData, { merge: true });
-        transaction.set(settingsDocRef, settingsData, { merge: true });
-        transaction.set(statsDocRef, statsData, { merge: true });
+        transaction.set(usernameDocRef, cleanFirestoreData({ uid, username: username.trim() }));
+        transaction.set(userDocRef, cleanFirestoreData(profileData), { merge: true });
+        transaction.set(settingsDocRef, cleanFirestoreData(settingsData), { merge: true });
+        transaction.set(statsDocRef, cleanFirestoreData(statsData), { merge: true });
       }),
       timeoutPromise
     ]);
@@ -896,10 +1029,14 @@ export async function getAllPublicProfiles(): Promise<FriendProfile[]> {
   snap.forEach((d) => {
     const data = d.data();
     if (data.isPublic !== false) {
+      const cleanUsername = sanitizeUsername(data.username, data.uid || d.id);
+      const cleanDisplayName = sanitizeDisplayName(data.displayName || data.username, cleanUsername);
+      const cleanBio = sanitizeBio(data.bio);
+
       profiles.push({
         uid: data.uid || d.id,
-        username: data.username || "",
-        displayName: data.displayName || data.username || "",
+        username: cleanUsername,
+        displayName: cleanDisplayName,
         avatar: data.avatar || "🎓",
         university: data.university || "",
         branch: data.branch || "",
@@ -912,7 +1049,7 @@ export async function getAllPublicProfiles(): Promise<FriendProfile[]> {
         modulesCompleted: data.modulesCompleted || 0,
         semesterProgress: data.semesterProgress || 0,
         joinedDate: data.joinedDate || new Date().toISOString(),
-        bio: data.bio || "",
+        bio: cleanBio,
         isPublic: data.isPublic !== false,
         allowFriendRequests: data.allowFriendRequests !== false,
         hideXP: data.hideXP === true,
@@ -966,13 +1103,19 @@ export function subscribeFriendRequests(userId: string, callback: (requests: Fri
     where("status", "==", "pending")
   );
 
-  return onSnapshot(q, (snap) => {
-    const requests: FriendRequest[] = [];
-    snap.forEach((d) => {
-      requests.push(d.data() as FriendRequest);
-    });
-    callback(requests);
-  });
+  return onSnapshot(
+    q, 
+    (snap) => {
+      const requests: FriendRequest[] = [];
+      snap.forEach((d) => {
+        requests.push(d.data() as FriendRequest);
+      });
+      callback(requests);
+    },
+    (err) => {
+      console.warn("[StudyOS] friendRequests subscription non-fatal error:", err);
+    }
+  );
 }
 
 // Retrieve sent friend requests
@@ -985,28 +1128,40 @@ export function subscribeSentRequests(userId: string, callback: (requests: Frien
     where("status", "==", "pending")
   );
 
-  return onSnapshot(q, (snap) => {
-    const requests: FriendRequest[] = [];
-    snap.forEach((d) => {
-      requests.push(d.data() as FriendRequest);
-    });
-    callback(requests);
-  });
+  return onSnapshot(
+    q, 
+    (snap) => {
+      const requests: FriendRequest[] = [];
+      snap.forEach((d) => {
+        requests.push(d.data() as FriendRequest);
+      });
+      callback(requests);
+    },
+    (err) => {
+      console.warn("[StudyOS] sent friendRequests subscription non-fatal error:", err);
+    }
+  );
 }
 
 // Retrieve notifications with subscription
 export function subscribeNotifications(userId: string, callback: (notifications: SocialNotification[]) => void) {
   if (!userId) return () => {};
   const q = query(collection(db, "notifications"), where("userId", "==", userId));
-  return onSnapshot(q, (snap) => {
-    const notifications: SocialNotification[] = [];
-    snap.forEach((d) => {
-      notifications.push(d.data() as SocialNotification);
-    });
-    // Sort in-memory to prevent requiring firestore index
-    notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    callback(notifications);
-  });
+  return onSnapshot(
+    q, 
+    (snap) => {
+      const notifications: SocialNotification[] = [];
+      snap.forEach((d) => {
+        notifications.push(d.data() as SocialNotification);
+      });
+      // Sort in-memory to prevent requiring firestore index
+      notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      callback(notifications);
+    },
+    (err) => {
+      console.warn("[StudyOS] notifications subscription non-fatal error:", err);
+    }
+  );
 }
 
 // Mark notification as read
@@ -1085,7 +1240,7 @@ export async function createNotification(
     read: false,
     createdAt: new Date().toISOString()
   };
-  await setDoc(notifRef, notification);
+  await setDoc(notifRef, cleanFirestoreData(notification));
 }
 
 export async function createActivity(
@@ -1094,17 +1249,19 @@ export async function createActivity(
   avatar: string,
   text: string
 ): Promise<void> {
+  const cleanUser = sanitizeUsername(username, userId);
+  const cleanText = containsProfanity(text) ? "Completed a study milestone!" : text;
   const actId = `act_${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
   const actRef = doc(db, "activities", actId);
   const activity: SocialActivity = {
     id: actId,
     userId,
-    username,
-    avatar,
-    text,
+    username: cleanUser,
+    avatar: avatar || 'avatar_1',
+    text: cleanText,
     createdAt: new Date().toISOString()
   };
-  await setDoc(actRef, activity);
+  await setDoc(actRef, cleanFirestoreData(activity));
 }
 
 // Trigger social notifications & activity cards for study milestones (streak, level, semester completion)
@@ -1190,14 +1347,14 @@ export async function linkDeviceWithAccount(
   encryptedAccessToken?: string | null
 ): Promise<void> {
   const docRef = doc(db, "device_links", code);
-  await setDoc(docRef, {
+  await setDoc(docRef, cleanFirestoreData({
     status: "paired",
     uid: uid,
     userState: userState,
     encryptedIdToken: encryptedIdToken || null,
     encryptedAccessToken: encryptedAccessToken || null,
     pairedAt: new Date().toISOString()
-  }, { merge: true });
+  }), { merge: true });
 }
 
 /**

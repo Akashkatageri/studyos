@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserState, FriendProfile, SocialActivity } from '../../types';
+import { containsProfanity } from '../../utils/moderation';
+import { ALL_ACHIEVEMENTS } from '../../utils/achievements';
 
 interface FriendProfileModalProps {
   isOpen: boolean;
@@ -93,7 +95,13 @@ export default function FriendProfileModal({
                   </p>
                   {selectedProfile.bio && (
                     <p className="text-xs text-gray-400 italic font-medium leading-relaxed">
-                      "{selectedProfile.bio}"
+                      {containsProfanity(selectedProfile.bio) ? (
+                        <span className="text-red-400/80 not-italic font-mono text-[11px]">
+                          [Bio unavailable - violates community guidelines]
+                        </span>
+                      ) : (
+                        `"${selectedProfile.bio}"`
+                      )}
                     </p>
                   )}
                 </div>
@@ -169,20 +177,43 @@ export default function FriendProfileModal({
               {/* Badges / Achievements list */}
               {!selectedProfile.hideAchievements && (
                 <div className="space-y-3">
-                  <h3 className="text-[10px] font-mono text-gray-500 uppercase tracking-widest border-b border-gray-850 pb-1 flex items-center gap-1.5">
-                    <Award className="w-4 h-4 text-amber-400" />
-                    <span>Unlocked Special Badges</span>
+                  <h3 className="text-[10px] font-mono text-gray-500 uppercase tracking-widest border-b border-gray-850 pb-1 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-amber-400" />
+                      <span>Unlocked Special Badges</span>
+                    </div>
+                    {selectedProfile.badges && (
+                      <span className="text-amber-400 font-bold">{selectedProfile.badges.length} Badges</span>
+                    )}
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedProfile.badges && selectedProfile.badges.length > 0 ? (
-                      selectedProfile.badges.map((badge, i) => (
-                        <span 
-                          key={i} 
-                          className="bg-[#1C1630] border border-amber-500/25 text-amber-400 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl flex items-center gap-1"
-                        >
-                          ✨ {badge}
-                        </span>
-                      ))
+                      selectedProfile.badges.map((badge, i) => {
+                        const ach = ALL_ACHIEVEMENTS.find(a => a.id === badge || a.title === badge);
+                        if (!ach) {
+                          return (
+                            <span 
+                              key={i} 
+                              className="bg-[#1C1630] border border-amber-500/25 text-amber-300 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl flex items-center gap-1"
+                            >
+                              ✨ {badge}
+                            </span>
+                          );
+                        }
+                        return (
+                          <div 
+                            key={i} 
+                            className="bg-[#161224] border border-amber-500/30 text-amber-300 text-[11px] font-semibold px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm"
+                            title={ach.description}
+                          >
+                            <span className="text-sm">{ach.icon}</span>
+                            <span className="text-white font-bold">{ach.title}</span>
+                            <span className="text-[9px] bg-amber-500/20 text-amber-300 font-mono font-bold px-1.5 py-0.5 rounded">
+                              +{ach.xpReward} XP
+                            </span>
+                          </div>
+                        );
+                      })
                     ) : (
                       <p className="text-xs text-gray-500 italic">No achievements unlocked yet this semester.</p>
                     )}
