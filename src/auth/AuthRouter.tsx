@@ -294,21 +294,23 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
         setStep('username');
         return;
       } catch (err: any) {
-        console.warn("[AuthRouter] Direct native Google Sign-In plugin failed or not implemented. Falling back to Web Google Auth:", err);
+        console.error("[AuthRouter] Native Google Sign-In failed:", err);
         const errMsg = err.message || String(err);
         
-        // If it's developer error 10 (SHA-1 mismatch), show helpful message
+        let userFriendlyMsg = "Native Google Sign-In failed: " + errMsg;
         if (errMsg.includes("10:") || errMsg.includes("10 ") || errMsg.includes("DeveloperError") || errMsg.includes("DEVELOPER_ERROR")) {
-          setAuthError({
-            message: "Google Sign-In Error (Developer Error 10). The SHA-1 signing fingerprint of your local app build does not match the one registered in your Firebase Console."
-          });
-          setIsLoadingAuth(false);
-          return;
+          userFriendlyMsg = "Google Sign-In Error (Developer Error 10). The SHA-1 signing fingerprint of your local app build does not match the one registered in your Firebase Console. Please register your app's SHA-1 in the Firebase Console and replace android/app/google-services.json.";
+        } else if (errMsg.includes("12500") || errMsg.includes("SIGN_IN_FAILED")) {
+          userFriendlyMsg = "Google Sign-In Error (Code 12500). Please ensure Google Play Services is updated and your Firebase project has Google Provider enabled.";
         }
-
-        // For "plugin is not Implemented" or missing native code, fall through to web login flow below!
-        console.log("[AuthRouter] Proceeding with Web Google Sign-In fallback...");
+        
+        setAuthError({
+          message: userFriendlyMsg
+        });
+      } finally {
+        setIsLoadingAuth(false);
       }
+      return;
     }
 
     try {
