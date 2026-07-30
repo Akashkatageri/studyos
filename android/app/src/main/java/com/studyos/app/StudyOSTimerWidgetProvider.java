@@ -21,8 +21,21 @@ public class StudyOSTimerWidgetProvider extends AppWidgetProvider {
     private static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences("StudyOSWidgetPrefs", Context.MODE_PRIVATE);
         String todayFocus = prefs.getString("todayFocus", "0 min");
+        String emotion = prefs.getString("emotion", "ready");
+
+        int mascotResId = R.drawable.panda_ready;
+        if ("safe".equalsIgnoreCase(emotion)) {
+            mascotResId = R.drawable.panda_safe;
+        } else if ("at_risk".equalsIgnoreCase(emotion)) {
+            mascotResId = R.drawable.panda_risk;
+        } else if ("complete".equalsIgnoreCase(emotion)) {
+            mascotResId = R.drawable.panda_complete;
+        } else if ("rest".equalsIgnoreCase(emotion)) {
+            mascotResId = R.drawable.panda_sleep;
+        }
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.studyos_timer_widget);
+        views.setImageViewResource(R.id.widget_timer_avatar_icon, mascotResId);
         views.setTextViewText(R.id.widget_timer_subtext, "Today: " + todayFocus);
 
         Intent intent = new Intent(context, MainActivity.class);

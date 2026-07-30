@@ -22,9 +22,29 @@ public class StudyOSTaskWidgetProvider extends AppWidgetProvider {
         SharedPreferences prefs = context.getSharedPreferences("StudyOSWidgetPrefs", Context.MODE_PRIVATE);
         String streak = prefs.getString("streak", "12");
         String statusMessage = prefs.getString("petStatus", "Ready to study! ☀️");
+        String emotion = prefs.getString("emotion", "ready");
+
+        int mascotResId = R.drawable.panda_ready;
+        String badgeText = "• Ready";
+
+        if ("safe".equalsIgnoreCase(emotion)) {
+            mascotResId = R.drawable.panda_safe;
+            badgeText = "• Safe";
+        } else if ("at_risk".equalsIgnoreCase(emotion)) {
+            mascotResId = R.drawable.panda_risk;
+            badgeText = "• At Risk";
+        } else if ("complete".equalsIgnoreCase(emotion)) {
+            mascotResId = R.drawable.panda_complete;
+            badgeText = "• Goal Met";
+        } else if ("rest".equalsIgnoreCase(emotion)) {
+            mascotResId = R.drawable.panda_sleep;
+            badgeText = "• Resting";
+        }
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.studyos_task_widget);
-        views.setTextViewText(R.id.widget_task_streak, "🔥 " + streak);
+        views.setImageViewResource(R.id.widget_task_avatar_icon, mascotResId);
+        views.setTextViewText(R.id.widget_task_streak, "🔥 " + streak + " Streak");
+        views.setTextViewText(R.id.widget_task_pstatus, badgeText);
         views.setTextViewText(R.id.widget_task_subtext, statusMessage);
 
         Intent intent = new Intent(context, MainActivity.class);
