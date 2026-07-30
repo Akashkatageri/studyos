@@ -1420,4 +1420,239 @@ html.oled-mode .glass {
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
+/* ==========================================================================
+   FRIENDS TAB & FRIEND PROFILE LIGHT MODE OPTIMIZATIONS
+   ========================================================================== */
+
+/* 1. Main Podium Card Light Mode */
+html.light-mode .bg-gradient-to-b.from-\[\#181632\],
+html[data-theme="light"] .bg-gradient-to-b.from-\[\#181632\] {
+  background: linear-gradient(180deg, #F3E8FF 0%, #EEF2FF 50%, #F8FAFC 100%) !important;
+  border-color: #C7D2FE !important;
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.08) !important;
+}
+
+html.light-mode .bg-gradient-to-b.from-\[\#181632\] .text-purple-400,
+html[data-theme="light"] .bg-gradient-to-b.from-\[\#181632\] .text-purple-400 {
+  color: #6D28D9 !important;
+}
+
+html.light-mode .bg-gradient-to-b.from-\[\#181632\] .bg-gray-800\/80,
+html[data-theme="light"] .bg-gradient-to-b.from-\[\#181632\] .bg-gray-800\/80 {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+/* Podium Rank 2 & 3 Light Mode */
+html.light-mode .bg-\[\#1A1D2E\],
+html[data-theme="light"] .bg-\[\#1A1D2E\] {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+html.light-mode .bg-\[\#181A28\],
+html[data-theme="light"] .bg-\[\#181A28\] {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+html.light-mode .bg-\[\#181A28\] span,
+html[data-theme="light"] .bg-\[\#181A28\] span {
+  color: #1E293B !important;
+}
+
+/* Podium Rank 1 (Gold) Light Mode */
+html.light-mode .bg-\[\#2A2345\],
+html[data-theme="light"] .bg-\[\#2A2345\] {
+  background-color: #FEF3C7 !important;
+  border-color: #F59E0B !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25) !important;
+}
+
+html.light-mode .bg-gradient-to-b.from-\[\#3B2E15\],
+html[data-theme="light"] .bg-gradient-to-b.from-\[\#3B2E15\] {
+  background: linear-gradient(180deg, #FEF3C7 0%, #FDE68A 100%) !important;
+  border-color: #F59E0B !important;
+}
+
+html.light-mode .bg-gradient-to-b.from-\[\#3B2E15\] span,
+html[data-theme="light"] .bg-gradient-to-b.from-\[\#3B2E15\] span {
+  color: #78350F !important;
+}
+
+/* 2. Friends Cards & Lists Light Mode */
+html.light-mode div[class*="bg-[#121422]"],
+html[data-theme="light"] div[class*="bg-[#121422]"] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light-mode div[class*="bg-[#121422]"] h3,
+html.light-mode div[class*="bg-[#121422]"] h4,
+html[data-theme="light"] div[class*="bg-[#121422]"] h3,
+html[data-theme="light"] div[class*="bg-[#121422]"] h4 {
+  color: #0F172A !important;
+}
+
+html.light-mode div[class*="bg-[#121422]"] p,
+html[data-theme="light"] div[class*="bg-[#121422]"] p {
+  color: #334155 !important;
+}
+
+html.light-mode div[class*="bg-[#0A0C16]"],
+html[data-theme="light"] div[class*="bg-[#0A0C16]"] {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light-mode div[class*="bg-[#0A0C16]"] span.text-white,
+html.light-mode div[class*="bg-[#0A0C16]"] span.text-gray-300,
+html[data-theme="light"] div[class*="bg-[#0A0C16]"] span.text-white,
+html[data-theme="light"] div[class*="bg-[#0A0C16]"] span.text-gray-300 {
+  color: #0F172A !important;
+}
+
+html.light-mode div[class*="bg-[#0A0C16]"] span.text-gray-500,
+html.light-mode div[class*="bg-[#0A0C16]"] span.text-gray-400,
+html[data-theme="light"] div[class*="bg-[#0A0C16]"] span.text-gray-500,
+html[data-theme="light"] div[class*="bg-[#0A0C16]"] span.text-gray-400 {
+  color: #64748B !important;
+}
+
+/* 3. Bottom Quick Search Bar Light Mode */
+html.light-mode div[class*="bg-[#121422]"] input,
+html[data-theme="light"] div[class*="bg-[#121422]"] input {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+html.light-mode div[class*="bg-[#121422]"] input::placeholder,
+html[data-theme="light"] div[class*="bg-[#121422]"] input::placeholder {
+  color: #94A3B8 !important;
+}
+
+html.light-mode button[class*="bg-[#181A28]"],
+html[data-theme="light"] button[class*="bg-[#181A28]"] {
+  background-color: #7C3AED !important;
+  border-color: #6D28D9 !important;
+  color: #FFFFFF !important;
+}
+
+/* 4. Student Profile Dialog Light Mode */
+html.light-mode #student-profile-dialog #profile-modal-backdrop,
+html[data-theme="light"] #student-profile-dialog #profile-modal-backdrop {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+}
+
+html.light-mode #profile-modal-card,
+html[data-theme="light"] #profile-modal-card {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+  color: #0F172A !important;
+}
+
+html.light-mode #profile-modal-card .border-b,
+html.light-mode #profile-modal-card .border-t,
+html[data-theme="light"] #profile-modal-card .border-b,
+html[data-theme="light"] #profile-modal-card .border-t {
+  border-color: #E2E8F0 !important;
+}
+
+html.light-mode #back-from-profile,
+html[data-theme="light"] #back-from-profile {
+  color: #6D28D9 !important;
+}
+
+html.light-mode #unfriend-button,
+html[data-theme="light"] #unfriend-button {
+  background-color: #FEF2F2 !important;
+  border-color: #FCA5A5 !important;
+  color: #DC2626 !important;
+}
+
+/* Profile Header Banner inside Modal */
+html.light-mode #profile-modal-card .bg-gradient-to-b.from-\[\#181632\],
+html[data-theme="light"] #profile-modal-card .bg-gradient-to-b.from-\[\#181632\] {
+  background: linear-gradient(180deg, #EEF2FF 0%, #F5F3FF 100%) !important;
+  border-color: #C7D2FE !important;
+}
+
+html.light-mode #profile-modal-card .bg-\[\#1C183B\],
+html[data-theme="light"] #profile-modal-card .bg-\[\#1C183B\] {
+  background-color: #FFFFFF !important;
+  border-color: #A5B4FC !important;
+}
+
+html.light-mode #profile-modal-card h2,
+html[data-theme="light"] #profile-modal-card h2 {
+  color: #0F172A !important;
+}
+
+html.light-mode #profile-modal-card .text-gray-400,
+html.light-mode #profile-modal-card .text-gray-500,
+html[data-theme="light"] #profile-modal-card .text-gray-400,
+html[data-theme="light"] #profile-modal-card .text-gray-500 {
+  color: #64748B !important;
+}
+
+html.light-mode #profile-modal-card .bg-\[\#0B0D18\],
+html[data-theme="light"] #profile-modal-card .bg-\[\#0B0D18\] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light-mode #profile-modal-card .bg-\[\#0B0D18\] span.text-white,
+html[data-theme="light"] #profile-modal-card .bg-\[\#0B0D18\] span.text-white {
+  color: #0F172A !important;
+}
+
+/* Semester Progress Bar in Light Mode */
+html.light-mode #profile-modal-card .bg-gray-900,
+html[data-theme="light"] #profile-modal-card .bg-gray-900 {
+  background-color: #E2E8F0 !important;
+  border-color: #CBD5E1 !important;
+}
+
+/* 5. Privacy Settings & Notifications Modals Light Mode */
+html.light-mode #privacy-modal-card,
+html.light-mode #notifications-card,
+html[data-theme="light"] #privacy-modal-card,
+html[data-theme="light"] #notifications-card {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+}
+
+html.light-mode #privacy-modal-card h3,
+html.light-mode #notifications-card h3,
+html[data-theme="light"] #privacy-modal-card h3,
+html[data-theme="light"] #notifications-card h3 {
+  color: #0F172A !important;
+}
+
+html.light-mode #privacy-modal-card input,
+html.light-mode #privacy-modal-card textarea,
+html[data-theme="light"] #privacy-modal-card input,
+html[data-theme="light"] #privacy-modal-card textarea {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+html.light-mode #close-privacy-modal,
+html.light-mode #close-notifications-modal,
+html[data-theme="light"] #close-privacy-modal,
+html[data-theme="light"] #close-notifications-modal {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #334155 !important;
+}
+
 

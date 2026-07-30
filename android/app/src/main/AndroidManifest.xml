@@ -45,7 +45,7 @@
             android:name=".StudyOSWidgetProvider"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
-            android:label="StudyOS Companion &amp; Streak">
+            android:label="PanPan Mascot Companion (2x2)">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { UserState } from '../types';
+import { getLocalDateString } from './dateUtils';
 
 export interface DayStatus {
   short: string;    // 'M', 'T', 'W', 'T', 'F', 'S', 'S'
@@ -35,7 +36,7 @@ export function getWeeklyDaysStatus(userState: UserState): DayStatus[] {
   for (let i = 0; i < 7; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() - monIndex + i);
-    const dateStr = d.toLocaleDateString('sv-SE');
+    const dateStr = getLocalDateString(d);
     
     const focusMins = (userState.focusHistory && userState.focusHistory[dateStr]) || 0;
     const studyCount = (userState.studyActivity && userState.studyActivity[dateStr]) || 0;
@@ -82,7 +83,7 @@ export async function syncAndroidWidget(userState: UserState | null) {
     
     // Focus hours / mins
     // Use Sweden locale format to get robust YYYY-MM-DD
-    const todayStr = new Date().toLocaleDateString('sv-SE');
+    const todayStr = getLocalDateString();
     const todayMinutes = userState.todayFocusMinutes 
       || (userState.focusHistory && userState.focusHistory[todayStr])
       || 0;
@@ -157,7 +158,6 @@ export async function syncAndroidWidget(userState: UserState | null) {
       todayFocus,
       petStatus,
       avatarIcon,
-      emotion,
       daysJson,
       activeDaysCount,
       daysMask,

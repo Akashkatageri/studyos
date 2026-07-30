@@ -164,8 +164,11 @@ export default function UsernameScreen({
           Choose Username
         </h2>
         <p className="text-xs text-gray-400">
-          Set up your unique handle inside the StudyOS network directory.
+          Set up your permanent handle inside the StudyOS network directory.
         </p>
+        <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[11px] text-blue-300">
+          🔒 <strong className="text-white">Note:</strong> Your username is <strong>permanent</strong> and cannot be directly changed later. Used for friend search, leaderboards, profile links, and mentions.
+        </div>
       </div>
 
       {authData.usernameViolation && (

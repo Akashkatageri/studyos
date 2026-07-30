@@ -135,23 +135,6 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     getProgress: (u) => ({ current: Math.min(100, u.totalFocusSessions || 0), target: 100, unit: 'sessions' })
   },
   {
-    id: 'quiz-1000',
-    title: 'Quiz Titan',
-    description: 'Answer or review 1,000 quiz questions.',
-    icon: '🧠',
-    rarity: 'rare',
-    xpReward: 400,
-    checkUnlocked: (u) => {
-      const revs = u.revisions || [];
-      const count = revs.reduce((acc, r) => acc + (r.history?.length || 0), 0);
-      return count >= 1000;
-    },
-    getProgress: (u) => {
-      const count = (u.revisions || []).reduce((acc, r) => acc + (r.history?.length || 0), 0);
-      return { current: Math.min(1000, count), target: 1000, unit: 'answers' };
-    }
-  },
-  {
     id: 'month-no-miss',
     title: 'Iron Discipline',
     description: 'No missed day for an entire calendar month.',
@@ -224,22 +207,6 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     xpReward: 800,
     checkUnlocked: (u) => (u.academicStudyStreak || 0) >= 30,
     getProgress: (u) => ({ current: Math.min(30, u.academicStudyStreak || 0), target: 30, unit: 'days' })
-  },
-  {
-    id: 'quiz-perfect-100',
-    title: 'Perfectionist 100',
-    description: 'Achieve 100 perfect quiz review scores.',
-    icon: '⚡',
-    rarity: 'epic',
-    xpReward: 900,
-    checkUnlocked: (u) => {
-      const revs = u.revisions || [];
-      return revs.filter(r => r.learningDifficulty === 'easy').length >= 100;
-    },
-    getProgress: (u) => {
-      const count = (u.revisions || []).filter(r => r.learningDifficulty === 'easy').length;
-      return { current: Math.min(100, count), target: 100, unit: 'perfect' };
-    }
   },
 
   // ==========================================
@@ -374,17 +341,6 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     xpReward: 1000,
     checkUnlocked: (u) => (u.todayFocusMinutes || 0) >= 480,
     getProgress: (u) => ({ current: Math.min(480, u.todayFocusMinutes || 0), target: 480, unit: 'mins' })
-  },
-  {
-    id: 'lightning-fast',
-    title: 'Lightning Fast',
-    description: 'Finish a quiz revision with 100% accuracy.',
-    icon: '⚡',
-    rarity: 'secret',
-    isSecret: true,
-    xpReward: 200,
-    checkUnlocked: (u) => (u.revisions || []).some(r => r.learningDifficulty === 'easy'),
-    getProgress: (u) => ({ current: (u.revisions || []).some(r => r.learningDifficulty === 'easy') ? 1 : 0, target: 1, unit: 'quiz' })
   },
 
   // ==========================================

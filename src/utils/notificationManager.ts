@@ -41,7 +41,7 @@ export class NotificationManager {
   }
 
   /**
-   * Schedule twice-a-day Duolingo-style study and streak protection notifications.
+   * Schedule twice-a-day StudyOS study and streak protection notifications.
    */
   public static async syncDailyStudyReminders(options: NotificationScheduleOptions): Promise<void> {
     const {
@@ -130,7 +130,7 @@ export class NotificationManager {
           notifications: [
             {
               id: this.SCHEDULE_ID_TEST,
-              title: `🔥 Duolingo Test Alert (Streak: ${streak} Days)`,
+              title: `🔥 StudyOS Test Alert (Streak: ${streak} Days)`,
               body: `Keep your study momentum going! This is how your twice-daily Android study reminders will look.`,
               schedule: { at: new Date(Date.now() + 1000) },
               sound: 'beep.wav'
@@ -139,7 +139,7 @@ export class NotificationManager {
         });
         return true;
       } else if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification(`🔥 Duolingo Test Alert (Streak: ${streak} Days)`, {
+        new Notification(`🔥 StudyOS Test Alert (Streak: ${streak} Days)`, {
           body: `Keep your study momentum going! This is how your twice-daily study reminders will look.`,
           icon: '/icon.png'
         });

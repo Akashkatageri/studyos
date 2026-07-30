@@ -1277,7 +1277,7 @@ export default function App() {
 
   // Trigger Streak Danger Modal Pop-up once per browser session
   useEffect(() => {
-    if (userState && userState.onboarded && (userState.streak || 0) > 0) {
+    if (authInitialized && userState && userState.onboarded && (userState.streak || 0) > 0) {
       const todayStr = getLocalDateString();
       const studiedToday = (userState.studyActivity && (userState.studyActivity[todayStr] || 0) > 0) || ((userState.todayFocusMinutes || 0) >= (userState.dailyFocusGoal ?? 30));
       const alreadyAlerted = sessionStorage.getItem('studyos-streak-alerted');
@@ -1290,7 +1290,7 @@ export default function App() {
         return () => clearTimeout(timer);
       }
     }
-  }, [userState?.onboarded]);
+  }, [authInitialized, userState?.onboarded]);
 
   // Post-onboarding Study Calendar prompt listener
   useEffect(() => {
@@ -1341,6 +1341,23 @@ export default function App() {
   // 2. State Persistent Save Trigger with Automatic Badge Unlock Detection
   const saveState = (updated: UserState) => {
     if (updated && updated.onboarded) {
+      const todayStr = getLocalDateString();
+      const prevXp = userState?.xp || 0;
+      const newXp = updated.xp || 0;
+      const xpDiff = newXp - prevXp;
+
+      if (xpDiff > 0) {
+        const currentDailyMap = updated.dailyXP || userState?.dailyXP || {};
+        const todayXPCount = (currentDailyMap[todayStr] || 0) + xpDiff;
+        updated = {
+          ...updated,
+          dailyXP: {
+            ...currentDailyMap,
+            [todayStr]: todayXPCount,
+          }
+        };
+      }
+
       const { activeSubjects, backlogSubjects } = getUserSubjects(updated);
       const { updatedState, newlyUnlocked } = syncUserAchievementsAndXP(updated, activeSubjects, backlogSubjects);
       updated = updatedState;
@@ -2452,7 +2469,7 @@ export default function App() {
                   ⚠️ Streak in Danger!
                 </span>
                 <h3 className="text-xl sm:text-2xl font-black font-display text-white tracking-tight leading-none pt-2">
-                  Protect Your {userState.streak}-Day Goal!
+                  Protect Your 🔥 {userState.streak}-Day Streak!
                 </h3>
                 <p className="text-gray-400 text-xs sm:text-sm leading-relaxed max-w-sm mx-auto">
                   Coach, you haven't completed any study activity or revisions today yet! Secure your hard work before it resets tonight.

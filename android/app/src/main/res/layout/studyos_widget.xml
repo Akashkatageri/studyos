@@ -3,103 +3,107 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="horizontal"
+    android:orientation="vertical"
     android:background="@drawable/studyos_widget_background"
     android:padding="12dp"
-    android:gravity="center_vertical">
+    android:gravity="center">
 
-    <!-- Avatar / Native Mascot Vector Badge (48dp) -->
+    <!-- Top Row: Brand Header & Status Pill -->
     <LinearLayout
-        android:id="@+id/widget_avatar_bg"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:background="@drawable/studyos_widget_badge_bg"
-        android:layout_marginEnd="10dp">
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp">
 
-        <ImageView
-            android:id="@+id/widget_avatar_icon"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:src="@drawable/panda_ready"
-            android:scaleType="fitCenter"
-            android:contentDescription="StudyOS Mascot" />
+        <TextView
+            android:id="@+id/widget_brand"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="PanPan Companion"
+            android:textColor="#F59E0B"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" />
+
+        <TextView
+            android:id="@+id/widget_pstatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="• Ready"
+            android:textColor="#10B981"
+            android:textSize="9sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Content Area -->
+    <!-- Center Content: Mascot Avatar Badge & Mascot Status -->
     <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical"
-        android:gravity="center_vertical">
+        android:gravity="center">
 
-        <!-- Top Row: Brand & Status -->
+        <!-- Prominent Vector Mascot Badge (54dp) -->
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:id="@+id/widget_avatar_bg"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/studyos_widget_badge_bg"
+            android:layout_marginBottom="6dp">
 
-            <TextView
-                android:id="@+id/widget_brand"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="StudyOS"
-                android:textColor="#F59E0B"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:fontFamily="sans-serif-condensed" />
-
-            <TextView
-                android:id="@+id/widget_pstatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="• Ready"
-                android:textColor="#10B981"
-                android:textSize="9sp"
-                android:textStyle="bold" />
+            <ImageView
+                android:id="@+id/widget_avatar_icon"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@drawable/panda_ready"
+                android:scaleType="fitCenter"
+                android:contentDescription="StudyOS Mascot" />
         </LinearLayout>
 
-        <!-- Main Stat: Streak / XP -->
+        <!-- Main Stat: Streak -->
         <TextView
             android:id="@+id/widget_main_stat"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="🔥 12 Day Streak"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
+            android:textSize="15sp"
             android:textStyle="bold"
-            android:layout_marginTop="1dp" />
+            android:gravity="center" />
 
-        <!-- Status Message / Duolingo Copy -->
+        <!-- Mascot Subtext Quote -->
         <TextView
             android:id="@+id/widget_subtext"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Ready to study! ☀️"
+            android:text="PanPan is ready to study! ☀️"
             android:textColor="#E2E8F0"
-            android:textSize="11sp"
-            android:textStyle="bold"
+            android:textSize="10sp"
+            android:gravity="center"
+            android:maxLines="2"
+            android:ellipsize="end"
             android:layout_marginTop="2dp" />
-
     </LinearLayout>
 
-    <!-- Action Button -->
+    <!-- Bottom Action Button -->
     <TextView
         android:id="@+id/widget_action_btn"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Start"
+        android:text="Start Study Session 🚀"
         android:textColor="#FFFFFF"
-        android:textSize="12sp"
+        android:textSize="11sp"
         android:textStyle="bold"
+        android:gravity="center"
         android:background="@drawable/studyos_widget_button"
-        android:paddingHorizontal="14dp"
-        android:paddingVertical="9dp"
-        android:layout_marginStart="8dp" />
+        android:paddingVertical="7dp"
+        android:paddingHorizontal="10dp"
+        android:layout_marginTop="4dp" />
 
 </LinearLayout>
+
 

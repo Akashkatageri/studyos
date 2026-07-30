@@ -22,7 +22,8 @@ import {
   runTransaction
 } from "firebase/firestore";
 import { UserState, FriendProfile, FriendRequest, SocialNotification, SocialActivity } from "../types";
-import { getLocalDateString } from "../utils/dateUtils";
+import { getLocalDateString, calculateWeeklyXP } from "../utils/dateUtils";
+import { calculateActualStreak } from "../utils/streakUtils";
 import { containsProfanity, sanitizeUsername, sanitizeDisplayName, sanitizeBio } from "../utils/moderation";
 
 /**
@@ -282,6 +283,7 @@ export function getProfileFromState(state: UserState): Partial<FriendProfile> {
     scheme: state.scheme,
     level: state.level,
     xp: state.xp,
+    weeklyXP: calculateWeeklyXP(state.focusHistory, state.studyActivity, state.xp, state.dailyXP),
     streak: state.streak,
     longestStreak: state.longestStreak,
     modulesCompleted: state.completedModules?.length || 0,
@@ -512,6 +514,8 @@ export async function syncUserToFirestore(uid: string, state: UserState): Promis
       firstYearCycle: state.firstYearCycle || null,
       level: state.level || 1,
       xp: state.xp || 0,
+      weeklyXP: calculateWeeklyXP(state.focusHistory, state.studyActivity, state.xp, state.dailyXP),
+      dailyXP: state.dailyXP || {},
       streak: state.streak || 0,
       longestStreak: state.longestStreak || 0,
       modulesCompleted: state.completedModules?.length || 0,
@@ -709,6 +713,49 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
 
 // Merges local offline progress with cloud data to prevent loss
 export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): UserState {
+  const localDate = local.lastActiveDate || local.lastFocusDate || '';
+  const cloudDate = cloud.lastActiveDate || cloud.lastFocusDate || '';
+
+  // Cloud is source of truth unless local has a strictly MORE RECENT activity date (e.g. studied offline today)
+  const localIsStrictlyNewer = !!localDate && (!cloudDate || localDate > cloudDate);
+
+  const mergedStudyActivity = { ...(cloud.studyActivity || {}), ...(local.studyActivity || {}) };
+  for (const day in local.studyActivity) {
+    if (cloud.studyActivity && cloud.studyActivity[day]) {
+      mergedStudyActivity[day] = Math.max(local.studyActivity[day], cloud.studyActivity[day]);
+    }
+  }
+
+  const mergedFocusHistory = { ...(cloud.focusHistory || {}), ...(local.focusHistory || {}) };
+  for (const day in local.focusHistory) {
+    if (cloud.focusHistory && cloud.focusHistory[day]) {
+      mergedFocusHistory[day] = Math.max(local.focusHistory[day], cloud.focusHistory[day]);
+    }
+  }
+
+  const mergedDailyXP = { ...(cloud.dailyXP || {}), ...(local.dailyXP || {}) };
+  for (const day in local.dailyXP) {
+    if (cloud.dailyXP && cloud.dailyXP[day]) {
+      mergedDailyXP[day] = Math.max(local.dailyXP[day], cloud.dailyXP[day]);
+    }
+  }
+
+  const activeShields = localIsStrictlyNewer 
+    ? (local.studyShields ?? 3) 
+    : (cloud.studyShields ?? 3);
+
+  const activeLastActiveDate = localIsStrictlyNewer 
+    ? (local.lastActiveDate || null) 
+    : (cloud.lastActiveDate || local.lastActiveDate || null);
+
+  const activeLastFocusDate = localIsStrictlyNewer 
+    ? (local.lastFocusDate || null) 
+    : (cloud.lastFocusDate || local.lastFocusDate || null);
+
+  const activePetStatus = localIsStrictlyNewer 
+    ? (local.petStatus || cloud.petStatus) 
+    : (cloud.petStatus || local.petStatus);
+
   const completedTopics = Array.from(new Set([...(local.completedTopics || []), ...(cloud.completedTopics || [])]));
   const completedModules = Array.from(new Set([...(local.completedModules || []), ...(cloud.completedModules || [])]));
   const completedSubjects = Array.from(new Set([...(local.completedSubjects || []), ...(cloud.completedSubjects || [])]));
@@ -725,21 +772,24 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
     return acc;
   }, [] as typeof local.revisions);
 
-  const mergedStudyActivity = { ...(cloud.studyActivity || {}), ...(local.studyActivity || {}) };
-  for (const day in local.studyActivity) {
-    if (cloud.studyActivity && cloud.studyActivity[day]) {
-      mergedStudyActivity[day] = Math.max(local.studyActivity[day], cloud.studyActivity[day]);
-    }
-  }
-
   const unlockedAchievements = Array.from(new Set([...(local.unlockedAchievements || []), ...(cloud.unlockedAchievements || [])]));
 
-  const mergedFocusHistory = { ...(cloud.focusHistory || {}), ...(local.focusHistory || {}) };
-  for (const day in local.focusHistory) {
-    if (cloud.focusHistory && cloud.focusHistory[day]) {
-      mergedFocusHistory[day] = Math.max(local.focusHistory[day], cloud.focusHistory[day]);
-    }
-  }
+  const mergedPartialState: Partial<UserState> = {
+    ...cloud,
+    ...local,
+    studyActivity: mergedStudyActivity,
+    focusHistory: mergedFocusHistory,
+    studyShields: activeShields,
+    dailyFocusGoal: local.dailyFocusGoal ?? cloud.dailyFocusGoal ?? 25,
+    semesterStartDate: local.semesterStartDate ?? cloud.semesterStartDate ?? null,
+    semesterEndDate: local.semesterEndDate ?? cloud.semesterEndDate ?? null,
+    weeklyStudySchedule: local.weeklyStudySchedule ?? cloud.weeklyStudySchedule ?? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    vacationMode: local.vacationMode ?? cloud.vacationMode ?? { active: false, startDate: null, endDate: null },
+    semesterBreakMode: local.semesterBreakMode ?? cloud.semesterBreakMode ?? false,
+    semesterBreaks: local.semesterBreaks ?? cloud.semesterBreaks ?? []
+  };
+
+  const activeStreak = calculateActualStreak(mergedPartialState);
 
   const allTodos = [...(local.todos || []), ...(cloud.todos || [])];
   const mergedTodos = allTodos.reduce((acc, current) => {
@@ -752,9 +802,24 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
     return acc;
   }, [] as typeof local.todos);
 
+  const mergedXP = Math.max(local.xp || 0, cloud.xp || 0);
+  const mergedLevel = Math.max(local.level || 1, cloud.level || 1);
+  const mergedLongestStreak = Math.max(local.longestStreak || 0, cloud.longestStreak || 0, activeStreak);
+
   return {
-    ...cloud,
     ...local,
+    ...cloud,
+    streak: activeStreak,
+    academicStudyStreak: activeStreak,
+    longestStreak: mergedLongestStreak,
+    longestStudyStreak: mergedLongestStreak,
+    studyShields: activeShields,
+    lastActiveDate: activeLastActiveDate,
+    lastFocusDate: activeLastFocusDate,
+    petStatus: activePetStatus,
+    xp: mergedXP,
+    level: mergedLevel,
+
     todos: mergedTodos,
     autoMoveUncompletedTodos: local.autoMoveUncompletedTodos ?? cloud.autoMoveUncompletedTodos ?? false,
     themeMode: local.themeMode ?? cloud.themeMode ?? 'dark',
@@ -767,15 +832,7 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
     soundFocusModeEnabled: local.soundFocusModeEnabled ?? cloud.soundFocusModeEnabled ?? false,
     soundVolume: local.soundVolume ?? cloud.soundVolume ?? 70,
 
-    xp: Math.max(local.xp || 0, cloud.xp || 0),
-    level: Math.max(local.level || 1, cloud.level || 1),
-    streak: Math.max(local.streak || 0, cloud.streak || 0),
-    longestStreak: Math.max(local.longestStreak || 0, cloud.longestStreak || 0),
-
-    // Merge focus stats & study calendar configs (local setting updates take precedence over old cloud data)
     dailyFocusGoal: local.dailyFocusGoal ?? cloud.dailyFocusGoal ?? 25,
-    academicStudyStreak: Math.max(local.academicStudyStreak || 0, cloud.academicStudyStreak || 0),
-    longestStudyStreak: Math.max(local.longestStudyStreak || 0, cloud.longestStudyStreak || 0),
     totalFocusMinutes: Math.max(local.totalFocusMinutes || 0, cloud.totalFocusMinutes || 0),
     weeklyFocusMinutes: Math.max(local.weeklyFocusMinutes || 0, cloud.weeklyFocusMinutes || 0),
     monthlyFocusMinutes: Math.max(local.monthlyFocusMinutes || 0, cloud.monthlyFocusMinutes || 0),
@@ -783,15 +840,14 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
     longestFocusSessionMinutes: Math.max(local.longestFocusSessionMinutes || 0, cloud.longestFocusSessionMinutes || 0),
     todayFocusMinutes: Math.max(local.todayFocusMinutes || 0, cloud.todayFocusMinutes || 0),
     todayFocusXPRewarded: Math.max(local.todayFocusXPRewarded || 0, cloud.todayFocusXPRewarded || 0),
-    studyShields: local.studyShields ?? cloud.studyShields ?? 3,
     weeklyStudySchedule: local.weeklyStudySchedule ?? cloud.weeklyStudySchedule ?? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
     semesterStartDate: local.semesterStartDate ?? cloud.semesterStartDate ?? null,
     semesterEndDate: local.semesterEndDate ?? cloud.semesterEndDate ?? null,
     semesterBreaks: local.semesterBreaks ?? cloud.semesterBreaks ?? [],
     vacationMode: local.vacationMode ?? cloud.vacationMode ?? { active: false, startDate: null, endDate: null },
     semesterBreakMode: local.semesterBreakMode ?? cloud.semesterBreakMode ?? false,
-    lastFocusDate: local.lastFocusDate || cloud.lastFocusDate || null,
     focusHistory: mergedFocusHistory,
+    dailyXP: mergedDailyXP,
     completedTopics,
     completedModules,
     completedSubjects,

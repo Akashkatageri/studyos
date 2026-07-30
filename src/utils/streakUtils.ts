@@ -53,13 +53,61 @@ export function checkDateExemptionOrCompletion(
   const dateObj = parseDateUTC(dateStr);
   const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
   const scheduledDays = userState.weeklyStudySchedule || [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
   ];
   if (!scheduledDays.includes(dayOfWeek)) {
     return { isCompleted: false, isExempt: true };
   }
 
   return { isCompleted: false, isExempt: false };
+}
+
+/**
+ * Calculates actual consecutive study streak directly from recorded activity history.
+ */
+export function calculateActualStreak(userState: Partial<UserState>): number {
+  if (!userState) return 0;
+  const todayStr = getLocalDateString();
+  const studyActivity = userState.studyActivity || {};
+  const focusHistory = userState.focusHistory || {};
+  const goalMinutes = userState.dailyFocusGoal ?? 30;
+
+  // Helper to check if user completed study goal on a date
+  const isDateCompleted = (dateStr: string) => {
+    return (studyActivity[dateStr] || 0) > 0 || (focusHistory[dateStr] || 0) >= goalMinutes;
+  };
+
+  const hasStudiedToday = isDateCompleted(todayStr);
+
+  // We start evaluating from today (if studied today) or yesterday (if today not completed yet)
+  let currentDate = hasStudiedToday ? todayStr : addDaysToDateString(todayStr, -1);
+  let streakCount = 0;
+  let shieldsAvailable = userState.studyShields ?? 3;
+
+  // Walk backwards up to 365 days
+  for (let i = 0; i < 365; i++) {
+    const { isCompleted, isExempt } = checkDateExemptionOrCompletion(currentDate, userState);
+
+    if (isCompleted) {
+      streakCount++;
+    } else if (isExempt) {
+      // Scheduled rest day, break, or vacation: preserves streak
+    } else {
+      // Missed study day: check if a shield protects it
+      if (shieldsAvailable > 0) {
+        shieldsAvailable--;
+        // Shield preserves streak without adding to count
+      } else {
+        // Missed day with no shield: streak ends
+        break;
+      }
+    }
+
+    // Move to previous day
+    currentDate = addDaysToDateString(currentDate, -1);
+  }
+
+  return streakCount;
 }
 
 /**
@@ -70,13 +118,18 @@ export function evaluateDailyStreakCatchUp(userState: UserState) {
   const todayStr = getLocalDateString();
   const lastFocusStr = userState.lastFocusDate || userState.lastActiveDate;
 
+  // Calculate actual streak based on activity history
+  const currentActualStreak = calculateActualStreak(userState);
+
   // Initial setup if no history
   if (!lastFocusStr) {
     return {
       dailyResetUpdates: {
         lastFocusDate: todayStr,
         todayFocusMinutes: 0,
-        todayFocusXPRewarded: 0
+        todayFocusXPRewarded: 0,
+        streak: currentActualStreak,
+        academicStudyStreak: currentActualStreak
       } as Partial<UserState>,
       streakBroken: false,
       shieldsConsumedCount: 0
@@ -86,7 +139,10 @@ export function evaluateDailyStreakCatchUp(userState: UserState) {
   // Same day check -> reset daily focus trackers for a new day if date changed
   if (lastFocusStr === todayStr) {
     return {
-      dailyResetUpdates: null,
+      dailyResetUpdates: {
+        streak: currentActualStreak,
+        academicStudyStreak: currentActualStreak
+      } as Partial<UserState>,
       streakBroken: false,
       shieldsConsumedCount: 0
     };
@@ -95,12 +151,13 @@ export function evaluateDailyStreakCatchUp(userState: UserState) {
   const dailyResetUpdates: Partial<UserState> = {
     lastFocusDate: todayStr,
     todayFocusMinutes: 0,
-    todayFocusXPRewarded: 0
+    todayFocusXPRewarded: 0,
+    streak: currentActualStreak,
+    academicStudyStreak: currentActualStreak
   };
 
   const diffDays = getDaysDifference(lastFocusStr, todayStr);
   let shieldsRemaining = userState.studyShields ?? 3;
-  let currentStreak = userState.academicStudyStreak ?? userState.streak ?? 0;
   let shieldsConsumedCount = 0;
   let streakBroken = false;
 
@@ -110,30 +167,23 @@ export function evaluateDailyStreakCatchUp(userState: UserState) {
       const dateStr = addDaysToDateString(lastFocusStr, i);
       const { isCompleted, isExempt } = checkDateExemptionOrCompletion(dateStr, userState);
 
-      if (isCompleted || isExempt) {
-        if (!streakBroken && currentStreak > 0) {
-          currentStreak += 1; // Frozen/exempt or completed day advances the preserved streak
-        }
-      } else {
+      if (!isCompleted && !isExempt) {
         if (!streakBroken && shieldsRemaining > 0) {
           shieldsRemaining -= 1;
           shieldsConsumedCount += 1;
-          if (currentStreak > 0) {
-            currentStreak += 1; // Shielded day protects and advances the streak
-          }
         } else {
-          // Unprotected missed study day! Streak breaks right here.
-          currentStreak = 0;
           streakBroken = true;
         }
       }
     }
 
-    dailyResetUpdates.studyShields = shieldsRemaining;
-    dailyResetUpdates.academicStudyStreak = currentStreak;
-    dailyResetUpdates.streak = currentStreak;
+    const updatedStreak = calculateActualStreak({ ...userState, studyShields: shieldsRemaining });
 
-    if (!streakBroken && currentStreak > 0) {
+    dailyResetUpdates.studyShields = shieldsRemaining;
+    dailyResetUpdates.academicStudyStreak = updatedStreak;
+    dailyResetUpdates.streak = updatedStreak;
+
+    if (!streakBroken && updatedStreak > 0) {
       dailyResetUpdates.lastActiveDate = addDaysToDateString(todayStr, -1);
     } else if (streakBroken) {
       dailyResetUpdates.lastActiveDate = null;
@@ -154,77 +204,30 @@ export function calculateNextStreakOnActivity(
   userState: UserState,
   todayStr: string = getLocalDateString()
 ) {
-  const lastActiveStr = userState.lastActiveDate;
-  const currentStreak = userState.academicStudyStreak ?? userState.streak ?? 0;
+  const updatedActivity = {
+    ...(userState.studyActivity || {}),
+    [todayStr]: ((userState.studyActivity || {})[todayStr] || 0) + 1
+  };
+
+  const tempState = {
+    ...userState,
+    studyActivity: updatedActivity,
+    lastActiveDate: todayStr,
+    lastFocusDate: todayStr
+  };
+
+  const runningStreak = calculateActualStreak(tempState);
   const longestStreak = Math.max(
     userState.longestStudyStreak ?? 0,
     userState.longestStreak ?? 0,
-    currentStreak
+    runningStreak
   );
-
-  // If already active today, return current streak without double-incrementing
-  if (lastActiveStr === todayStr) {
-    return {
-      streak: currentStreak,
-      academicStudyStreak: currentStreak,
-      longestStreak,
-      longestStudyStreak: longestStreak,
-      lastActiveDate: todayStr,
-      lastFocusDate: todayStr
-    };
-  }
-
-  let runningStreak = currentStreak;
-  let shields = userState.studyShields ?? 3;
-  let broken = false;
-
-  if (!lastActiveStr) {
-    runningStreak = 1;
-  } else {
-    const diffDays = getDaysDifference(lastActiveStr, todayStr);
-
-    if (diffDays <= 0) {
-      runningStreak = currentStreak > 0 ? currentStreak : 1;
-    } else {
-      for (let i = 1; i <= diffDays; i++) {
-        const dateStr = addDaysToDateString(lastActiveStr, i);
-
-        if (dateStr === todayStr) {
-          if (!broken && runningStreak > 0) {
-            runningStreak += 1;
-          } else {
-            runningStreak = 1; // Restart streak at 1 on today if sequence was broken
-          }
-        } else {
-          const { isCompleted, isExempt } = checkDateExemptionOrCompletion(dateStr, userState);
-          if (isCompleted || isExempt) {
-            if (!broken && runningStreak > 0) {
-              runningStreak += 1; // Frozen / Vacation / Rest day preserves and increments streak
-            }
-          } else {
-            if (!broken && shields > 0) {
-              shields -= 1;
-              if (runningStreak > 0) {
-                runningStreak += 1; // Protected by shield
-              }
-            } else {
-              // Unprotected missed study day! Streak breaks right here.
-              broken = true;
-              runningStreak = 0;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  const newLongestStreak = Math.max(longestStreak, runningStreak);
 
   return {
     streak: runningStreak,
     academicStudyStreak: runningStreak,
-    longestStreak: newLongestStreak,
-    longestStudyStreak: newLongestStreak,
+    longestStreak,
+    longestStudyStreak: longestStreak,
     lastActiveDate: todayStr,
     lastFocusDate: todayStr
   };

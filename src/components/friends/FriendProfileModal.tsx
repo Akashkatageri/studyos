@@ -1,15 +1,10 @@
 import React from 'react';
 import { 
   ArrowLeft, 
-  UserMinus, 
-  GraduationCap, 
-  Award, 
-  BookOpen 
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserState, FriendProfile, SocialActivity } from '../../types';
-import { containsProfanity } from '../../utils/moderation';
-import { ALL_ACHIEVEMENTS } from '../../utils/achievements';
 
 interface FriendProfileModalProps {
   isOpen: boolean;
@@ -32,10 +27,81 @@ export default function FriendProfileModal({
 }: FriendProfileModalProps) {
   if (!isOpen || !selectedProfile) return null;
 
+  const isFriend = userState.uid && friendsList.some(f => f.uid === selectedProfile.uid);
+  const firstName = (selectedProfile.displayName || selectedProfile.username).split(' ')[0].toUpperCase();
+
+  // Calculations for You vs Friend comparison
+  const myXP = userState.xp || 0;
+  const friendXP = selectedProfile.xp || 0;
+  const maxXP = Math.max(myXP, friendXP, 100);
+  const myXPPercent = Math.min(100, Math.max(10, Math.round((myXP / maxXP) * 100)));
+  const friendXPPercent = Math.min(100, Math.max(10, Math.round((friendXP / maxXP) * 100)));
+
+  const myStreak = userState.streak || 0;
+  const friendStreak = selectedProfile.streak || 0;
+  const maxStreak = Math.max(myStreak, friendStreak, 1);
+  const myStreakPercent = Math.min(100, Math.max(10, Math.round((myStreak / maxStreak) * 100)));
+  const friendStreakPercent = Math.min(100, Math.max(10, Math.round((friendStreak / maxStreak) * 100)));
+
+  // Format activity timestamp
+  const formatTimestamp = (isoStr?: string) => {
+    if (!isoStr) return 'today';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return 'today';
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+      if (isToday) return `${time} · today`;
+      return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+    } catch {
+      return 'today';
+    }
+  };
+
+  // Derive milestones or activities
+  const milestonesList = selectedUserActivities.length > 0 
+    ? selectedUserActivities 
+    : [
+        {
+          id: 'default-1',
+          userId: selectedProfile.uid,
+          username: selectedProfile.username,
+          avatar: selectedProfile.avatar,
+          type: 'level_up' as const,
+          text: `Reached Level ${selectedProfile.level}`,
+          createdAt: new Date().toISOString(),
+          pillLabel: 'LVL UP',
+          pillColor: 'amber'
+        },
+        {
+          id: 'default-2',
+          userId: selectedProfile.uid,
+          username: selectedProfile.username,
+          avatar: selectedProfile.avatar,
+          type: 'streak' as const,
+          text: `Maintained ${selectedProfile.streak} day streak`,
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+          pillLabel: `${selectedProfile.streak}d`,
+          pillColor: 'amber'
+        },
+        {
+          id: 'default-3',
+          userId: selectedProfile.uid,
+          username: selectedProfile.username,
+          avatar: selectedProfile.avatar,
+          type: 'module_complete' as const,
+          text: `Completed ${selectedProfile.modulesCompleted || 0} modules this semester`,
+          createdAt: new Date(Date.now() - 86400000).toISOString(),
+          pillLabel: 'MODULE',
+          pillColor: 'emerald'
+        }
+      ];
+
   return (
     <AnimatePresence>
       {selectedProfile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" id="student-profile-dialog">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" id="student-profile-dialog">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -48,199 +114,288 @@ export default function FriendProfileModal({
 
           {/* Main profile card */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 25 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 25 }}
-            className="relative w-full max-w-lg bg-[#111422] border border-gray-800 rounded-3xl overflow-hidden shadow-[0_24px_50px_rgba(0,0,0,0.8)]"
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-md bg-[#0E101A] border border-gray-800/80 rounded-3xl overflow-hidden shadow-[0_24px_50px_rgba(0,0,0,0.9)] max-h-[92vh] flex flex-col"
             id="profile-modal-card"
           >
-            {/* Back ambient glowing circles */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            {/* Action header bar */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-850">
+            {/* Top Action Bar */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-850/80 bg-[#0E101A]/90 shrink-0 z-10">
               <button
                 onClick={onClose}
-                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-all font-black uppercase tracking-wider cursor-pointer bg-transparent border-0"
+                className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-all font-black tracking-wide cursor-pointer bg-transparent border-0"
                 id="back-from-profile"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back</span>
               </button>
 
-              {userState.uid && friendsList.some(f => f.uid === selectedProfile.uid) && (
+              {isFriend && (
                 <button
                   onClick={() => onRemoveFriend(selectedProfile.uid, selectedProfile.username)}
-                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 transition-all font-black uppercase tracking-wider cursor-pointer bg-transparent border-0"
+                  className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer"
                   id="unfriend-button"
                 >
-                  <UserMinus className="w-4 h-4" />
-                  <span>Unfriend</span>
+                  Unfriend
                 </button>
               )}
             </div>
 
-            {/* Profile details container scrollbox */}
-            <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-center sm:text-left">
-                <div className="w-20 h-20 rounded-2xl bg-[#1E2135] text-4xl flex items-center justify-center mx-auto sm:mx-0 border border-gray-800">
-                  {selectedProfile.avatar}
-                </div>
-                <div className="space-y-1.5">
-                  <h2 className="text-xl sm:text-2xl font-black font-display text-white tracking-tight leading-none">
-                    {selectedProfile.displayName || selectedProfile.username}
-                  </h2>
-                  <p className="text-xs text-gray-400 font-mono">
-                    @{selectedProfile.username} • Joined {new Date(selectedProfile.joinedDate).toLocaleDateString([], { month: 'long', year: 'numeric' })}
-                  </p>
-                  {selectedProfile.bio && (
-                    <p className="text-xs text-gray-400 italic font-medium leading-relaxed">
-                      {containsProfanity(selectedProfile.bio) ? (
-                        <span className="text-red-400/80 not-italic font-mono text-[11px]">
-                          [Bio unavailable - violates community guidelines]
-                        </span>
-                      ) : (
-                        `"${selectedProfile.bio}"`
-                      )}
+            {/* Scrollable Container */}
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto custom-scrollbar">
+              
+              {/* 1. Header Profile Banner Card */}
+              <div className="relative bg-gradient-to-b from-[#181632] to-[#121424] border border-purple-500/30 rounded-2xl p-5 shadow-lg overflow-hidden">
+                {/* Purple top glow accent line */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-500" />
+                
+                <div className="flex items-start gap-4">
+                  {/* Large Avatar container */}
+                  <div className="w-16 h-16 rounded-2xl bg-[#1C183B] border border-purple-500/40 text-3xl flex items-center justify-center shrink-0 shadow-inner">
+                    {selectedProfile.avatar}
+                  </div>
+
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h2 className="text-xl font-black text-white font-display tracking-tight truncate">
+                      {selectedProfile.displayName || selectedProfile.username}
+                    </h2>
+                    <p className="text-xs text-gray-400 font-mono">
+                      @{selectedProfile.username}
                     </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Course Metadata Stats */}
-              <div className="grid grid-cols-2 gap-3 bg-black/30 border border-gray-850/80 p-4 rounded-2xl text-xs">
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-mono text-gray-500 uppercase block">University</span>
-                  <span className="font-extrabold text-white flex items-center gap-1.5">
-                    <GraduationCap className="w-4 h-4 text-blue-400" />
-                    {selectedProfile.university}
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-mono text-gray-500 uppercase block">Scheme / Branch</span>
-                  <span className="font-extrabold text-white block truncate">
-                    {selectedProfile.branch} ({selectedProfile.scheme.replace(' Scheme', '')})
-                  </span>
-                </div>
-              </div>
-
-              {/* Main numbers layout */}
-              <div className="grid grid-cols-4 gap-2.5">
-                <div className="bg-[#151829] border border-gray-850 p-3 rounded-2xl text-center">
-                  <span className="text-[9px] font-mono text-gray-500 uppercase block">Semester</span>
-                  <span className="text-sm font-black text-white">Sem {selectedProfile.semester}</span>
-                </div>
-                <div className="bg-[#151829] border border-gray-850 p-3 rounded-2xl text-center">
-                  <span className="text-[9px] font-mono text-gray-500 uppercase block">Level</span>
-                  <span className="text-sm font-black text-blue-400">Lvl {selectedProfile.level}</span>
-                </div>
-                <div className="bg-[#151829] border border-gray-850 p-3 rounded-2xl text-center">
-                  <span className="text-[9px] font-mono text-gray-500 uppercase block">Streak</span>
-                  <span className="text-sm font-black text-amber-500 flex items-center justify-center gap-0.5">
-                    🔥 {selectedProfile.streak}d
-                  </span>
-                </div>
-                <div className="bg-[#151829] border border-gray-850 p-3 rounded-2xl text-center">
-                  <span className="text-[9px] font-mono text-gray-500 uppercase block">Total XP</span>
-                  <span className="text-sm font-black text-emerald-400 font-mono">
-                    {selectedProfile.hideXP ? "🔒" : `${selectedProfile.xp}`}
-                  </span>
-                </div>
-              </div>
-
-              {/* Progress trackers */}
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-gray-400 uppercase tracking-wider text-[10px]">Semester Syllabus Progress</span>
-                    <span className="font-extrabold text-white">{selectedProfile.semesterProgress}%</span>
-                  </div>
-                  <div className="w-full bg-black/40 h-2.5 rounded-full overflow-hidden border border-gray-850">
-                    <div className="bg-blue-500 h-full rounded-full" style={{ width: `${selectedProfile.semesterProgress}%` }} />
+                    <p className="text-[11px] text-gray-500">
+                      Joined {new Date(selectedProfile.joinedDate).toLocaleDateString([], { month: 'long', year: 'numeric' })}
+                    </p>
+                    
+                    {/* Status Pill */}
+                    <div className="pt-1">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                        selectedProfile.status === 'online' 
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
+                          : 'bg-gray-800/80 text-gray-400 border border-gray-700/50'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${selectedProfile.status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+                        {selectedProfile.status === 'online' ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
-                  <div className="bg-black/30 border border-gray-850 p-3.5 rounded-xl flex items-center justify-between">
-                    <span className="text-gray-400 font-medium">Modules Completed:</span>
-                    <span className="font-black text-white text-sm">{selectedProfile.modulesCompleted}</span>
+                {/* 4 Stat Boxes in a Row */}
+                <div className="grid grid-cols-4 gap-2 mt-5 pt-4 border-t border-gray-800/60 text-center">
+                  <div className="bg-[#0B0D18]/80 border border-gray-800/80 p-2 sm:p-2.5 rounded-xl">
+                    <span className="text-sm sm:text-base font-black text-white block leading-tight">
+                      {selectedProfile.semester}
+                    </span>
+                    <span className="text-[8px] sm:text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest block mt-0.5">
+                      SEMESTER
+                    </span>
                   </div>
-                  <div className="bg-black/30 border border-gray-850 p-3.5 rounded-xl flex items-center justify-between">
-                    <span className="text-gray-400 font-medium">Longest Streak:</span>
-                    <span className="font-black text-amber-500 text-sm flex items-center gap-0.5">
-                      🔥 {selectedProfile.longestStreak}d
+
+                  <div className="bg-[#0B0D18]/80 border border-gray-800/80 p-2 sm:p-2.5 rounded-xl">
+                    <span className="text-sm sm:text-base font-black text-white block leading-tight">
+                      {selectedProfile.level}
+                    </span>
+                    <span className="text-[8px] sm:text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest block mt-0.5">
+                      LEVEL
+                    </span>
+                  </div>
+
+                  <div className="bg-[#0B0D18]/80 border border-gray-800/80 p-2 sm:p-2.5 rounded-xl">
+                    <span className="text-sm sm:text-base font-black text-white block leading-tight">
+                      {selectedProfile.streak}d
+                    </span>
+                    <span className="text-[8px] sm:text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest block mt-0.5">
+                      STREAK
+                    </span>
+                  </div>
+
+                  <div className="bg-[#0B0D18]/80 border border-gray-800/80 p-2 sm:p-2.5 rounded-xl">
+                    <span className="text-sm sm:text-base font-black text-emerald-400 font-mono block leading-tight">
+                      {selectedProfile.xp}
+                    </span>
+                    <span className="text-[8px] sm:text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest block mt-0.5">
+                      XP
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Badges / Achievements list */}
-              {!selectedProfile.hideAchievements && (
-                <div className="space-y-3">
-                  <h3 className="text-[10px] font-mono text-gray-500 uppercase tracking-widest border-b border-gray-850 pb-1 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Award className="w-4 h-4 text-amber-400" />
-                      <span>Unlocked Special Badges</span>
-                    </div>
-                    {selectedProfile.badges && (
-                      <span className="text-amber-400 font-bold">{selectedProfile.badges.length} Badges</span>
-                    )}
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedProfile.badges && selectedProfile.badges.length > 0 ? (
-                      selectedProfile.badges.map((badge, i) => {
-                        const ach = ALL_ACHIEVEMENTS.find(a => a.id === badge || a.title === badge);
-                        if (!ach) {
-                          return (
-                            <span 
-                              key={i} 
-                              className="bg-[#1C1630] border border-amber-500/25 text-amber-300 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl flex items-center gap-1"
-                            >
-                              ✨ {badge}
-                            </span>
-                          );
-                        }
-                        return (
-                          <div 
-                            key={i} 
-                            className="bg-[#161224] border border-amber-500/30 text-amber-300 text-[11px] font-semibold px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm"
-                            title={ach.description}
-                          >
-                            <span className="text-sm">{ach.icon}</span>
-                            <span className="text-white font-bold">{ach.title}</span>
-                            <span className="text-[9px] bg-amber-500/20 text-amber-300 font-mono font-bold px-1.5 py-0.5 rounded">
-                              +{ach.xpReward} XP
-                            </span>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className="text-xs text-gray-500 italic">No achievements unlocked yet this semester.</p>
-                    )}
+              {/* 2. Semester Syllabus Card */}
+              <div className="bg-[#121422] border border-gray-800/80 rounded-2xl p-4 space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-gray-300 text-xs">Semester syllabus</span>
+                  <span className="font-black text-purple-400 font-mono">{selectedProfile.semesterProgress || 0}%</span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-gray-900 h-2.5 rounded-full overflow-hidden border border-gray-800">
+                  <div 
+                    className="bg-gradient-to-r from-purple-600 to-indigo-500 h-full rounded-full transition-all duration-500" 
+                    style={{ width: `${selectedProfile.semesterProgress || 0}%` }} 
+                  />
+                </div>
+
+                {/* 3 Metric cards below */}
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  <div className="bg-[#0A0C16] border border-gray-800/80 p-2.5 rounded-xl">
+                    <span className="text-[8px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
+                      MODULES DONE
+                    </span>
+                    <span className="text-sm font-black text-white block mt-1">
+                      {selectedProfile.modulesCompleted || 0}
+                    </span>
+                  </div>
+
+                  <div className="bg-[#0A0C16] border border-gray-800/80 p-2.5 rounded-xl">
+                    <span className="text-[8px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
+                      LONGEST STREAK
+                    </span>
+                    <span className="text-sm font-black text-amber-400 flex items-center gap-1 mt-1">
+                      🔥 {selectedProfile.longestStreak || selectedProfile.streak || 0}d
+                    </span>
+                  </div>
+
+                  <div className="bg-[#0A0C16] border border-gray-800/80 p-2.5 rounded-xl">
+                    <span className="text-[8px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
+                      UNIVERSITY
+                    </span>
+                    <span className="text-xs font-black text-white truncate block mt-1">
+                      {selectedProfile.university || 'VTU'} - {selectedProfile.branch || 'CSE'}
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Personal Study Activities timeline */}
-              <div className="space-y-3">
-                <h3 className="text-[10px] font-mono text-gray-500 uppercase tracking-widest border-b border-gray-850 pb-1 flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4 text-blue-400" />
-                  <span>Recent Milestones Timeline</span>
-                </h3>
-                {selectedUserActivities.length === 0 ? (
-                  <p className="text-xs text-gray-500 italic">No public milestones recorded recently.</p>
-                ) : (
-                  <div className="space-y-2.5">
-                    {selectedUserActivities.map((act) => (
-                      <div key={act.id} className="bg-black/25 border border-gray-850/60 p-3 rounded-xl flex items-center gap-2.5">
-                        <span className="text-xl bg-white/5 w-8 h-8 rounded-lg flex items-center justify-center">{act.avatar}</span>
-                        <p className="text-xs text-gray-300">
-                          {act.text}
-                        </p>
-                      </div>
-                    ))}
+              {/* 3. YOU VS FRIEND Comparison Card */}
+              <div className="bg-[#121422] border border-gray-800/80 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center gap-1.5 text-xs font-black text-gray-300 uppercase tracking-widest font-mono">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span>YOU VS {firstName}</span>
+                </div>
+
+                {/* Metric 1: XP THIS WEEK */}
+                <div className="space-y-2">
+                  <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
+                    XP THIS WEEK
+                  </span>
+
+                  {/* You Bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-purple-300 font-bold">You</span>
+                      <span className="font-mono font-black text-white">{myXP}</span>
+                    </div>
+                    <div className="w-full bg-gray-900 h-2.5 rounded-full overflow-hidden border border-gray-800">
+                      <div 
+                        className="bg-purple-500 h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${myXPPercent}%` }} 
+                      />
+                    </div>
                   </div>
-                )}
+
+                  {/* Friend Bar */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-amber-400 font-bold">{selectedProfile.displayName || selectedProfile.username}</span>
+                      <span className="font-mono font-black text-white">{friendXP}</span>
+                    </div>
+                    <div className="w-full bg-gray-900 h-2.5 rounded-full overflow-hidden border border-gray-800">
+                      <div 
+                        className="bg-amber-500 h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${friendXPPercent}%` }} 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metric 2: STREAK */}
+                <div className="space-y-2 pt-2 border-t border-gray-800/60">
+                  <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
+                    STREAK
+                  </span>
+
+                  {/* You Streak Bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-purple-300 font-bold">You</span>
+                      <span className="font-mono font-black text-white">{myStreak}d</span>
+                    </div>
+                    <div className="w-full bg-gray-900 h-2.5 rounded-full overflow-hidden border border-gray-800">
+                      <div 
+                        className="bg-purple-500 h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${myStreakPercent}%` }} 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Friend Streak Bar */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-amber-400 font-bold">{selectedProfile.displayName || selectedProfile.username}</span>
+                      <span className="font-mono font-black text-white">{friendStreak}d</span>
+                    </div>
+                    <div className="w-full bg-gray-900 h-2.5 rounded-full overflow-hidden border border-gray-800">
+                      <div 
+                        className="bg-amber-500 h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${friendStreakPercent}%` }} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. RECENT MILESTONES Card */}
+              <div className="bg-[#121422] border border-gray-800/80 rounded-2xl p-4 space-y-3">
+                <span className="text-xs font-black text-gray-300 uppercase tracking-widest font-mono block">
+                  RECENT MILESTONES
+                </span>
+
+                <div className="space-y-2.5">
+                  {milestonesList.map((m: any, idx: number) => {
+                    const timeText = formatTimestamp(m.createdAt);
+                    const isLvl = m.text?.toLowerCase().includes('level') || m.pillLabel === 'LVL UP';
+                    const isModule = m.text?.toLowerCase().includes('module') || m.pillLabel === 'MODULE';
+
+                    return (
+                      <div 
+                        key={m.id || idx} 
+                        className="bg-[#0B0D18] border border-gray-800/80 p-3 rounded-xl flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-xl bg-purple-500/10 border border-purple-500/20 w-9 h-9 rounded-xl flex items-center justify-center shrink-0">
+                            {m.avatar || selectedProfile.avatar}
+                          </span>
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-bold text-white leading-snug truncate">
+                              {m.text}
+                            </h4>
+                            <span className="text-[10px] text-gray-500 font-mono block mt-0.5">
+                              {timeText}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Pill badge on right */}
+                        <div className="shrink-0">
+                          {isLvl ? (
+                            <span className="px-2.5 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-black uppercase tracking-wider rounded-lg">
+                              LVL UP
+                            </span>
+                          ) : isModule ? (
+                            <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider rounded-lg">
+                              MODULE
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-black uppercase tracking-wider rounded-lg">
+                              {m.pillLabel || 'NEW'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
             </div>

@@ -98,6 +98,7 @@ export interface UserState {
   inProgressTopics: string[]; // topicIds currently in progress
   todos?: TodoItem[];
   autoMoveUncompletedTodos?: boolean;
+  petStatus?: string;
   // Appearance Settings
   themeMode?: 'dark' | 'light' | 'oled';
   // Heatmap tracking
@@ -117,6 +118,9 @@ export interface UserState {
   uid?: string; // Firebase Authentication UID
   email?: string; // Google email
   displayName?: string;
+  lastDisplayNameChangeAt?: string; // ISO date string when display name was last updated
+  usernameChangeRequested?: boolean;
+  usernameChangeReason?: string;
   bio?: string;
   isPublic?: boolean;
   allowFriendRequests?: boolean;
@@ -149,6 +153,7 @@ export interface UserState {
   semesterBreakMode?: boolean;
   lastFocusDate?: string | null; // YYYY-MM-DD
   focusHistory?: { [date: string]: number }; // YYYY-MM-DD -> minutes
+  dailyXP?: { [date: string]: number }; // YYYY-MM-DD -> XP earned on that date
   subjectDifficulties?: { [subjectId: string]: 'Easy' | 'Medium' | 'Hard' };
   reviewStreak?: number;
   longestReviewStreak?: number;
@@ -179,6 +184,7 @@ export interface FriendProfile {
   scheme: string;
   level: number;
   xp: number;
+  weeklyXP?: number;
   streak: number;
   longestStreak: number;
   modulesCompleted: number;
