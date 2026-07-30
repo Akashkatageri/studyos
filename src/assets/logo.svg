@@ -14,80 +14,27 @@
     </linearGradient>
 
     <linearGradient id="glassWingLeft" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(56, 189, 248, 0.25)" />
-      <stop offset="100%" stop-color="rgba(99, 102, 241, 0.05)" />
+      <stop offset="0%" stop-color="rgba(56, 189, 248, 0.35)" />
+      <stop offset="100%" stop-color="rgba(99, 102, 241, 0.10)" />
     </linearGradient>
 
     <linearGradient id="glassWingRight" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(168, 85, 247, 0.25)" />
-      <stop offset="100%" stop-color="rgba(99, 102, 241, 0.05)" />
+      <stop offset="0%" stop-color="rgba(168, 85, 247, 0.35)" />
+      <stop offset="100%" stop-color="rgba(99, 102, 241, 0.10)" />
     </linearGradient>
-
-    <filter id="coreGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="12" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-    </filter>
   </defs>
 
   <rect width="512" height="512" rx="128" fill="url(#bgGradProd)" />
-  <rect 
-    width="508" 
-    height="508" 
-    x="2" 
-    y="2" 
-    rx="126" 
-    fill="none" 
-    stroke="rgba(255, 255, 255, 0.15)" 
-    stroke-width="3" 
-  />
+  <rect width="508" height="508" x="2" y="2" rx="126" fill="none" stroke="rgba(56, 189, 248, 0.25)" stroke-width="4" />
 
-  <g transform="translate(0, 0)">
-    <circle 
-      cx="256" 
-      cy="256" 
-      r="110" 
-      fill="url(#cyanVioletGrad)" 
-      opacity="0.22" 
-      filter="url(#coreGlow)" 
-    />
-
-    <path
-      d="M 128,280 L 256,352 L 256,220 L 128,148 Z"
-      fill="url(#glassWingLeft)"
-    />
-    <path
-      d="M 384,280 L 256,352 L 256,220 L 384,148 Z"
-      fill="url(#glassWingRight)"
-    />
-
-    <path
-      d="M 128,148 L 256,220 L 256,352 L 128,280 Z"
-      fill="none"
-      stroke="#FFFFFF"
-      stroke-width="18"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-
-    <path
-      d="M 384,148 L 256,220 L 256,352 L 384,280 Z"
-      fill="none"
-      stroke="#FFFFFF"
-      stroke-width="18"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-
-    <polygon
-      points="256,88 316,140 256,192 196,140"
-      fill="url(#cyanVioletGrad)"
-      stroke="#FFFFFF"
-      stroke-width="10"
-      stroke-linejoin="round"
-    />
-
+  <g>
+    <circle cx="256" cy="256" r="110" fill="url(#cyanVioletGrad)" opacity="0.30" />
+    <path d="M 128,280 L 256,352 L 256,220 L 128,148 Z" fill="url(#glassWingLeft)" />
+    <path d="M 384,280 L 256,352 L 256,220 L 384,148 Z" fill="url(#glassWingRight)" />
+    <path d="M 128,148 L 256,220 L 256,352 L 128,280 Z" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 384,148 L 256,220 L 256,352 L 384,280 Z" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+    <polygon points="256,88 316,140 256,192 196,140" fill="url(#cyanVioletGrad)" stroke="#FFFFFF" stroke-width="10" stroke-linejoin="round" />
     <circle cx="256" cy="140" r="10" fill="#FFFFFF" />
-
     <circle cx="128" cy="280" r="10" fill="#38BDF8" stroke="#FFFFFF" stroke-width="4" />
     <circle cx="384" cy="280" r="10" fill="#A855F7" stroke="#FFFFFF" stroke-width="4" />
     <circle cx="256" cy="352" r="12" fill="#FFFFFF" />

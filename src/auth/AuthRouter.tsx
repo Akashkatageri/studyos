@@ -243,7 +243,7 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
     setAuthError(null);
     setRedirectWarning(null);
 
-    // If running inside a native environment (Android app), trigger native Google Sign-In via Capawesome
+    // If running inside a native environment (Android app), attempt native Google Sign-In via Capawesome, falling back to web flow if plugin is missing
     if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
       try {
         console.log("[AuthRouter] Native platform detected. Triggering native Google Sign-In via Capawesome...");
@@ -292,22 +292,23 @@ export default function AuthRouter({ initialUser, onAuthComplete }: AuthRouterPr
 
         setAuthData({ uid, email, displayName, usernameViolation: cloudData?.usernameViolation });
         setStep('username');
+        return;
       } catch (err: any) {
-        console.error("Failed to initialize direct native Google Sign-In:", err);
+        console.warn("[AuthRouter] Direct native Google Sign-In plugin failed or not implemented. Falling back to Web Google Auth:", err);
         const errMsg = err.message || String(err);
-        let userFriendlyMsg = "Failed to initialize native Google Sign-In. Please check your internet connection and Firebase config: " + errMsg;
         
+        // If it's developer error 10 (SHA-1 mismatch), show helpful message
         if (errMsg.includes("10:") || errMsg.includes("10 ") || errMsg.includes("DeveloperError") || errMsg.includes("DEVELOPER_ERROR")) {
-          userFriendlyMsg = "Google Sign-In Error (Developer Error 10). The SHA-1 signing fingerprint of your local app build does not match the one registered in your Firebase Console. Please register your local machine's SHA-1 in the Firebase Console and replace android/app/google-services.json.";
+          setAuthError({
+            message: "Google Sign-In Error (Developer Error 10). The SHA-1 signing fingerprint of your local app build does not match the one registered in your Firebase Console."
+          });
+          setIsLoadingAuth(false);
+          return;
         }
-        
-        setAuthError({
-          message: userFriendlyMsg
-        });
-      } finally {
-        setIsLoadingAuth(false);
+
+        // For "plugin is not Implemented" or missing native code, fall through to web login flow below!
+        console.log("[AuthRouter] Proceeding with Web Google Sign-In fallback...");
       }
-      return;
     }
 
     try {

@@ -111,17 +111,27 @@ export async function syncAndroidWidget(userState: UserState | null) {
     let petStatus = "Zzz... Complete a study session to wake PanPan the Panda! 🐼";
     let avatarIcon = userState.avatar || "🐼";
 
+    let emotion = "ready";
     if (todayMinutes >= focusGoal) {
       petStatus = "Scholar King! PanPan the Panda is so proud of you! 👑🐼";
+      emotion = "complete";
       if (avatarIcon === "🐼" || avatarIcon === "🐱") {
         avatarIcon = "👑🐼";
       }
     } else if (todayMinutes > 0) {
       petStatus = "PanPan the Panda is studying with you! Bamboo power! 🎋🐼";
+      emotion = "safe";
       if (avatarIcon === "🐼" || avatarIcon === "🐱") {
         avatarIcon = "📚🐼";
       }
+    } else if (streakVal > 0) {
+      petStatus = "Complete a study session today to protect your " + streakVal + "-day streak! 🔥";
+      emotion = "at_risk";
+      if (avatarIcon === "🐼" || avatarIcon === "🐱") {
+        avatarIcon = "🔥🐼";
+      }
     } else {
+      emotion = "rest";
       if (avatarIcon === "🐼" || avatarIcon === "🐱") {
         avatarIcon = "😴🐼";
       }
@@ -135,6 +145,7 @@ export async function syncAndroidWidget(userState: UserState | null) {
       todayFocus,
       petStatus,
       avatarIcon,
+      emotion,
       activeDaysCount,
       daysMask,
       dailyTheme
@@ -146,6 +157,7 @@ export async function syncAndroidWidget(userState: UserState | null) {
       todayFocus,
       petStatus,
       avatarIcon,
+      emotion,
       daysJson,
       activeDaysCount,
       daysMask,
