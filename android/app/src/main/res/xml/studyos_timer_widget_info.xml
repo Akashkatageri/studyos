@@ -5,7 +5,7 @@
     android:targetCellWidth="2"
     android:targetCellHeight="2"
     android:updatePeriodMillis="86400000"
-    android:previewImage="@drawable/ic_launcher_background"
+    android:previewImage="@mipmap/ic_launcher"
     android:initialLayout="@layout/studyos_timer_widget"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen">
