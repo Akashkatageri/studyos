@@ -1,15 +1,12 @@
 package com.studyos.app;
 
 import android.os.Bundle;
-import android.util.Log;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        registerPlugin(StudyOSWidgetPlugin.class);
-        registerPlugin(io.capawesome.capacitorjs.plugins.firebase.authentication.FirebaseAuthenticationPlugin.class);
         super.onCreate(savedInstanceState);
-        Log.e("STUDYOS_BUILD_TEST", ">>> STUDYOS NEW BUILD INSTALLED SUCCESSFULLY <<<");
+        registerPlugin(StudyOSWidgetPlugin.class);
     }
 }

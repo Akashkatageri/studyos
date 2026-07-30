@@ -47,8 +47,10 @@ public class StudyOSWidgetPlugin extends Plugin {
             editor.putString("avatarIcon", avatarIcon);
             editor.apply();
 
-            // Notify the widget provider to trigger an update on screen
+            // Notify all widget providers to trigger updates on screen
             StudyOSWidgetProvider.updateMyWidgets(context);
+            StudyOSTimerWidgetProvider.updateMyWidgets(context);
+            StudyOSTaskWidgetProvider.updateMyWidgets(context);
 
             JSObject ret = new JSObject();
             ret.put("success", true);

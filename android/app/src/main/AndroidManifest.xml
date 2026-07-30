@@ -45,13 +45,39 @@
             android:name=".StudyOSWidgetProvider"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
-            android:label="StudyOS Streak &amp; Mascot">
+            android:label="StudyOS Companion &amp; Streak">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/studyos_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".StudyOSTimerWidgetProvider"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="StudyOS Focus Timer">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/studyos_timer_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".StudyOSTaskWidgetProvider"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="StudyOS Daily Tasks &amp; Goals">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/studyos_task_widget_info" />
         </receiver>
     </application>
 

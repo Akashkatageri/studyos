@@ -7,7 +7,8 @@
 			"providers": [
 				"google.com"
 			],
-			"skipNativeAuth": false
+			"skipNativeAuth": false,
+			"webClientId": "993152230783-u5imf54djkbksrdbaj6f5vpmmgvvkl0b.apps.googleusercontent.com"
 		}
 	}
 }
