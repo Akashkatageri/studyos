@@ -30,6 +30,17 @@ jobs:
       - name: Create Web Directory if Missing
         run: mkdir -p dist
 
+      - name: Restore google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
+            echo "Restored google-services.json from Base64 secret"
+          elif [ -f "android/app/google-services.json" ]; then
+            echo "Using existing android/app/google-services.json from repository"
+          fi
+
       - name: Sync Web Assets to Android Project
         run: npx cap sync android
 
