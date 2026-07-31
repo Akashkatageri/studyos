@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserState, FriendProfile, SocialActivity } from '../../types';
+import AvatarRenderer from '../AvatarRenderer';
 
 interface FriendProfileModalProps {
   isOpen: boolean;
@@ -152,8 +153,8 @@ export default function FriendProfileModal({
                 
                 <div className="flex items-start gap-4">
                   {/* Large Avatar container */}
-                  <div className="w-16 h-16 rounded-2xl bg-[#1C183B] border border-purple-500/40 text-3xl flex items-center justify-center shrink-0 shadow-inner">
-                    {selectedProfile.avatar}
+                  <div className="w-16 h-16 rounded-2xl bg-[#1C183B] border border-purple-500/40 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
+                    <AvatarRenderer avatar={selectedProfile.avatar} className="w-full h-full" />
                   </div>
 
                   <div className="min-w-0 flex-1 space-y-1">
@@ -363,9 +364,9 @@ export default function FriendProfileModal({
                         className="bg-[#0B0D18] border border-gray-800/80 p-3 rounded-xl flex items-center justify-between gap-3"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-xl bg-purple-500/10 border border-purple-500/20 w-9 h-9 rounded-xl flex items-center justify-center shrink-0">
-                            {m.avatar || selectedProfile.avatar}
-                          </span>
+                          <div className="bg-purple-500/10 border border-purple-500/20 w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
+                            <AvatarRenderer avatar={m.avatar || selectedProfile.avatar} className="w-full h-full" />
+                          </div>
                           <div className="min-w-0">
                             <h4 className="text-xs font-bold text-white leading-snug truncate">
                               {m.text}

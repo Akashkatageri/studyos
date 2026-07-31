@@ -9,12 +9,17 @@ export function checkDateExemptionOrCompletion(
   dateStr: string,
   userState: Partial<UserState>
 ): { isCompleted: boolean; isExempt: boolean } {
-  // 1. Activity / Focus goal completion check
+  // 1. Activity / Focus goal / XP completion check
   const focusMins = (userState.focusHistory || {})[dateStr] || 0;
   const activityCount = (userState.studyActivity || {})[dateStr] || 0;
+  const xpCount = (userState.dailyXP || {})[dateStr] || 0;
   const goalMinutes = userState.dailyFocusGoal ?? 30;
 
-  if (focusMins >= goalMinutes || activityCount > 0) {
+  // Meaningful study thresholds:
+  // - Reaching or exceeding daily focus goal (focusMins >= goalMinutes)
+  // - Earning at least 40 XP on that date (xpCount >= 40)
+  // - Completing 3 or more study activities (activityCount >= 3)
+  if (focusMins >= goalMinutes || xpCount >= 40 || activityCount >= 3) {
     return { isCompleted: true, isExempt: false };
   }
 
@@ -49,12 +54,18 @@ export function checkDateExemptionOrCompletion(
     return { isCompleted: false, isExempt: true };
   }
 
-  // 5. Weekly study schedule check
+  // 5. Weekly study schedule check with 4-day active guardrail
   const dateObj = parseDateUTC(dateStr);
   const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
-  const scheduledDays = userState.weeklyStudySchedule || [
+  let scheduledDays = userState.weeklyStudySchedule || [
     'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
   ];
+
+  // Validation guardrail: require at least 4 active study days in weeklyStudySchedule to prevent rest-day exploits
+  if (!Array.isArray(scheduledDays) || scheduledDays.length < 4) {
+    scheduledDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  }
+
   if (!scheduledDays.includes(dayOfWeek)) {
     return { isCompleted: false, isExempt: true };
   }
@@ -63,35 +74,39 @@ export function checkDateExemptionOrCompletion(
 }
 
 /**
- * Calculates actual consecutive study streak directly from recorded activity history.
+ * Calculates actual consecutive study streak directly from recorded activity history,
+ * bounded by account signup date (joinedDate) and study shields.
  */
 export function calculateActualStreak(userState: Partial<UserState>): number {
   if (!userState) return 0;
   const todayStr = getLocalDateString();
-  const studyActivity = userState.studyActivity || {};
-  const focusHistory = userState.focusHistory || {};
-  const goalMinutes = userState.dailyFocusGoal ?? 30;
+  
+  // Extract account signup date boundary (YYYY-MM-DD)
+  let joinedDateStr = '2000-01-01';
+  if (userState.joinedDate) {
+    joinedDateStr = userState.joinedDate.slice(0, 10);
+  }
 
-  // Helper to check if user completed study goal on a date
-  const isDateCompleted = (dateStr: string) => {
-    return (studyActivity[dateStr] || 0) > 0 || (focusHistory[dateStr] || 0) >= goalMinutes;
-  };
+  // Check if today meets completion criteria
+  const { isCompleted: completedToday } = checkDateExemptionOrCompletion(todayStr, userState);
 
-  const hasStudiedToday = isDateCompleted(todayStr);
-
-  // We start evaluating from today (if studied today) or yesterday (if today not completed yet)
-  let currentDate = hasStudiedToday ? todayStr : addDaysToDateString(todayStr, -1);
+  // We start evaluating from today (if completed today) or yesterday (if today not completed yet)
+  let currentDate = completedToday ? todayStr : addDaysToDateString(todayStr, -1);
   let streakCount = 0;
   let shieldsAvailable = userState.studyShields ?? 3;
 
-  // Walk backwards up to 365 days
+  // Walk backwards up to 365 days, stopping immediately if date is before account creation date
   for (let i = 0; i < 365; i++) {
+    if (currentDate < joinedDateStr) {
+      break;
+    }
+
     const { isCompleted, isExempt } = checkDateExemptionOrCompletion(currentDate, userState);
 
     if (isCompleted) {
       streakCount++;
     } else if (isExempt) {
-      // Scheduled rest day, break, or vacation: preserves streak
+      // Scheduled rest day, break, or vacation: preserves streak without adding to count
     } else {
       // Missed study day: check if a shield protects it
       if (shieldsAvailable > 0) {
@@ -118,8 +133,17 @@ export function evaluateDailyStreakCatchUp(userState: UserState) {
   const todayStr = getLocalDateString();
   const lastFocusStr = userState.lastFocusDate || userState.lastActiveDate;
 
-  // Calculate actual streak based on activity history
+  // Calculate actual streak based on activity history & joinedDate cutoff
   const currentActualStreak = calculateActualStreak(userState);
+
+  // Idempotent check: if last focus date is today and streak matches calculated streak, return null / bypass
+  if (lastFocusStr === todayStr && userState.streak === currentActualStreak) {
+    return {
+      dailyResetUpdates: null,
+      streakBroken: false,
+      shieldsConsumedCount: 0
+    };
+  }
 
   // Initial setup if no history
   if (!lastFocusStr) {
@@ -136,22 +160,10 @@ export function evaluateDailyStreakCatchUp(userState: UserState) {
     };
   }
 
-  // Same day check -> reset daily focus trackers for a new day if date changed
-  if (lastFocusStr === todayStr) {
-    return {
-      dailyResetUpdates: {
-        streak: currentActualStreak,
-        academicStudyStreak: currentActualStreak
-      } as Partial<UserState>,
-      streakBroken: false,
-      shieldsConsumedCount: 0
-    };
-  }
-
   const dailyResetUpdates: Partial<UserState> = {
     lastFocusDate: todayStr,
-    todayFocusMinutes: 0,
-    todayFocusXPRewarded: 0,
+    todayFocusMinutes: (lastFocusStr === todayStr) ? (userState.todayFocusMinutes || 0) : 0,
+    todayFocusXPRewarded: (lastFocusStr === todayStr) ? (userState.todayFocusXPRewarded || 0) : 0,
     streak: currentActualStreak,
     academicStudyStreak: currentActualStreak
   };
@@ -163,8 +175,15 @@ export function evaluateDailyStreakCatchUp(userState: UserState) {
 
   // Process intermediate days day-by-day sequentially
   if (diffDays > 1) {
+    let joinedDateStr = '2000-01-01';
+    if (userState.joinedDate) {
+      joinedDateStr = userState.joinedDate.slice(0, 10);
+    }
+
     for (let i = 1; i < diffDays; i++) {
       const dateStr = addDaysToDateString(lastFocusStr, i);
+      if (dateStr < joinedDateStr) continue;
+
       const { isCompleted, isExempt } = checkDateExemptionOrCompletion(dateStr, userState);
 
       if (!isCompleted && !isExempt) {
@@ -232,3 +251,4 @@ export function calculateNextStreakOnActivity(
     lastFocusDate: todayStr
   };
 }
+

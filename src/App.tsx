@@ -42,6 +42,7 @@ import { StudyCalendar } from './components/StudyCalendar';
 import { FocusTimer } from './components/FocusTimer';
 
 import { getUIPreferences, saveUIPreferences } from './utils/uiPreferences';
+import AvatarRenderer from './components/AvatarRenderer';
 
 // Timezone-proof UTC date parsing and diffing helpers
 const parseDateUTC = (str: string | null | undefined) => {
@@ -2403,7 +2404,9 @@ export default function App() {
               {/* Status or user info */}
               <div className="bg-gray-900/40 border border-gray-850 p-3 rounded-xl flex items-center gap-3 text-left">
                 {userState?.avatar ? (
-                  <div className="text-2xl">{userState.avatar}</div>
+                  <div className="w-8 h-8 rounded-xl bg-[#1A1D2E] border border-gray-800 flex items-center justify-center shrink-0 overflow-hidden">
+                    <AvatarRenderer avatar={userState.avatar} className="w-full h-full" />
+                  </div>
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 text-sm font-bold">
                     {userState?.username?.slice(0, 2).toUpperCase()}

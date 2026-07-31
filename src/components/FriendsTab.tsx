@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { UserState, FriendProfile, FriendRequest, SocialNotification, SocialActivity } from '../types';
+import AvatarRenderer from './AvatarRenderer';
 import { SoundManager } from '../utils/soundManager';
 import { 
   auth, 
@@ -652,8 +653,8 @@ export default function FriendsTab({
                 
                 {/* RANK 2 (LEFT) */}
                 <div className="flex flex-col items-center flex-1 max-w-[100px]">
-                  <div className="w-12 h-12 rounded-full bg-[#1A1D2E] border-2 border-gray-600 flex items-center justify-center text-2xl shadow-md mb-2">
-                    {rank2.avatar}
+                  <div className="w-12 h-12 rounded-full bg-[#1A1D2E] border-2 border-gray-600 flex items-center justify-center shadow-md mb-2 overflow-hidden shrink-0">
+                    <AvatarRenderer avatar={rank2.avatar} className="w-full h-full" />
                   </div>
                   <span className="text-xs font-bold text-white truncate max-w-[90px] text-center">
                     {rank2.displayName || rank2.username}
@@ -673,8 +674,8 @@ export default function FriendsTab({
                   {/* Crown Icon Above */}
                   <Crown className="w-5 h-5 text-amber-400 fill-amber-400 mb-1" />
                   
-                  <div className="w-14 h-14 rounded-full bg-[#2A2345] border-2 border-amber-400 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(251,191,36,0.3)] mb-2 relative">
-                    {rank1.avatar}
+                  <div className="w-14 h-14 rounded-full bg-[#2A2345] border-2 border-amber-400 flex items-center justify-center shadow-[0_0_20px_rgba(251,191,36,0.3)] mb-2 relative overflow-hidden shrink-0">
+                    <AvatarRenderer avatar={rank1.avatar} className="w-full h-full" />
                   </div>
 
                   <span className="text-xs font-black text-white truncate max-w-[100px] text-center">
@@ -692,8 +693,8 @@ export default function FriendsTab({
 
                 {/* RANK 3 (RIGHT) */}
                 <div className="flex flex-col items-center flex-1 max-w-[100px]">
-                  <div className="w-12 h-12 rounded-full bg-[#1A1D2E] border-2 border-amber-700/60 flex items-center justify-center text-2xl shadow-md mb-2">
-                    {rank3.avatar}
+                  <div className="w-12 h-12 rounded-full bg-[#1A1D2E] border-2 border-amber-700/60 flex items-center justify-center shadow-md mb-2 overflow-hidden shrink-0">
+                    <AvatarRenderer avatar={rank3.avatar} className="w-full h-full" />
                   </div>
                   <span className="text-xs font-bold text-white truncate max-w-[90px] text-center">
                     {rank3.displayName || rank3.username}
@@ -752,8 +753,8 @@ export default function FriendsTab({
                     >
                       {/* Avatar + Status Indicator */}
                       <div className="flex items-start justify-between">
-                        <div className="w-12 h-12 rounded-2xl bg-[#1A1D2E] border border-gray-700/60 flex items-center justify-center text-2xl shadow-inner">
-                          {friend.avatar}
+                        <div className="w-12 h-12 rounded-2xl bg-[#1A1D2E] border border-gray-700/60 flex items-center justify-center shadow-inner overflow-hidden shrink-0">
+                          <AvatarRenderer avatar={friend.avatar} className="w-full h-full" />
                         </div>
                         <span className={`w-2 h-2 rounded-full mt-1 ${friend.status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`} />
                       </div>
@@ -805,9 +806,9 @@ export default function FriendsTab({
                   return (
                     <div key={act.id} className="pt-3 first:pt-0 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-xl bg-purple-500/10 border border-purple-500/20 w-9 h-9 rounded-xl flex items-center justify-center shrink-0">
-                          {act.avatar || '🚀'}
-                        </span>
+                        <div className="bg-purple-500/10 border border-purple-500/20 w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
+                          <AvatarRenderer avatar={act.avatar} className="w-full h-full" />
+                        </div>
                         <div className="min-w-0">
                           <p className="text-xs text-gray-200 leading-snug">
                             <strong className="text-white">@{act.username}</strong> {act.text}
@@ -890,7 +891,9 @@ export default function FriendsTab({
                       {receivedRequests.map((req) => (
                         <div key={req.id} className="bg-[#121422] border border-gray-800 p-3.5 rounded-xl flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
-                            <span className="text-2xl bg-[#1A1D2E] w-10 h-10 rounded-xl flex items-center justify-center">{req.senderAvatar}</span>
+                            <div className="bg-[#1A1D2E] w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                              <AvatarRenderer avatar={req.senderAvatar} className="w-full h-full" />
+                            </div>
                             <div>
                               <h4 className="text-xs font-bold text-white">{req.senderDisplayName}</h4>
                               <p className="text-[10px] text-gray-500 font-mono">@{req.senderUsername}</p>
@@ -930,7 +933,9 @@ export default function FriendsTab({
                       {sentRequests.map((req) => (
                         <div key={req.id} className="bg-[#121422] border border-gray-800 p-3.5 rounded-xl flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
-                            <span className="text-2xl bg-[#1A1D2E] w-10 h-10 rounded-xl flex items-center justify-center">{req.receiverAvatar}</span>
+                            <div className="bg-[#1A1D2E] w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                              <AvatarRenderer avatar={req.receiverAvatar} className="w-full h-full" />
+                            </div>
                             <div>
                               <h4 className="text-xs font-bold text-white">{req.receiverDisplayName}</h4>
                               <p className="text-[10px] text-gray-500 font-mono">@{req.receiverUsername}</p>
@@ -1033,7 +1038,9 @@ export default function FriendsTab({
                         {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
                       </span>
 
-                      <span className="text-xl bg-[#1A1D2E] w-9 h-9 rounded-xl flex items-center justify-center">{profile.avatar}</span>
+                      <div className="bg-[#1A1D2E] w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                        <AvatarRenderer avatar={profile.avatar} className="w-full h-full" />
+                      </div>
 
                       <div>
                         <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
@@ -1098,7 +1105,9 @@ export default function FriendsTab({
                   return (
                     <div key={profile.uid} className="bg-[#121422] border border-gray-800 p-3.5 rounded-2xl flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl bg-[#1A1D2E] w-10 h-10 rounded-xl flex items-center justify-center">{profile.avatar}</span>
+                        <div className="bg-[#1A1D2E] w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                          <AvatarRenderer avatar={profile.avatar} className="w-full h-full" />
+                        </div>
                         <div>
                           <h4 className="text-xs font-bold text-white">{profile.displayName || profile.username}</h4>
                           <span className="text-[10px] text-gray-500 font-mono block">@{profile.username}</span>

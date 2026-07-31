@@ -2,6 +2,7 @@ import React from 'react';
 import { UserState } from '../types';
 import { Search, Bell } from 'lucide-react';
 import { getLevelAndProgress } from '../utils/xpUtils';
+import AvatarRenderer from './AvatarRenderer';
 
 interface HeaderProps {
   userState: UserState;
@@ -34,9 +35,9 @@ export default function Header({
           title="View Profile & Settings"
           id="header-profile-settings-btn"
         >
-          <span className="text-xl md:text-2xl filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform">
-            {avatar || '🦊'}
-          </span>
+          <div className="filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform flex items-center justify-center shrink-0 w-8 h-8 rounded-full overflow-hidden">
+            <AvatarRenderer avatar={avatar} className="w-full h-full" />
+          </div>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs md:text-sm font-bold text-white tracking-tight truncate group-hover:text-[#A78BFA] transition-colors">

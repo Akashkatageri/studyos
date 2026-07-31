@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { UserState } from '../types';
+import AvatarRenderer from './AvatarRenderer';
 import { 
   Download, 
   Upload, 
@@ -97,9 +98,6 @@ export default function SettingsTab({
     reader.readAsText(file);
   };
 
-  // Helper for mascot / avatar badge
-  const avatarVisual = userState.avatar || '🦊';
-
   // Helper for backlog subject names list
   const getBacklogSubjectNames = () => {
     const backlogIds = userState.backlogSubjects || [];
@@ -154,12 +152,8 @@ export default function SettingsTab({
         <div className="bg-[#121622] border border-white/10 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-950/80 border border-indigo-500/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
-                {avatarVisual.length === 1 ? avatarVisual : (
-                  <span className="font-bold text-indigo-400 text-lg">
-                    {(userState.displayName || userState.username || 'A').slice(0, 2).toUpperCase()}
-                  </span>
-                )}
+              <div className="w-12 h-12 rounded-2xl bg-indigo-950/80 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
+                <AvatarRenderer avatar={userState.avatar} className="w-full h-full" />
               </div>
               <div className="min-w-0">
                 <h4 className="text-base font-black text-white truncate">
