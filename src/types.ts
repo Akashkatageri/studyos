@@ -40,8 +40,6 @@ export interface TodoItem {
   dueDate?: string; // "YYYY-MM-DD"
   dueTime?: string; // "HH:MM"
   repeat?: TodoRepeat;
-  parentTaskId?: string;
-  isInstance?: boolean;
   dateCreated: string; // "YYYY-MM-DD"
   order: number;
   completedAt?: string; // ISO date or "YYYY-MM-DD"

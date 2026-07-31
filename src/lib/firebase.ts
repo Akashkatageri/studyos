@@ -24,8 +24,6 @@ import {
 import { UserState, FriendProfile, FriendRequest, SocialNotification, SocialActivity } from "../types";
 import { getLocalDateString, calculateWeeklyXP } from "../utils/dateUtils";
 import { calculateActualStreak } from "../utils/streakUtils";
-import { DEFAULT_DAILY_FOCUS_GOAL } from "../constants";
-import { sanitizeTodos } from "../utils/todoUtils";
 import { containsProfanity, sanitizeUsername, sanitizeDisplayName, sanitizeBio } from "../utils/moderation";
 
 /**
@@ -573,7 +571,7 @@ export async function syncUserToFirestore(uid: string, state: UserState): Promis
       studyActivity: state.studyActivity || {},
       unlockedAchievements: state.unlockedAchievements || [],
       // Focus Habit fields
-      dailyFocusGoal: state.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL,
+      dailyFocusGoal: state.dailyFocusGoal ?? 25,
       academicStudyStreak: state.academicStudyStreak ?? 0,
       longestStudyStreak: state.longestStudyStreak ?? 0,
       totalFocusMinutes: state.totalFocusMinutes ?? 0,
@@ -704,6 +702,11 @@ export async function loadUserFromFirestore(uid: string): Promise<UserState | nu
       isOffline: false
     } as UserState;
 
+    // Calculate actual consecutive study streak directly from recorded activity history
+    const trueStreak = calculateActualStreak(loadedState);
+    loadedState.streak = trueStreak;
+    loadedState.academicStudyStreak = trueStreak;
+
     console.log(`[StudyOS Trace] loadUserFromFirestore SUCCEEDED for UID: ${uid}. Username: @${loadedState.username}, level: ${loadedState.level}, streak: ${loadedState.streak}`);
     return loadedState;
   } catch (err) {
@@ -782,7 +785,7 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
     studyActivity: mergedStudyActivity,
     focusHistory: mergedFocusHistory,
     studyShields: activeShields,
-    dailyFocusGoal: local.dailyFocusGoal ?? cloud.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL,
+    dailyFocusGoal: local.dailyFocusGoal ?? cloud.dailyFocusGoal ?? 25,
     semesterStartDate: local.semesterStartDate ?? cloud.semesterStartDate ?? null,
     semesterEndDate: local.semesterEndDate ?? cloud.semesterEndDate ?? null,
     weeklyStudySchedule: local.weeklyStudySchedule ?? cloud.weeklyStudySchedule ?? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
@@ -794,7 +797,7 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
   const activeStreak = calculateActualStreak(mergedPartialState);
 
   const allTodos = [...(local.todos || []), ...(cloud.todos || [])];
-  const rawMergedTodos = allTodos.reduce((acc, current) => {
+  const mergedTodos = allTodos.reduce((acc, current) => {
     const existingIndex = acc.findIndex(t => t.id === current.id);
     if (existingIndex < 0) {
       acc.push(current);
@@ -803,7 +806,6 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
     }
     return acc;
   }, [] as typeof local.todos);
-  const mergedTodos = sanitizeTodos(rawMergedTodos);
 
   const mergedXP = Math.max(local.xp || 0, cloud.xp || 0);
   const mergedLevel = Math.max(local.level || 1, cloud.level || 1);
@@ -835,7 +837,7 @@ export function mergeLocalAndCloudStates(local: UserState, cloud: UserState): Us
     soundFocusModeEnabled: local.soundFocusModeEnabled ?? cloud.soundFocusModeEnabled ?? false,
     soundVolume: local.soundVolume ?? cloud.soundVolume ?? 70,
 
-    dailyFocusGoal: local.dailyFocusGoal ?? cloud.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL,
+    dailyFocusGoal: local.dailyFocusGoal ?? cloud.dailyFocusGoal ?? 25,
     totalFocusMinutes: Math.max(local.totalFocusMinutes || 0, cloud.totalFocusMinutes || 0),
     weeklyFocusMinutes: Math.max(local.weeklyFocusMinutes || 0, cloud.weeklyFocusMinutes || 0),
     monthlyFocusMinutes: Math.max(local.monthlyFocusMinutes || 0, cloud.monthlyFocusMinutes || 0),

@@ -2,7 +2,6 @@ import React from 'react';
 import { Bell, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserState, SocialNotification } from '../../types';
-import AvatarRenderer from '../AvatarRenderer';
 
 interface NotificationCenterModalProps {
   isOpen: boolean;
@@ -77,9 +76,7 @@ export default function NotificationCenterModal({
                     key={notif.id} 
                     className={`flex items-start gap-3 pt-3.5 first:pt-0 ${notif.read ? 'opacity-65' : ''}`}
                   >
-                    <span className="shrink-0 bg-white/5 w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-                      <AvatarRenderer avatar={notif.senderAvatar} size={28} />
-                    </span>
+                    <span className="text-xl shrink-0 bg-white/5 w-8 h-8 rounded-lg flex items-center justify-center">{notif.senderAvatar}</span>
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center justify-between gap-2">
                         <h4 className="text-xs font-black text-white leading-tight">{notif.title}</h4>

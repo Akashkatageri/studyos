@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserState, Subject, Topic, Revision } from './types';
 import { COURSE_TEMPLATES, findTopicById, getUserSubjects } from './data';
-import { Home, ListCollapse, Users, User, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus, Smartphone, Check, Loader2, ExternalLink, WifiOff } from 'lucide-react';
+import { Home, ListCollapse, Users, User, Flame, ShieldAlert, Sparkles, Clock, X, Calendar, AlertCircle, Plus, Smartphone, Check, Loader2, ExternalLink, WifiOff, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Components
@@ -20,9 +20,8 @@ import FriendsTab from './components/FriendsTab';
 import TopicViewModal from './components/TopicViewModal';
 import CompletionAnimations from './components/CompletionAnimations';
 import BadgeUnlockModal from './components/BadgeUnlockModal';
-import AvatarRenderer from './components/AvatarRenderer';
 import { syncUserAchievementsAndXP } from './utils/achievements';
-import { auth, googleProvider, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount, mergeLocalAndCloudStates } from './lib/firebase';
+import { auth, googleProvider, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount } from './lib/firebase';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onIdTokenChanged, getRedirectResult } from 'firebase/auth';
 import { encryptData } from './lib/crypto';
 import { Capacitor } from '@capacitor/core';
@@ -32,7 +31,6 @@ import { SoundManager } from './utils/soundManager';
 import { NotificationManager } from './utils/notificationManager';
 import { getLocalDateString } from './utils/dateUtils';
 import { evaluateDailyStreakCatchUp, calculateNextStreakOnActivity } from './utils/streakUtils';
-import { DEFAULT_DAILY_FOCUS_GOAL } from './constants';
 import { syncAndroidWidget } from './utils/widgetSync';
 import { getLevelAndProgress, getDifficultyConfig } from './utils/xpUtils';
 import { createInitialRevision, updateRevisionScheduling, sanitizeRevisions, getDailyReviewQueue, addDaysToDateString } from './lib/spacedRepetition';
@@ -43,7 +41,7 @@ import BrowseSubjectsModal from './components/home/BrowseSubjectsModal';
 import { StudyCalendar } from './components/StudyCalendar';
 import { FocusTimer } from './components/FocusTimer';
 
-const LOCAL_STORAGE_KEY = 'studyos-user-state';
+import { getUIPreferences, saveUIPreferences } from './utils/uiPreferences';
 
 // Timezone-proof UTC date parsing and diffing helpers
 const parseDateUTC = (str: string | null | undefined) => {
@@ -117,7 +115,23 @@ export default function App() {
       return resolved;
     });
   };
+  const [showOfflineScreen, setShowOfflineScreen] = useState(false);
+  const offlineTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleRetryConnection = async () => {
+    if (offlineTimerRef.current) {
+      clearTimeout(offlineTimerRef.current);
+      offlineTimerRef.current = null;
+    }
+    const connected = await getIsConnected();
+    if (connected) {
+      setShowOfflineScreen(false);
+      await performSyncOnReconnect();
+    } else {
+      setShowOfflineScreen(true);
+    }
+  };
   const [authInitialized, setAuthInitializedInternal] = useState(false);
   const setAuthInitialized = (val: boolean | ((prev: boolean) => boolean)) => {
     const errorStack = new Error().stack || 'No stack trace available';
@@ -623,82 +637,43 @@ export default function App() {
 
         if (cloudData && cloudData.onboarded) {
           console.log("[StudyOS Trace] onAuthStateChanged: Successfully loaded onboarded cloud profile data.");
-          const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-          let local = cached ? JSON.parse(cached) : null;
-          let merged: UserState;
-
-          if (local && local.username && local.uid === user.uid) {
-            console.log("[StudyOS Trace] onAuthStateChanged: Local cache matches authenticated user. Merging local progress with cloud progress...");
-            merged = mergeLocalAndCloudStates(local, cloudData);
-            merged.isOffline = isOffline; // Use actual physical connectivity
-          } else {
-            console.log("[StudyOS Trace] onAuthStateChanged: Local cache is empty or belongs to a different user. Loading cloud profile data directly.");
-            merged = {
-              ...cloudData,
-              uid: user.uid,
-              email: user.email || undefined,
-              displayName: user.displayName || cloudData.displayName || undefined,
-              isOffline: isOffline, // Use actual physical connectivity
-            };
-          }
-          setUserState(merged);
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+          const uiPrefs = getUIPreferences();
+          const finalState: UserState = {
+            ...cloudData,
+            uid: user.uid,
+            email: user.email || cloudData.email || undefined,
+            displayName: user.displayName || cloudData.displayName || undefined,
+            activeTab: uiPrefs.activeTab || cloudData.activeTab || 'home',
+            themeMode: uiPrefs.theme || cloudData.themeMode || 'dark',
+            isOffline: isOffline,
+          };
+          setUserState(finalState);
+          saveUIPreferences({
+            theme: finalState.themeMode,
+            activeTab: finalState.activeTab,
+            onboarded: finalState.onboarded,
+            accentColor: (finalState as any).accentColor || 'purple',
+            language: (finalState as any).language || 'en',
+          });
         } else {
           console.log(`[StudyOS Trace] onAuthStateChanged: Cloud data is null, incomplete, or not onboarded. dbErrorHappened=${dbErrorHappened}`);
-          const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-          let local = cached ? JSON.parse(cached) : null;
-
-          if (local && local.username && local.uid === user.uid) {
-            console.log(`[StudyOS Trace] onAuthStateChanged: Cache matches. Restoring cached state. isOffline=${isOffline}`);
-            const updatedLocal: UserState = {
-              ...local,
-              uid: user.uid,
-              email: user.email || undefined,
-              displayName: user.displayName || local.displayName || undefined,
-              isOffline: isOffline, // Physical connectivity controls this
-            };
-            setUserState(updatedLocal);
-          } else {
-            console.log(`[StudyOS Trace] onAuthStateChanged: No matching cache. Initializing blank user state with isOffline=${isOffline}`);
-            setUserState({
-              uid: user.uid,
-              email: user.email || undefined,
-              displayName: user.displayName || undefined,
-              isOffline: isOffline,
-              onboarded: false,
-            } as UserState);
-          }
+          const uiPrefs = getUIPreferences();
+          setUserState({
+            uid: user.uid,
+            email: user.email || undefined,
+            displayName: user.displayName || undefined,
+            isOffline: isOffline,
+            onboarded: uiPrefs.onboarded || false,
+            activeTab: uiPrefs.activeTab || 'home',
+            themeMode: uiPrefs.theme || 'dark',
+          } as UserState);
         }
       };
 
       // Helper function to handle unauthenticated user state
       const handleUserUnauthenticated = () => {
-        console.log(`[StudyOS Trace] onAuthStateChanged: No authenticated Firebase user is logged in. Checking local storage cache... (isOffline=${isOffline})`);
-        const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            if (parsed.isOffline || parsed.onboarded) {
-              console.log(`[StudyOS Trace] onAuthStateChanged: Found cached user profile in local storage (@${parsed.username}).`);
-              
-              if (!parsed.inProgressTopics) {
-                parsed.inProgressTopics = [];
-              }
-              // Restore and set offline status based strictly on actual physical connectivity and cached status
-              parsed.isOffline = isOffline; // Only physical connectivity controls this
-              setUserState(parsed);
-            } else {
-              console.log("[StudyOS Trace] onAuthStateChanged: Cache does not contain an onboarded/offline user. Clearing state.");
-              setUserState(null);
-            }
-          } catch (pErr) {
-            console.error("[StudyOS Trace] onAuthStateChanged: Failed to parse cached local storage user state:", pErr);
-            setUserState(null);
-          }
-        } else {
-          console.log("[StudyOS Trace] onAuthStateChanged: Local storage cache is empty. Setting state to null.");
-          setUserState(null);
-        }
+        console.log(`[StudyOS Trace] onAuthStateChanged: No authenticated Firebase user is logged in.`);
+        setUserState(null);
       };
 
       try {
@@ -838,16 +813,7 @@ export default function App() {
       console.log(`[StudyOS Trace] performSyncOnReconnect connection check outcome: hasInternet=${hasInternet}`);
       if (!hasInternet) {
         console.log("[StudyOS Trace] performSyncOnReconnect skipped: network is offline.");
-        if (currentState && !currentState.isOffline) {
-          console.log("[StudyOS Trace] performSyncOnReconnect: Transitioning userState isOffline=true due to detected offline state.");
-          const offlineState = {
-            ...currentState,
-            isOffline: true
-          };
-          setUserState(offlineState);
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(offlineState));
-        }
-        setIsCloudSyncUnavailable(false);
+        handleNetworkChange(false);
         return;
       }
 
@@ -876,20 +842,21 @@ export default function App() {
         }
 
         if (cloudData) {
-          console.log("[StudyOS Trace] performSyncOnReconnect: Cloud profile found. Merging local progress...");
-          // Merge local offline progress into cloud data to prevent any data loss
-          const merged = mergeLocalAndCloudStates(currentState, cloudData);
+          console.log("[StudyOS Trace] performSyncOnReconnect: Cloud profile found.");
           const updatedState = {
-            ...merged,
+            ...cloudData,
+            uid: currentState.uid,
             isOffline: false,
           };
           
           setUserState(updatedState);
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedState));
-
-          // Trigger a silent sync to cloud just to make sure Firestore is fully updated with any offline changes
-          console.log("[StudyOS Trace] performSyncOnReconnect: Triggering silent cloud sync write...");
-          await syncUserToFirestore(currentState.uid, updatedState);
+          saveUIPreferences({
+            theme: updatedState.themeMode || 'dark',
+            activeTab: updatedState.activeTab || 'home',
+            onboarded: updatedState.onboarded || false,
+            accentColor: (updatedState as any).accentColor || 'purple',
+            language: (updatedState as any).language || 'en'
+          });
 
           if (currentState?.isOffline) {
             setToast({
@@ -906,7 +873,13 @@ export default function App() {
               isOffline: false,
             };
             setUserState(updatedState);
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedState));
+            saveUIPreferences({
+              theme: updatedState.themeMode || 'dark',
+              activeTab: updatedState.activeTab || 'home',
+              onboarded: updatedState.onboarded || false,
+              accentColor: (updatedState as any).accentColor || 'purple',
+              language: (updatedState as any).language || 'en'
+            });
           }
         }
 
@@ -933,7 +906,13 @@ export default function App() {
             isOffline: false,
           };
           setUserState(updatedState);
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedState));
+          saveUIPreferences({
+            theme: updatedState.themeMode || 'dark',
+            activeTab: updatedState.activeTab || 'home',
+            onboarded: updatedState.onboarded || false,
+            accentColor: updatedState.accentColor || 'purple',
+            language: updatedState.language || 'en'
+          });
         }
         console.log("[StudyOS Trace] performSyncOnReconnect completed");
       }
@@ -960,34 +939,54 @@ export default function App() {
     }
   }, [authInitialized, userState?.uid]);
 
-  // Handle network state transitions
+  // Handle network state transitions with 3-second delay before displaying offline page
   const handleNetworkChange = async (connected: boolean) => {
     if (!isMountedRef.current) return;
     console.log(`[StudyOS Trace] handleNetworkChange called. connected=${connected}`);
 
     if (connected) {
-      await performSyncOnReconnect();
+      if (offlineTimerRef.current) {
+        clearTimeout(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+      if (showOfflineScreen) {
+        await performSyncOnReconnect();
+        setShowOfflineScreen(false);
+      } else {
+        await performSyncOnReconnect();
+      }
     } else {
-      // We are offline. Update userState isOffline parameter.
+      // Device lost internet connection. Wait 3 seconds before displaying the offline page to avoid flickering
+      if (!offlineTimerRef.current) {
+        console.log("[StudyOS Trace] Offline state detected. Starting 3-second delay timer...");
+        offlineTimerRef.current = setTimeout(async () => {
+          const activeConnected = await getIsConnected();
+          if (!activeConnected) {
+            console.log("[StudyOS Trace] Still offline after 3 seconds. Displaying full-screen offline page.");
+            setShowOfflineScreen(true);
+            setUserState((prev) => prev ? ({ ...prev, isOffline: true }) : null);
+          }
+          offlineTimerRef.current = null;
+        }, 3000);
+      }
+
       const currentState = userStateRef.current;
       if (currentState && !currentState.isOffline) {
-        console.log("[StudyOS Trace] handleNetworkChange: Transitioning state to offline.");
         const offlineState = {
           ...currentState,
           isOffline: true
         };
         setUserState(offlineState);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(offlineState));
+        saveUIPreferences({
+          theme: offlineState.themeMode || 'dark',
+          activeTab: offlineState.activeTab || 'home',
+          onboarded: offlineState.onboarded || false,
+          accentColor: offlineState.accentColor || 'purple',
+          language: offlineState.language || 'en'
+        });
       }
 
-      // If physically offline, reset the cloud sync failure state since the main offline banner takes priority
       setIsCloudSyncUnavailable(false);
-
-      setToast({
-        title: "📶 Offline Mode Active",
-        message: "You are currently disconnected. You can continue studying offline; your progress will synchronize once you're back online.",
-        type: "info"
-      });
     }
   };
 
@@ -1281,7 +1280,7 @@ export default function App() {
   useEffect(() => {
     if (authInitialized && userState && userState.onboarded && (userState.streak || 0) > 0) {
       const todayStr = getLocalDateString();
-      const studiedToday = (userState.studyActivity && (userState.studyActivity[todayStr] || 0) > 0) || ((userState.todayFocusMinutes || 0) >= (userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL));
+      const studiedToday = (userState.studyActivity && (userState.studyActivity[todayStr] || 0) > 0) || ((userState.todayFocusMinutes || 0) >= (userState.dailyFocusGoal ?? 30));
       const alreadyAlerted = sessionStorage.getItem('studyos-streak-alerted');
       
       if (!studiedToday && !alreadyAlerted) {
@@ -1307,7 +1306,7 @@ export default function App() {
 
   // Academic Study Streak Catch-Up & Study Shield consumption
   useEffect(() => {
-    if (!authInitialized || !userState || !userState.onboarded) return;
+    if (!userState || !userState.onboarded) return;
 
     const { dailyResetUpdates, streakBroken, shieldsConsumedCount } = evaluateDailyStreakCatchUp(userState);
 
@@ -1328,7 +1327,7 @@ export default function App() {
     }
 
     handleUpdateState(dailyResetUpdates);
-  }, [authInitialized, userState?.onboarded, userState?.lastFocusDate, userState?.lastActiveDate]);
+  }, [userState?.onboarded]);
 
   // Toast notification auto-dismiss timer
   useEffect(() => {
@@ -1370,7 +1369,18 @@ export default function App() {
       }
     }
     setUserState(updated);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+    saveUIPreferences({
+      theme: updated.themeMode || 'dark',
+      activeTab: updated.activeTab || 'home',
+      onboarded: updated.onboarded || false,
+      accentColor: (updated as any).accentColor || 'purple',
+      language: (updated as any).language || 'en',
+    });
+    if (updated.uid && !updated.isOffline) {
+      syncUserToFirestore(updated.uid, updated).catch((err) => {
+        console.warn("[StudyOS Trace] syncUserToFirestore failed:", err);
+      });
+    }
   };
 
   // Check if we are the dedicated authentication helper popup window
@@ -1521,7 +1531,13 @@ export default function App() {
         onAuthComplete={(authData) => {
           if (authData.onboarded && authData.fullState) {
             setUserState(authData.fullState);
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(authData.fullState));
+            saveUIPreferences({
+              theme: authData.fullState.themeMode || 'dark',
+              activeTab: authData.fullState.activeTab || 'home',
+              onboarded: true,
+              accentColor: authData.fullState.accentColor || 'purple',
+              language: authData.fullState.language || 'en'
+            });
             return;
           }
           const initialUserState: Partial<UserState> = {
@@ -1533,7 +1549,9 @@ export default function App() {
             onboarded: false,
           };
           setUserState(initialUserState as UserState);
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(initialUserState));
+          saveUIPreferences({
+            onboarded: false,
+          });
         }}
       />
     );
@@ -1562,7 +1580,8 @@ export default function App() {
         }} 
         onSignOut={async () => {
           console.log("[StudyOS Trace] [App.tsx] Explicit sign-out triggered from onboarding screen onSignOut()");
-          localStorage.removeItem(LOCAL_STORAGE_KEY);
+          localStorage.removeItem('studyos-user-state');
+          localStorage.removeItem('studyos-ui-preferences');
           setUserState(null);
           try {
             await auth.signOut();
@@ -1665,7 +1684,16 @@ export default function App() {
 
     // Calendar Streak Tracking Calculations
     const todayStr = getLocalDateString(); // "YYYY-MM-DD"
-    const streakData = calculateNextStreakOnActivity(userState, todayStr);
+    const streakData = isAlreadyCompleted
+      ? {
+          streak: userState.streak || 0,
+          academicStudyStreak: userState.academicStudyStreak || 0,
+          longestStreak: userState.longestStreak || 0,
+          longestStudyStreak: userState.longestStudyStreak || 0,
+          lastActiveDate: userState.lastActiveDate,
+          lastFocusDate: userState.lastFocusDate || todayStr,
+        }
+      : calculateNextStreakOnActivity(userState, todayStr);
 
     // Track study activity completions counts
     const studyActivityMap = userState.studyActivity || {};
@@ -2112,7 +2140,8 @@ export default function App() {
   const handleLogout = async () => {
     setIsLoading(true);
     console.log("[StudyOS Trace] [App.tsx] Explicit sign-out triggered via handleLogout()");
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    localStorage.removeItem('studyos-user-state');
+    localStorage.removeItem('studyos-ui-preferences');
     setUserState(null);
     try {
       await auth.signOut();
@@ -2139,10 +2168,21 @@ export default function App() {
         hasActiveNotifications={hasPendingRequests || hasUnreadNotifs}
       />
 
-      {userState.isOffline && (
-        <div id="offline-banner" className="bg-amber-500/10 border-b border-amber-500/10 px-4 py-2 flex items-center justify-center gap-2 text-xs font-semibold text-amber-400 select-none backdrop-blur-md">
-          <WifiOff className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-          <span>No internet connection detected. Working in offline mode (changes will sync once you are back online).</span>
+      {(userState.isOffline || showOfflineScreen) && (
+        <div id="offline-banner" className="bg-purple-950/90 border-b border-purple-500/30 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-purple-200 select-none backdrop-blur-md sticky top-0 z-50 shadow-md">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+            <span>
+              <strong className="text-amber-300 font-semibold">Offline Mode Active:</strong> You can browse all loaded screens. Cloud actions (Starting Focus Sessions, Friend Requests, Accept Requests, Streak Updates) are disabled.
+            </span>
+          </div>
+          <button
+            onClick={handleRetryConnection}
+            className="px-3 py-1 bg-purple-600/60 hover:bg-purple-600 border border-purple-400/30 rounded-lg text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span>Retry Connection</span>
+          </button>
         </div>
       )}
 
@@ -2363,9 +2403,7 @@ export default function App() {
               {/* Status or user info */}
               <div className="bg-gray-900/40 border border-gray-850 p-3 rounded-xl flex items-center gap-3 text-left">
                 {userState?.avatar ? (
-                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center overflow-hidden shrink-0">
-                    <AvatarRenderer avatar={userState.avatar} size={32} />
-                  </div>
+                  <div className="text-2xl">{userState.avatar}</div>
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 text-sm font-bold">
                     {userState?.username?.slice(0, 2).toUpperCase()}

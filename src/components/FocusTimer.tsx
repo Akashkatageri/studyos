@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { UserState } from '../types';
 import { SoundManager } from '../utils/soundManager';
-import { DEFAULT_DAILY_FOCUS_GOAL } from '../constants';
 import { getLocalDateString } from '../utils/dateUtils';
 import { getLevelAndProgress } from '../utils/xpUtils';
 import { calculateNextStreakOnActivity } from '../utils/streakUtils';
@@ -293,11 +292,19 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
   // Tick reference to check for clock manipulation
   const lastTickRef = useRef<number>(Date.now());
+  const sessionStartTimeRef = useRef<number | null>(null);
 
   const toggleTimer = () => {
+    if (userState.isOffline && !isRunning) {
+      onTriggerToast("📶 Connection Required", "Internet connection is required to start or resume a focus session.", "info");
+      return;
+    }
     const nextRunning = !isRunning;
     setIsRunning(nextRunning);
     if (nextRunning) {
+      if (!sessionStartTimeRef.current) {
+        sessionStartTimeRef.current = Math.floor(Date.now() / 1000);
+      }
       SoundManager.play('timer_start');
       SoundManager.vibrate('light');
       scheduleLocalNotification(remainingSecs, selectedTopicName || "General Study Block");
@@ -308,31 +315,61 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     }
   };
 
+  // Auto-pause timer when internet connection drops during an active focus session
+  useEffect(() => {
+    const handleOfflineEvent = () => {
+      if (isRunning) {
+        setIsRunning(false);
+        onTriggerToast("📶 Connection Lost", "Focus session auto-paused to protect your elapsed minutes. Connect back online to resume.", "info");
+      }
+    };
+
+    window.addEventListener('offline', handleOfflineEvent);
+    return () => window.removeEventListener('offline', handleOfflineEvent);
+  }, [isRunning, onTriggerToast]);
+
+  useEffect(() => {
+    if (userState.isOffline && isRunning) {
+      setIsRunning(false);
+      onTriggerToast("📶 Connection Lost", "Focus session auto-paused to protect your elapsed minutes. Connect back online to resume.", "info");
+    }
+  }, [userState.isOffline, isRunning, onTriggerToast]);
+
   // Load session from LocalStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        const data = JSON.parse(saved);
-        const elapsedRealTime = Math.floor((Date.now() - data.lastTick) / 1000);
+        const rawData = JSON.parse(saved);
+        const active = rawData.activeSession || rawData;
+        const total = active.totalSeconds || rawData.totalSeconds || 0;
+        const elapsed = active.elapsed ?? active.secondsElapsed ?? rawData.secondsElapsed ?? 0;
+        const mode = active.mode || rawData.mode || 'pomodoro';
+        const topicName = active.topicName || rawData.topicName || 'General Study Block';
+        const wasRunning = active.isRunning ?? rawData.isRunning ?? false;
+        const startTime = active.startTime || rawData.startTime || Math.floor((Date.now() - (elapsed * 1000)) / 1000);
+        const lastTick = rawData.lastTick || (startTime ? startTime * 1000 : Date.now());
+
+        const elapsedRealTime = Math.floor((Date.now() - lastTick) / 1000);
+        sessionStartTimeRef.current = startTime;
         
-        setTotalSeconds(data.totalSeconds);
-        setActiveMode(data.mode);
-        setSelectedTopicName(data.topicName || 'General Study Block');
+        setTotalSeconds(total);
+        setActiveMode(mode);
+        setSelectedTopicName(topicName);
         
-        if (data.isRunning) {
+        if (wasRunning) {
           // If was running, let's restore state.
           // Anti-abuse: If they left the tab/browser for a long time (> 30s), we pause the timer automatically.
           if (elapsedRealTime > 30 && !Capacitor.isNativePlatform()) {
-            // Auto-paused while away
-            setSecondsElapsed(Math.min(data.secondsElapsed + 5, data.totalSeconds)); // credit 5 seconds grace
+            // Auto-paused while away, preserving elapsed study time
+            setSecondsElapsed(Math.min(elapsed + 5, total)); // credit 5 seconds grace
             setIsRunning(false);
-            onTriggerToast("⏰ Focus Timer Paused", "The focus session was paused because you were away for an extended period.", "info");
+            onTriggerToast("⏰ Focus Timer Recovered", `Recovered session (${Math.floor(elapsed / 60)}m elapsed). Paused to protect session time.`, "info");
           } else {
             // Re-sync progress
-            const updatedElapsed = data.secondsElapsed + elapsedRealTime;
-            if (updatedElapsed >= data.totalSeconds) {
-              setSecondsElapsed(data.totalSeconds);
+            const updatedElapsed = elapsed + elapsedRealTime;
+            if (updatedElapsed >= total) {
+              setSecondsElapsed(total);
               setIsRunning(false);
             } else {
               setSecondsElapsed(updatedElapsed);
@@ -340,7 +377,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
             }
           }
         } else {
-          setSecondsElapsed(data.secondsElapsed);
+          setSecondsElapsed(elapsed);
           setIsRunning(false);
         }
       } catch (err) {
@@ -355,13 +392,24 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   useEffect(() => {
     if (!isLoadedRef.current) return;
     if (totalSeconds > 0) {
+      const now = Date.now();
+      const calculatedStartTime = sessionStartTimeRef.current || Math.floor((now - (secondsElapsed * 1000)) / 1000);
       const sessionData = {
+        activeSession: {
+          startTime: calculatedStartTime,
+          elapsed: secondsElapsed,
+          totalSeconds,
+          mode: activeMode,
+          topicName: selectedTopicName,
+          isRunning
+        },
         mode: activeMode,
         totalSeconds,
         secondsElapsed,
         isRunning,
         topicName: selectedTopicName,
-        lastTick: Date.now()
+        startTime: calculatedStartTime,
+        lastTick: now
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData));
     } else {
@@ -453,7 +501,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     updatedHistory[todayStr] = (updatedHistory[todayStr] || 0) + minutes;
 
     // Daily focus goal check
-    const goalMinutes = userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL;
+    const goalMinutes = userState.dailyFocusGoal ?? 30;
     const completedGoalTodayBefore = (userState.todayFocusMinutes || 0) >= goalMinutes;
     const completedGoalTodayNow = userTodayMinutes >= goalMinutes;
 
@@ -524,6 +572,10 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
   // Start Focus Session
   const handleStartSession = () => {
+    if (userState.isOffline) {
+      onTriggerToast("📶 Connection Required", "Internet connection is required to start a new focus session.", "info");
+      return;
+    }
     let minutes = customDuration;
     if (!showCustomInput) {
       const modeObj = TIMER_MODES.find(m => m.id === activeMode);
@@ -1131,7 +1183,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
             <div>
               <p className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">Daily Target Consistency</p>
               <p className="text-[10px] text-gray-400 leading-relaxed">
-                Your daily goal is <strong className="text-white">{userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL} minutes</strong>. Reaching this secures your study streak!
+                Your daily goal is <strong className="text-white">{userState.dailyFocusGoal ?? 30} minutes</strong>. Reaching this secures your study streak!
               </p>
             </div>
           </div>

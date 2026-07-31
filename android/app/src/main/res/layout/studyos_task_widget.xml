@@ -11,17 +11,17 @@
     <!-- Mascot Avatar Badge -->
     <LinearLayout
         android:id="@+id/widget_task_avatar_bg"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
         android:orientation="vertical"
         android:gravity="center"
         android:background="@drawable/studyos_widget_badge_bg"
-        android:layout_marginEnd="12dp">
+        android:layout_marginEnd="10dp">
 
         <ImageView
             android:id="@+id/widget_task_avatar_icon"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
             android:src="@drawable/panda_ready"
             android:scaleType="fitCenter"
             android:contentDescription="Mascot" />
@@ -45,25 +45,19 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="🔥 12 Streak"
-                android:textColor="#FBBF24"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:background="@drawable/studyos_widget_streak_chip"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="2dp" />
+                android:textColor="#F59E0B"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/widget_task_pstatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="• Ready"
-                android:textColor="#34D399"
+                android:textColor="#10B981"
                 android:textSize="9sp"
                 android:textStyle="bold"
-                android:background="@drawable/studyos_widget_pstatus_chip"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="2dp"
-                android:layout_marginStart="6dp" />
+                android:layout_marginStart="8dp" />
         </LinearLayout>
 
         <TextView
@@ -74,30 +68,28 @@
             android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:layout_marginTop="3dp" />
+            android:layout_marginTop="1dp" />
 
         <TextView
             android:id="@+id/widget_task_subtext"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Ready to study! ☀️"
-            android:textColor="#CBD5E1"
-            android:textSize="10sp"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:textColor="#E2E8F0"
+            android:textSize="10sp" />
     </LinearLayout>
 
     <TextView
         android:id="@+id/widget_task_action_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Goals 🎯"
+        android:text="Goals"
         android:textColor="#FFFFFF"
         android:textSize="11sp"
         android:textStyle="bold"
         android:background="@drawable/studyos_widget_button"
-        android:paddingHorizontal="14dp"
-        android:paddingVertical="9dp"
-        android:layout_marginStart="8dp" />
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="8dp"
+        android:layout_marginStart="6dp" />
 
 </LinearLayout>

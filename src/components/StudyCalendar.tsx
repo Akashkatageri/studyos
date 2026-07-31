@@ -16,7 +16,6 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { UserState } from '../types';
-import { DEFAULT_DAILY_FOCUS_GOAL } from '../constants';
 
 interface StudyCalendarProps {
   userState: UserState;
@@ -40,12 +39,12 @@ export const StudyCalendar: React.FC<StudyCalendarProps> = ({
   onClose 
 }) => {
   // Local states initialized with values from userState or defaults
-  const [dailyFocusGoal, setDailyFocusGoal] = useState<number>(userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL);
+  const [dailyFocusGoal, setDailyFocusGoal] = useState<number>(userState.dailyFocusGoal ?? 25);
   const [isCustomGoal, setIsCustomGoal] = useState<boolean>(
-    ![15, 30, 45, 60, 90].includes(userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL)
+    ![15, 25, 45, 60, 90].includes(userState.dailyFocusGoal ?? 25)
   );
   const [customGoalVal, setCustomGoalVal] = useState<string>(
-    isCustomGoal ? String(userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL) : '45'
+    isCustomGoal ? String(userState.dailyFocusGoal ?? 25) : '45'
   );
 
   const [semesterStartDate, setSemesterStartDate] = useState<string>(

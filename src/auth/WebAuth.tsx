@@ -5,7 +5,6 @@ import {
   AlertCircle, 
   LogOut, 
   Loader2, 
-  HardDrive, 
   ShieldCheck 
 } from 'lucide-react';
 import AppLogo from '../components/AppLogo';
@@ -17,9 +16,9 @@ interface WebAuthProps {
   setShowIframeWarning: (show: boolean) => void;
   redirectWarning: string | null;
   authError: { message: string } | null;
-  cachedUser: any | null;
+  cachedUser?: any | null;
   handleGoogleSignIn: () => Promise<void>;
-  handleContinueOffline: () => void;
+  handleContinueOffline?: () => void;
   handleSignOutAndReset: () => Promise<void>;
 }
 
@@ -29,9 +28,7 @@ export default function WebAuth({
   showIframeWarning,
   redirectWarning,
   authError,
-  cachedUser,
   handleGoogleSignIn,
-  handleContinueOffline,
   handleSignOutAndReset,
 }: WebAuthProps) {
   return (
@@ -165,18 +162,6 @@ export default function WebAuth({
           )}
           <span>Continue with Google</span>
         </button>
-
-        {cachedUser && (
-          <button
-            id="continue-offline-btn"
-            onClick={handleContinueOffline}
-            disabled={isLoadingAuth}
-            className="w-full py-3.5 bg-gray-900/40 text-gray-300 hover:text-white border border-gray-800/80 hover:bg-gray-800 disabled:opacity-50 active:scale-98 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-          >
-            <HardDrive className="w-4 h-4 text-indigo-400" />
-            <span>Access Cached Data Offline ({cachedUser.username})</span>
-          </button>
-        )}
       </div>
 
       <div className="text-[10px] text-gray-500 pt-2 flex items-center justify-center gap-1">

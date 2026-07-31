@@ -3,7 +3,6 @@ import { UserState, Subject, Module, Topic, TodoItem } from '../types';
 import { findTopicById } from '../data';
 import { SoundManager } from '../utils/soundManager';
 import { getLocalDateString } from '../utils/dateUtils';
-import { DEFAULT_DAILY_FOCUS_GOAL } from '../constants';
 import { getDailyReviewQueue } from '../lib/spacedRepetition';
 import { 
   Play, 
@@ -294,7 +293,7 @@ export default function HomeTab({
   };
 
   const focusStats = getFocusStats();
-  const dailyGoal = userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL;
+  const dailyGoal = userState.dailyFocusGoal ?? 30;
 
   // Handles starting the recommended learning topic
   const handleContinueLearning = () => {

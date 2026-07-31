@@ -2,14 +2,11 @@ import React, { useState } from 'react';
 import { UserState, Subject } from '../types';
 import { AVATARS, COURSE_TEMPLATES } from '../data';
 import { getLocalDateString } from '../utils/dateUtils';
-import { DEFAULT_DAILY_FOCUS_GOAL } from '../constants';
 import { getLevelAndProgress } from '../utils/xpUtils';
 import { Award, BookOpen, RefreshCw, Zap, Flame, Swords, Palette, Settings, Crown, Trophy, BarChart3, Gift } from 'lucide-react';
 import { ALL_ACHIEVEMENTS, claimAchievement, claimAllAchievements } from '../utils/achievements';
 import { SoundManager } from '../utils/soundManager';
 import AchievementModal from './AchievementModal';
-import AvatarRenderer from './AvatarRenderer';
-import AvatarSelectorModal from './AvatarSelectorModal';
 
 interface ProfileTabProps {
   userState: UserState;
@@ -140,7 +137,7 @@ export default function ProfileTab({ userState, activeSubjects, onUpdateState }:
   }
 
   const habitStats = {
-    dailyGoal: userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL,
+    dailyGoal: userState.dailyFocusGoal ?? 30,
     streak: userState.academicStudyStreak ?? userState.streak ?? 0,
     longestStreak: userState.longestStudyStreak ?? userState.longestStreak ?? 0,
     totalHours: ((userState.totalFocusMinutes || 0) / 60).toFixed(1),
@@ -180,7 +177,7 @@ export default function ProfileTab({ userState, activeSubjects, onUpdateState }:
                 className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl bg-[#181D28] border-2 border-purple-500/40 hover:border-purple-400 flex items-center justify-center text-4xl sm:text-5xl cursor-pointer transition-all shadow-md relative group"
                 id="profile-avatar-container"
               >
-                <AvatarRenderer avatar={avatar} size={76} />
+                <span>{avatar}</span>
                 <div className="absolute inset-0 bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-bold text-white uppercase tracking-wider transition-opacity gap-1">
                   <Palette className="w-3.5 h-3.5 text-purple-400" />
                   Edit
@@ -331,13 +328,36 @@ export default function ProfileTab({ userState, activeSubjects, onUpdateState }:
           )}
         </div>
 
-        {/* Duolingo Vector Avatar Customizer Modal */}
+        {/* Floating Avatar Picker Modal overlay */}
         {isPickingAvatar && (
-          <AvatarSelectorModal
-            currentAvatar={avatar}
-            onSave={(newAvatar) => handleSelectAvatar(newAvatar)}
-            onClose={() => setIsPickingAvatar(false)}
-          />
+          <div className="absolute inset-0 bg-[#0C0F12]/95 z-20 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+            <h4 className="text-base font-bold text-white flex items-center gap-1.5 uppercase font-display tracking-wider mb-2">
+              <Palette className="w-5 h-5 text-purple-500" />
+              Customize Player Avatar
+            </h4>
+            <p className="text-xs text-gray-500 mb-6">Choose an avatar that reflects your academic focus.</p>
+            
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-4 max-w-sm">
+              {AVATARS.map(av => (
+                <button
+                  key={av}
+                  onClick={() => handleSelectAvatar(av)}
+                  className={`w-14 h-14 rounded-2xl bg-[#141A1F] hover:bg-[#1C242C] border text-3xl flex items-center justify-center transition-all cursor-pointer ${
+                    av === avatar ? 'border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.3)] bg-purple-950/15' : 'border-gray-800'
+                  }`}
+                >
+                  {av}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setIsPickingAvatar(false)}
+              className="mt-6 px-5 py-2 bg-gray-800 hover:bg-gray-700 text-xs font-bold text-gray-300 rounded-xl cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
         )}
       </div>
 
