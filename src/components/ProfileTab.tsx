@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserState, Subject } from '../types';
 import { AVATARS, COURSE_TEMPLATES } from '../data';
 import { getLocalDateString } from '../utils/dateUtils';
+import { DEFAULT_DAILY_FOCUS_GOAL } from '../constants';
 import { getLevelAndProgress } from '../utils/xpUtils';
 import { Award, BookOpen, RefreshCw, Zap, Flame, Swords, Palette, Settings, Crown, Trophy, BarChart3, Gift } from 'lucide-react';
 import { ALL_ACHIEVEMENTS, claimAchievement, claimAllAchievements } from '../utils/achievements';
@@ -139,7 +140,7 @@ export default function ProfileTab({ userState, activeSubjects, onUpdateState }:
   }
 
   const habitStats = {
-    dailyGoal: userState.dailyFocusGoal ?? 30,
+    dailyGoal: userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL,
     streak: userState.academicStudyStreak ?? userState.streak ?? 0,
     longestStreak: userState.longestStudyStreak ?? userState.longestStreak ?? 0,
     totalHours: ((userState.totalFocusMinutes || 0) / 60).toFixed(1),

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserState, Subject } from '../types';
 import { getLocalDateString } from '../utils/dateUtils';
+import { DEFAULT_DAILY_FOCUS_GOAL } from '../constants';
 import { getLevelAndProgress } from '../utils/xpUtils';
 import { getReviewStats } from '../lib/spacedRepetition';
 import { Calendar, Award, CheckCircle2, Zap, Flame, BookOpen, Clock, Shield, Brain, Trophy } from 'lucide-react';
@@ -390,7 +391,7 @@ export default function ProgressTab({ userState, activeSubjects, backlogSubjects
           }
 
           return {
-            dailyGoal: userState.dailyFocusGoal ?? 30,
+            dailyGoal: userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL,
             streak: userState.academicStudyStreak ?? userState.streak ?? 0,
             longestStreak: userState.longestStudyStreak ?? userState.longestStreak ?? 0,
             totalHours: ((userState.totalFocusMinutes || 0) / 60).toFixed(1),
@@ -414,7 +415,7 @@ export default function ProgressTab({ userState, activeSubjects, backlogSubjects
             data.push({
               day: d.toLocaleDateString('en-US', { weekday: 'short' }),
               minutes: mins,
-              goal: userState.dailyFocusGoal ?? 30
+              goal: userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL
             });
           }
           return data;

@@ -20,6 +20,7 @@ import FriendsTab from './components/FriendsTab';
 import TopicViewModal from './components/TopicViewModal';
 import CompletionAnimations from './components/CompletionAnimations';
 import BadgeUnlockModal from './components/BadgeUnlockModal';
+import AvatarRenderer from './components/AvatarRenderer';
 import { syncUserAchievementsAndXP } from './utils/achievements';
 import { auth, googleProvider, syncUserToFirestore, triggerSocialMilestone, loadUserFromFirestore, registerUserProfileTransaction, subscribeFriendRequests, subscribeNotifications, linkDeviceWithAccount, mergeLocalAndCloudStates } from './lib/firebase';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onIdTokenChanged, getRedirectResult } from 'firebase/auth';
@@ -31,6 +32,7 @@ import { SoundManager } from './utils/soundManager';
 import { NotificationManager } from './utils/notificationManager';
 import { getLocalDateString } from './utils/dateUtils';
 import { evaluateDailyStreakCatchUp, calculateNextStreakOnActivity } from './utils/streakUtils';
+import { DEFAULT_DAILY_FOCUS_GOAL } from './constants';
 import { syncAndroidWidget } from './utils/widgetSync';
 import { getLevelAndProgress, getDifficultyConfig } from './utils/xpUtils';
 import { createInitialRevision, updateRevisionScheduling, sanitizeRevisions, getDailyReviewQueue, addDaysToDateString } from './lib/spacedRepetition';
@@ -1279,7 +1281,7 @@ export default function App() {
   useEffect(() => {
     if (authInitialized && userState && userState.onboarded && (userState.streak || 0) > 0) {
       const todayStr = getLocalDateString();
-      const studiedToday = (userState.studyActivity && (userState.studyActivity[todayStr] || 0) > 0) || ((userState.todayFocusMinutes || 0) >= (userState.dailyFocusGoal ?? 30));
+      const studiedToday = (userState.studyActivity && (userState.studyActivity[todayStr] || 0) > 0) || ((userState.todayFocusMinutes || 0) >= (userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL));
       const alreadyAlerted = sessionStorage.getItem('studyos-streak-alerted');
       
       if (!studiedToday && !alreadyAlerted) {
@@ -1305,7 +1307,7 @@ export default function App() {
 
   // Academic Study Streak Catch-Up & Study Shield consumption
   useEffect(() => {
-    if (!userState || !userState.onboarded) return;
+    if (!authInitialized || !userState || !userState.onboarded) return;
 
     const { dailyResetUpdates, streakBroken, shieldsConsumedCount } = evaluateDailyStreakCatchUp(userState);
 
@@ -1326,7 +1328,7 @@ export default function App() {
     }
 
     handleUpdateState(dailyResetUpdates);
-  }, [userState?.onboarded]);
+  }, [authInitialized, userState?.onboarded, userState?.lastFocusDate, userState?.lastActiveDate]);
 
   // Toast notification auto-dismiss timer
   useEffect(() => {
@@ -1663,16 +1665,7 @@ export default function App() {
 
     // Calendar Streak Tracking Calculations
     const todayStr = getLocalDateString(); // "YYYY-MM-DD"
-    const streakData = isAlreadyCompleted
-      ? {
-          streak: userState.streak || 0,
-          academicStudyStreak: userState.academicStudyStreak || 0,
-          longestStreak: userState.longestStreak || 0,
-          longestStudyStreak: userState.longestStudyStreak || 0,
-          lastActiveDate: userState.lastActiveDate,
-          lastFocusDate: userState.lastFocusDate || todayStr,
-        }
-      : calculateNextStreakOnActivity(userState, todayStr);
+    const streakData = calculateNextStreakOnActivity(userState, todayStr);
 
     // Track study activity completions counts
     const studyActivityMap = userState.studyActivity || {};
@@ -2370,7 +2363,9 @@ export default function App() {
               {/* Status or user info */}
               <div className="bg-gray-900/40 border border-gray-850 p-3 rounded-xl flex items-center gap-3 text-left">
                 {userState?.avatar ? (
-                  <div className="text-2xl">{userState.avatar}</div>
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center overflow-hidden shrink-0">
+                    <AvatarRenderer avatar={userState.avatar} size={32} />
+                  </div>
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 text-sm font-bold">
                     {userState?.username?.slice(0, 2).toUpperCase()}

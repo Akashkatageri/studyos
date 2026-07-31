@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { UserState } from '../types';
+import { DEFAULT_DAILY_FOCUS_GOAL } from '../constants';
 import { 
   Download, 
   Upload, 
@@ -128,7 +129,7 @@ export default function SettingsTab({
     return names.length > 0 ? names : ['Maths', 'Python', 'Chemistry', 'AI', 'FECE'];
   };
 
-  const focusGoalMin = userState.dailyFocusGoal || 30;
+  const focusGoalMin = userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL;
 
   return (
     <div className="max-w-xl mx-auto space-y-6 font-sans pb-20 text-gray-100">

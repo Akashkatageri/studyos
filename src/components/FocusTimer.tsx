@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { UserState } from '../types';
 import { SoundManager } from '../utils/soundManager';
+import { DEFAULT_DAILY_FOCUS_GOAL } from '../constants';
 import { getLocalDateString } from '../utils/dateUtils';
 import { getLevelAndProgress } from '../utils/xpUtils';
 import { calculateNextStreakOnActivity } from '../utils/streakUtils';
@@ -452,7 +453,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     updatedHistory[todayStr] = (updatedHistory[todayStr] || 0) + minutes;
 
     // Daily focus goal check
-    const goalMinutes = userState.dailyFocusGoal ?? 30;
+    const goalMinutes = userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL;
     const completedGoalTodayBefore = (userState.todayFocusMinutes || 0) >= goalMinutes;
     const completedGoalTodayNow = userTodayMinutes >= goalMinutes;
 
@@ -1130,7 +1131,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
             <div>
               <p className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">Daily Target Consistency</p>
               <p className="text-[10px] text-gray-400 leading-relaxed">
-                Your daily goal is <strong className="text-white">{userState.dailyFocusGoal ?? 30} minutes</strong>. Reaching this secures your study streak!
+                Your daily goal is <strong className="text-white">{userState.dailyFocusGoal ?? DEFAULT_DAILY_FOCUS_GOAL} minutes</strong>. Reaching this secures your study streak!
               </p>
             </div>
           </div>

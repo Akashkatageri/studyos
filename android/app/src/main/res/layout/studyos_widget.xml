@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/studyos_widget_background"
-    android:padding="12dp"
+    android:padding="14dp"
     android:gravity="center">
 
     <!-- Top Row: Brand Header & Status Pill -->
@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="6dp">
+        android:layout_marginBottom="8dp">
 
         <TextView
             android:id="@+id/widget_brand"
@@ -22,19 +22,22 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="PanPan Companion"
-            android:textColor="#F59E0B"
-            android:textSize="10sp"
+            android:textColor="#A78BFA"
+            android:textSize="11sp"
             android:textStyle="bold"
-            android:fontFamily="sans-serif-condensed" />
+            android:fontFamily="sans-serif-medium" />
 
         <TextView
             android:id="@+id/widget_pstatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="• Ready"
-            android:textColor="#10B981"
-            android:textSize="9sp"
-            android:textStyle="bold" />
+            android:textColor="#34D399"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:background="@drawable/studyos_widget_pstatus_chip"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="3dp" />
     </LinearLayout>
 
     <!-- Center Content: Mascot Avatar Badge & Mascot Status -->
@@ -45,35 +48,38 @@
         android:orientation="vertical"
         android:gravity="center">
 
-        <!-- Prominent Vector Mascot Badge (54dp) -->
+        <!-- Prominent Mascot Badge (58dp) -->
         <LinearLayout
             android:id="@+id/widget_avatar_bg"
-            android:layout_width="54dp"
-            android:layout_height="54dp"
+            android:layout_width="58dp"
+            android:layout_height="58dp"
             android:orientation="vertical"
             android:gravity="center"
             android:background="@drawable/studyos_widget_badge_bg"
-            android:layout_marginBottom="6dp">
+            android:layout_marginBottom="8dp">
 
             <ImageView
                 android:id="@+id/widget_avatar_icon"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/panda_ready"
                 android:scaleType="fitCenter"
                 android:contentDescription="StudyOS Mascot" />
         </LinearLayout>
 
-        <!-- Main Stat: Streak -->
+        <!-- Main Stat: Streak Chip -->
         <TextView
             android:id="@+id/widget_main_stat"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="🔥 12 Day Streak"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
+            android:textColor="#FBBF24"
+            android:textSize="14sp"
             android:textStyle="bold"
-            android:gravity="center" />
+            android:gravity="center"
+            android:background="@drawable/studyos_widget_streak_chip"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp" />
 
         <!-- Mascot Subtext Quote -->
         <TextView
@@ -81,12 +87,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="PanPan is ready to study! ☀️"
-            android:textColor="#E2E8F0"
-            android:textSize="10sp"
+            android:textColor="#CBD5E1"
+            android:textSize="11sp"
             android:gravity="center"
             android:maxLines="2"
             android:ellipsize="end"
-            android:layout_marginTop="2dp" />
+            android:layout_marginTop="6dp" />
     </LinearLayout>
 
     <!-- Bottom Action Button -->
@@ -96,14 +102,12 @@
         android:layout_height="wrap_content"
         android:text="Start Study Session 🚀"
         android:textColor="#FFFFFF"
-        android:textSize="11sp"
+        android:textSize="12sp"
         android:textStyle="bold"
         android:gravity="center"
         android:background="@drawable/studyos_widget_button"
-        android:paddingVertical="7dp"
-        android:paddingHorizontal="10dp"
-        android:layout_marginTop="4dp" />
+        android:paddingVertical="9dp"
+        android:paddingHorizontal="12dp"
+        android:layout_marginTop="6dp" />
 
 </LinearLayout>
-
-

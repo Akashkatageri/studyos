@@ -129,14 +129,15 @@ export function DuoAvatarSvg({
 
   return (
     <svg
-      viewBox="0 0 200 220"
+      viewBox="0 0 200 200"
       width={size}
       height={size}
+      preserveAspectRatio="xMidYMid slice"
       className={`select-none overflow-hidden ${className}`}
     >
       {/* BACKGROUND */}
       {showBackground && (
-        <rect x="0" y="0" width="200" height="220" rx="36" fill={bg} />
+        <rect x="0" y="0" width="200" height="200" fill={bg} />
       )}
 
       {/* LONG HAIR BACK LAYER */}

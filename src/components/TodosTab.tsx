@@ -3,6 +3,7 @@ import { UserState, TodoItem, TodoPriority, TodoRepeat } from '../types';
 import { getLocalDateString } from '../utils/dateUtils';
 import { addDaysToDateString, parseDateUTC } from '../lib/spacedRepetition';
 import { SoundManager } from '../utils/soundManager';
+import { sanitizeTodos } from '../utils/todoUtils';
 import { 
   Check, 
   Plus, 
@@ -31,7 +32,17 @@ export default function TodosTab({ userState, onUpdateState }: TodosTabProps) {
   // Editing & Details Modal State
   const [editingTask, setEditingTask] = useState<TodoItem | null>(null);
 
-  const todos = useMemo(() => userState.todos || [], [userState.todos]);
+  // Sanitized todos array free of duplicates
+  const todos = useMemo(() => sanitizeTodos(userState.todos || []), [userState.todos]);
+
+  // Automatic cleanup effect for duplicate or corrupt tasks in userState
+  useEffect(() => {
+    if (!userState.todos) return;
+    const sanitized = sanitizeTodos(userState.todos);
+    if (sanitized.length !== userState.todos.length) {
+      onUpdateState({ todos: sanitized });
+    }
+  }, [userState.todos, onUpdateState]);
 
   // Handle Auto-Move uncompleted tasks
   useEffect(() => {
@@ -55,7 +66,13 @@ export default function TodosTab({ userState, onUpdateState }: TodosTabProps) {
     const dateObj = parseDateUTC(selectedDate);
     const dayOfWeek = dateObj.getUTCDay();
 
-    const repeatingTemplates = todos.filter(t => t.repeat && t.repeat !== 'none' && t.dateCreated < selectedDate);
+    const repeatingTemplates = todos.filter(t => 
+      t.repeat && 
+      t.repeat !== 'none' && 
+      !t.isInstance && 
+      !t.parentTaskId && 
+      t.dateCreated < selectedDate
+    );
     const newlyGeneratedRepeats: TodoItem[] = [];
 
     repeatingTemplates.forEach(template => {
@@ -65,12 +82,23 @@ export default function TodosTab({ userState, onUpdateState }: TodosTabProps) {
       else if (template.repeat === 'weekly' && parseDateUTC(template.dateCreated).getUTCDay() === dayOfWeek) applies = true;
 
       if (applies) {
-        const existingInstance = rawForDate.find(t => t.id === `${template.id}_${selectedDate}` || t.title === template.title);
+        const titleLower = (template.title || '').trim().toLowerCase();
+        const existingInstance = rawForDate.find(t => 
+          t.id === `${template.id}_${selectedDate}` || 
+          t.parentTaskId === template.id ||
+          (t.title || '').trim().toLowerCase() === titleLower
+        ) || newlyGeneratedRepeats.find(t => 
+          (t.title || '').trim().toLowerCase() === titleLower
+        );
+
         if (!existingInstance) {
           newlyGeneratedRepeats.push({
             ...template,
             id: `${template.id}_${selectedDate}`,
+            parentTaskId: template.id,
+            isInstance: true,
             dateCreated: selectedDate,
+            repeat: 'none',
             completed: false,
             completedAt: undefined,
           });
@@ -122,20 +150,44 @@ export default function TodosTab({ userState, onUpdateState }: TodosTabProps) {
 
   // Toggle Completion
   const handleToggleTask = (id: string) => {
-    const updated = todos.map(t => {
-      if (t.id === id) {
-        const next = !t.completed;
-        if (next) {
-          SoundManager.play('topic_complete');
-          SoundManager.vibrate('success');
-        } else {
-          SoundManager.play('click');
+    const isExistingInState = todos.some(t => t.id === id);
+    let updated: TodoItem[];
+
+    if (isExistingInState) {
+      updated = todos.map(t => {
+        if (t.id === id) {
+          const next = !t.completed;
+          if (next) {
+            SoundManager.play('topic_complete');
+            SoundManager.vibrate('success');
+          } else {
+            SoundManager.play('click');
+          }
+          return { ...t, completed: next, completedAt: next ? new Date().toISOString() : undefined };
         }
-        return { ...t, completed: next, completedAt: next ? new Date().toISOString() : undefined };
+        return t;
+      });
+    } else {
+      // Toggle virtual generated repeating task
+      const virtualTask = dateTasks.find(t => t.id === id);
+      if (!virtualTask) return;
+      const nextCompleted = !virtualTask.completed;
+      if (nextCompleted) {
+        SoundManager.play('topic_complete');
+        SoundManager.vibrate('success');
+      } else {
+        SoundManager.play('click');
       }
-      return t;
-    });
-    onUpdateState({ todos: updated });
+      const newInstance: TodoItem = {
+        ...virtualTask,
+        repeat: 'none',
+        completed: nextCompleted,
+        completedAt: nextCompleted ? new Date().toISOString() : undefined
+      };
+      updated = [...todos, newInstance];
+    }
+
+    onUpdateState({ todos: sanitizeTodos(updated) });
   };
 
   // Delete Task
