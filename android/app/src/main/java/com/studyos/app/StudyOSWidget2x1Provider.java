@@ -8,9 +8,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.RemoteViews;
 
 public class StudyOSWidget2x1Provider extends AppWidgetProvider {
+    private static final String TAG = "WidgetSyncChain";
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -32,9 +34,13 @@ public class StudyOSWidget2x1Provider extends AppWidgetProvider {
     }
 
     private static void updateWidgetsInternal(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds, WidgetData data) {
-        if (appWidgetIds == null || appWidgetIds.length == 0) return;
+        if (appWidgetIds == null || appWidgetIds.length == 0) {
+            Log.d(TAG, "[2x1Provider] No active 2x1 widgets placed on home screen.");
+            return;
+        }
 
         WidgetStateManager.WidgetState state = WidgetStateManager.getState(context, data);
+        Log.d(TAG, "[Step 4 - 2x1] Updating " + appWidgetIds.length + " 2x1 widget(s) immediately -> streakText=" + state.streakText + ", headline=" + state.headlineText);
 
         for (int appWidgetId : appWidgetIds) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.studyos_widget_2x1);
@@ -62,6 +68,7 @@ public class StudyOSWidget2x1Provider extends AppWidgetProvider {
             views.setOnClickPendingIntent(R.id.widget_2x1_streak, statsPending);
 
             appWidgetManager.updateAppWidget(appWidgetId, views);
+            Log.d(TAG, "[Step 4 - 2x1] appWidgetManager.updateAppWidget completed for widget ID " + appWidgetId);
         }
     }
 }

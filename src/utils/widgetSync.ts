@@ -1,6 +1,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { UserState } from '../types';
 import { getLocalDateString } from './dateUtils';
+import { calculateActualStreak } from './streakUtils';
 
 export interface DayStatus {
   short: string;    // 'M', 'T', 'W', 'T', 'F', 'S', 'S'
@@ -81,7 +82,12 @@ export async function syncAndroidWidget(userState: UserState | null) {
   }
 
   try {
-    const streakVal = userState.academicStudyStreak ?? userState.streak ?? 0;
+    const calculatedStreak = calculateActualStreak(userState);
+    const streakVal = Math.max(
+      calculatedStreak,
+      userState.academicStudyStreak ?? 0,
+      userState.streak ?? 0
+    );
     const streak = String(streakVal);
     const username = userState.username || "Student";
     
@@ -90,29 +96,12 @@ export async function syncAndroidWidget(userState: UserState | null) {
     const todayMinutes = userState.todayFocusMinutes 
       || (userState.focusHistory && userState.focusHistory[todayStr])
       || 0;
-    
-    let todayFocus = "0 min";
-    if (todayMinutes >= 60) {
-      const hrs = Math.floor(todayMinutes / 60);
-      const mins = todayMinutes % 60;
-      if (mins > 0) {
-        todayFocus = `${hrs}h ${mins}m`;
-      } else {
-        todayFocus = `${hrs} hrs`;
-      }
-    } else {
-      todayFocus = `${todayMinutes} min`;
-    }
-
-    // Days status calculation
-    const days = getWeeklyDaysStatus(userState);
-    const daysJson = JSON.stringify(days);
-    const activeDaysCount = String(days.filter(d => d.active).length);
-    const daysMask = days.map(d => (d.active ? '1' : '0')).join('');
 
     // Goal completion calculation
     const focusGoal = userState.dailyFocusGoal || 25;
     const completionPercent = Math.min(100, Math.round((todayMinutes / focusGoal) * 100));
+
+    console.log(`[WidgetSync Step 1] syncAndroidWidget called. Computed streak: ${streakVal} (calculated: ${calculatedStreak}), todayMinutes: ${todayMinutes}, completionPercent: ${completionPercent}%`);
 
     // Pet companion status based on study state
     let petStatus = "Zzz... Complete a study session to wake PanPan the Panda! 🐼";

@@ -2,8 +2,10 @@ package com.studyos.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 public class WidgetData {
+    private static final String TAG = "WidgetSyncChain";
     private static final String PREF_NAME = "StudyOSWidgetPrefs";
     private static final String KEY_STREAK = "streak_count";
     private static final String KEY_LAST_ACTIVE = "last_active_time";
@@ -34,6 +36,7 @@ public class WidgetData {
              .putInt(KEY_COMPLETION_PERCENT, completionPercent)
              .putString(KEY_CURRENT_GOAL, currentGoal)
              .apply();
+        Log.d(TAG, "[Step 3] WidgetData persisted in SharedPreferences -> streak=" + streak + ", focusMinutes=" + focusMinutesToday);
     }
 
     public static WidgetData load(Context context) {
@@ -43,6 +46,7 @@ public class WidgetData {
         int focusMinutes = prefs.getInt(KEY_FOCUS_MINUTES, 0);
         int completion = prefs.getInt(KEY_COMPLETION_PERCENT, 0);
         String goal = prefs.getString(KEY_CURRENT_GOAL, "2h today");
+        Log.d(TAG, "[WidgetData.load] Loaded cached WidgetData -> streak=" + streak + ", focusMinutes=" + focusMinutes);
         return new WidgetData(streak, lastActive, focusMinutes, completion, goal);
     }
 }
