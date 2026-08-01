@@ -48,7 +48,7 @@ public class StudyOSWidget2x1Provider extends AppWidgetProvider {
             Intent homeIntent = new Intent(context, MainActivity.class);
             homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent homePending = PendingIntent.getActivity(
-                context, 2x100, homeIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                context, 2100, homeIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
             views.setOnClickPendingIntent(R.id.widget_2x1_mascot, homePending);
             views.setOnClickPendingIntent(R.id.widget_2x1_root, homePending);
@@ -57,7 +57,7 @@ public class StudyOSWidget2x1Provider extends AppWidgetProvider {
             Intent statsIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("com.studyos.app://stats"), context, MainActivity.class);
             statsIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent statsPending = PendingIntent.getActivity(
-                context, 2x101, statsIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                context, 2101, statsIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
             views.setOnClickPendingIntent(R.id.widget_2x1_streak, statsPending);
 

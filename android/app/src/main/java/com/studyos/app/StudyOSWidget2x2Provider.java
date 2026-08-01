@@ -49,7 +49,7 @@ public class StudyOSWidget2x2Provider extends AppWidgetProvider {
             Intent homeIntent = new Intent(context, MainActivity.class);
             homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent homePending = PendingIntent.getActivity(
-                context, 2x200, homeIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                context, 2200, homeIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
             views.setOnClickPendingIntent(R.id.widget_2x2_mascot, homePending);
             views.setOnClickPendingIntent(R.id.widget_2x2_root, homePending);
@@ -58,7 +58,7 @@ public class StudyOSWidget2x2Provider extends AppWidgetProvider {
             Intent statsIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("com.studyos.app://stats"), context, MainActivity.class);
             statsIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent statsPending = PendingIntent.getActivity(
-                context, 2x201, statsIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                context, 2201, statsIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
             views.setOnClickPendingIntent(R.id.widget_2x2_streak, statsPending);
 
@@ -66,7 +66,7 @@ public class StudyOSWidget2x2Provider extends AppWidgetProvider {
             Intent tasksIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("com.studyos.app://tasks"), context, MainActivity.class);
             tasksIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             PendingIntent tasksPending = PendingIntent.getActivity(
-                context, 2x202, tasksIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                context, 2202, tasksIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
             views.setOnClickPendingIntent(R.id.widget_2x2_pill, tasksPending);
 
