@@ -5,4 +5,20 @@
     <string name="package_name">com.studyos.app</string>
     <string name="custom_url_scheme">com.studyos.app</string>
     <string name="widget_mascot_description">PanPan the Panda mascot study companion with live streak and mood updates.</string>
+    
+    <!-- Widget Messages -->
+    <string name="widget_ready_to_learn">Ready to learn?</string>
+    <string name="widget_focus_time">Focus time!</string>
+    <string name="widget_take_a_break">Take a break!</string>
+    <string name="widget_rest_mode">Rest mode</string>
+    <string name="widget_great_progress">Great progress!</string>
+    <string name="widget_save_your_streak">Save your streak!</string>
+    <string name="widget_lets_get_rolling">Let\'s get rolling!</string>
+    <string name="widget_youre_on_fire">You\'re on fire!</string>
+    <string name="widget_keep_going">Keep going!</string>
+    <string name="widget_dont_break_it">Don\'t break it!</string>
+    <string name="widget_deep_work_time">Deep work time</string>
+    <string name="widget_one_step_at_a_time">One step at a time</string>
+    <string name="widget_almost_there">Almost there!</string>
 </resources>
+

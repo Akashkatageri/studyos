@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_2x1_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg_purple"
+    android:padding="@dimen/widget_padding">
+
+    <LinearLayout
+        android:id="@+id/widget_2x1_content_left"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_toStartOf="@id/widget_2x1_mascot"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:layout_marginEnd="8dp">
+
+        <TextView
+            android:id="@+id/widget_2x1_streak"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔥 0"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/widget_streak_text_size"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/widget_2x1_headline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Ready to learn?"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/widget_title_text_size"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/widget_2x1_mascot"
+        android:layout_width="@dimen/widget_mascot_2x1_size"
+        android:layout_height="match_parent"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:scaleType="fitCenter"
+        android:src="@drawable/happy"
+        android:contentDescription="@string/widget_mascot_description"
+        android:clickable="true"
+        android:focusable="true" />
+
+</RelativeLayout>

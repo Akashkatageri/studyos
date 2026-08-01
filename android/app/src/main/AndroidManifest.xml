@@ -42,42 +42,29 @@
         </provider>
 
         <receiver
-            android:name=".StudyOSWidgetProvider"
+            android:name=".StudyOSWidget2x1Provider"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
-            android:label="PanPan Mascot Companion (2x2)">
+            android:label="StudyOS Mascot (2x1)">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/studyos_widget_info" />
+                android:resource="@xml/studyos_widget_2x1_info" />
         </receiver>
 
         <receiver
-            android:name=".StudyOSTimerWidgetProvider"
+            android:name=".StudyOSWidget2x2Provider"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
-            android:label="StudyOS Focus Timer">
+            android:label="StudyOS Mascot Companion (2x2)">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/studyos_timer_widget_info" />
-        </receiver>
-
-        <receiver
-            android:name=".StudyOSTaskWidgetProvider"
-            android:exported="true"
-            android:icon="@mipmap/ic_launcher"
-            android:label="StudyOS Daily Tasks &amp; Goals">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/studyos_task_widget_info" />
+                android:resource="@xml/studyos_widget_2x2_info" />
         </receiver>
     </application>
 

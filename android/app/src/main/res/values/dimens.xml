@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget Dimensions -->
+    <dimen name="widget_corner_radius">20dp</dimen>
+    <dimen name="widget_pill_corner_radius">12dp</dimen>
+    <dimen name="widget_padding">12dp</dimen>
+    <dimen name="widget_flame_size">18dp</dimen>
+    <dimen name="widget_flame_margin_end">4dp</dimen>
+    <dimen name="widget_streak_text_size">16sp</dimen>
+    <dimen name="widget_title_text_size">15sp</dimen>
+    <dimen name="widget_pill_text_size">12sp</dimen>
+    <dimen name="widget_mascot_2x1_size">72dp</dimen>
+    <dimen name="widget_mascot_2x2_size">110dp</dimen>
+</resources>

@@ -66,6 +66,10 @@ interface StudyOSWidgetPlugin {
     activeDaysCount?: string;
     daysMask?: string;
     dailyTheme?: string;
+    lastActive?: number;
+    focusMinutesToday?: number;
+    completionPercent?: number;
+    currentGoal?: string;
   }): Promise<{ success: boolean }>;
 }
 
@@ -82,7 +86,6 @@ export async function syncAndroidWidget(userState: UserState | null) {
     const username = userState.username || "Student";
     
     // Focus hours / mins
-    // Use Sweden locale format to get robust YYYY-MM-DD
     const todayStr = getLocalDateString();
     const todayMinutes = userState.todayFocusMinutes 
       || (userState.focusHistory && userState.focusHistory[todayStr])
@@ -107,8 +110,11 @@ export async function syncAndroidWidget(userState: UserState | null) {
     const activeDaysCount = String(days.filter(d => d.active).length);
     const daysMask = days.map(d => (d.active ? '1' : '0')).join('');
 
-    // Pet companion status based on study state
+    // Goal completion calculation
     const focusGoal = userState.dailyFocusGoal || 25;
+    const completionPercent = Math.min(100, Math.round((todayMinutes / focusGoal) * 100));
+
+    // Pet companion status based on study state
     let petStatus = "Zzz... Complete a study session to wake PanPan the Panda! 🐼";
     let avatarIcon = userState.avatar || "🐼";
 
@@ -140,15 +146,12 @@ export async function syncAndroidWidget(userState: UserState | null) {
 
     const dailyTheme = getTodayWidgetTheme();
 
-    console.log("[WidgetSync] Syncing native Focus Streak widget data with auto-rotating theme:", {
+    console.log("[WidgetSync] Syncing native mascot widget data:", {
       streak,
       username,
       todayFocus,
-      petStatus,
-      avatarIcon,
-      emotion,
-      activeDaysCount,
-      daysMask,
+      focusMinutesToday: todayMinutes,
+      completionPercent,
       dailyTheme
     });
 
@@ -161,9 +164,13 @@ export async function syncAndroidWidget(userState: UserState | null) {
       daysJson,
       activeDaysCount,
       daysMask,
-      dailyTheme
+      dailyTheme,
+      lastActive: Date.now(),
+      focusMinutesToday: todayMinutes,
+      completionPercent,
+      currentGoal: `${focusGoal} min goal`
     });
-    console.log("Android native 1x4 widget updated successfully via Capacitor!");
+    console.log("Android native Duolingo-style 2x1 and 2x2 widgets updated successfully via Capacitor!");
   } catch (err) {
     console.warn("Failed to synchronize Android native widget:", err);
   }
